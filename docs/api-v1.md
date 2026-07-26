@@ -1,5 +1,10 @@
 # Tourgrid Studio API v1
 
+FastAPI 同时提供同源前端：
+
+- `GET /`：编辑器页面
+- `GET /static/*`：前端 CSS 和 JavaScript 静态资源
+
 第二阶段提供 FastAPI 服务，默认监听 `127.0.0.1:8000`。Swagger UI 位于 `/docs`，OpenAPI 文档位于 `/openapi.json`。
 
 ## 启动

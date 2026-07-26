@@ -2,23 +2,47 @@
 
 《明日方舟》“巡展像素”非官方在线编辑器。
 
-当前仓库已完成阶段二：在保留原有单文件前端行为的同时，图片转换程序已经模块化，并提供带安全限制和处理超时的 FastAPI 服务。
+用户可以上传图片、调整正方形裁切区域，由服务器将图片转换为固定尺寸的像素画并严格限制到版本化色板。转换后仍可在浏览器中逐像素编辑、统计颜色并导出 PNG 或图纸。
 
-## 当前结构
+## 当前状态
+
+阶段三已经完成：
+
+- Python 转换程序已经模块化并保留 CLI。
+- FastAPI 提供版本化色板和图片转换 API。
+- 前端默认使用服务器 Pyxelate 转换。
+- 浏览器本地 K-means 算法作为明确标识的备用模式保留。
+- 前端已拆分为 HTML、CSS 和多个 JavaScript 模块。
+- 存档包含来源、色板版本和转换器版本，并兼容旧版 localStorage。
+- 裁切区支持鼠标、单指移动和双指缩放。
+- 支持原始尺寸 PNG、最近邻放大图和拼豆图纸导出。
+
+当前默认色板 `natural-64-v1` 是临时预测色板。未来正式色板必须使用新的 ID（例如 `official-v1`），不能覆盖旧版本。
+
+## 仓库结构
 
 ```text
 tourgrid-studio/
-├─ backend/                 # 可复用转换核心与 CLI
-│  └─ api/                  # FastAPI、上传校验、子进程转换与预览缓存
-├─ palettes/                # 版本化色板
-├─ tests/                   # 自动测试
+├─ backend/                 # 转换核心、CLI 与 FastAPI
+│  └─ api/                  # 上传校验、转换调度、预览缓存
+├─ frontend/
+│  ├─ index.html
+│  ├─ css/editor.css
+│  └─ js/
+│     ├─ storage.js         # 存档校验和版本迁移
+│     ├─ conversion-api.js  # API 响应校验和错误映射
+│     ├─ state.js           # 编辑器状态和色板数据
+│     ├─ editor.js          # Canvas 编辑、撤销和导航器
+│     ├─ export.js          # PNG 与图纸导出
+│     ├─ import.js          # 裁切、上传和本地备用转换
+│     └─ app.js             # 工具、色板和页面控制
+├─ palettes/                # 版本化色板 JSON
+├─ tests/                   # 后端和前端行为测试
+├─ docs/                    # 架构、API 和阶段说明
 ├─ LICENSES/                # 第三方许可证
-├─ docs/                    # 设计和迁移说明
-├─ convert_image.py         # 图片转换命令入口
-└─ 像素画编辑器.html         # 原有单文件前端，阶段一保持不变
+├─ convert_image.py         # 兼容的图片转换命令入口
+└─ pyproject.toml
 ```
-
-当前默认色板是临时预测色板 `natural-64-v1`。未来正式色板必须以新的 ID（例如 `official-v1`）加入，不得覆盖该文件。
 
 ## 安装
 
@@ -30,73 +54,63 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
 
-Pyxelate 尚未发布当前代码对应的 PyPI 包，因此依赖固定到其官方 GitHub 仓库的精确提交，避免安装结果随 `master` 漂移。
-
-需要完全复现本次验证环境时，可以改用锁定文件：
+若需要完全复现锁定环境：
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 .\.venv\Scripts\python.exe -m pip install -e . --no-deps
 ```
 
-## 转换图片
-
-原命令继续可用：
-
-```powershell
-python convert_image.py input.png
-```
-
-也可以使用模块入口：
-
-```powershell
-python -m backend input.png
-```
-
-默认行为：
-
-- 输出尺寸：24×24
-- 色板：`natural-64-v1`
-- 映射：`direct`
-- 抖动：`none`
-- Sobel：3
-- depth：1
-- SVD：启用
-- 适配：中心裁切
-
-实验性的两阶段映射仍可显式选择：
-
-```powershell
-python -m backend input.png --mapping-mode two-stage
-```
-
-## 可复用接口
-
-```python
-from pathlib import Path
-
-from backend.converter import ConversionOptions, convert_path
-
-result = convert_path(
-    Path("input.png"),
-    options=ConversionOptions(width=24, height=24),
-)
-
-print(result.palette_id)
-print(result.used_colors)
-print(result.pixels)
-print(result.hex_pixels)
-```
-
-转换结果直接携带颜色 ID 矩阵和十六进制矩阵，后续 FastAPI 可以直接序列化这些数据，无需重新分析输出 PNG。
-
-## 启动 API
+## 启动编辑器
 
 ```powershell
 .\.venv\Scripts\tourgrid-api.exe
 ```
 
-服务默认地址为 `http://127.0.0.1:8000`，接口文档位于 `http://127.0.0.1:8000/docs`。
+然后访问：
+
+- 编辑器：`http://127.0.0.1:8000/`
+- API 文档：`http://127.0.0.1:8000/docs`
+
+推荐始终通过 FastAPI 打开编辑器，不要直接双击 `frontend/index.html`。同源运行可确保静态资源、色板和转换接口使用同一个服务版本。
+
+## 图片导入模式
+
+### 服务器 Pyxelate（默认）
+
+- 色板：`natural-64-v1`
+- 映射模式：`direct`
+- 默认抖动：`none`
+- Sobel：`3`
+- depth：`1`
+- SVD：启用
+- 裁切后的正方形 PNG 只用于当前请求，不长期保存
+
+前端直接校验并读取响应中的 `hexPixels`，不会重新分析预览 PNG。
+
+### 浏览器本地备用
+
+该模式保留原有 K-means++ 和误差扩散算法，用于服务器不可用时继续工作。其结果不保证属于巡展 64 色色板，界面会明确显示“本地备用转换”。
+
+## 命令行转换
+
+```powershell
+.\.venv\Scripts\python.exe convert_image.py input.png
+```
+
+或：
+
+```powershell
+.\.venv\Scripts\python.exe -m backend input.png
+```
+
+实验性两阶段映射必须显式选择：
+
+```powershell
+.\.venv\Scripts\python.exe -m backend input.png --mapping-mode two-stage
+```
+
+## API
 
 已实现：
 
@@ -106,18 +120,29 @@ print(result.hex_pixels)
 - `POST /api/v1/convert`
 - `GET /api/v1/results/{result_id}/preview.png`
 
-上传图片不会落盘保存。转换在可终止的独立子进程中执行，预览图只进入短期有界内存缓存。完整参数、限制和响应格式见 [API v1 文档](docs/api-v1.md)。
+完整参数、限制和响应格式见 [API v1](docs/api-v1.md)。
 
 ## 测试
 
 ```powershell
-python -m pytest
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-测试覆盖色板格式、64 色唯一性、版本元数据、默认 CLI 参数、输出尺寸、色板约束、结果矩阵、稳定性和最近邻预览尺寸。
+测试覆盖：
 
-## 第三方项目
+- 固定色板约束和 24×24 输出
+- 相同输入和版本的稳定性
+- API 上传类型、大小、尺寸、并发和超时限制
+- 前端静态资源入口
+- localStorage v1/v2 到 v3 的迁移
+- API 像素矩阵尺寸和颜色校验
+- HTTP 错误映射
+- 默认服务器模式和显式本地备用模式
+- 原始 PNG 与最近邻预览导出契约
+- 所有前端 JavaScript 文件的语法
 
-图片像素化使用 [Pyxelate](https://github.com/sedthh/pyxelate)，其 MIT 许可证和版权声明保存在 `LICENSES/Pyxelate-LICENSE.txt`。
+## 许可证与声明
 
-Tourgrid Studio 与鹰角网络或《明日方舟》官方无隶属关系。
+图片像素化使用 [Pyxelate](https://github.com/sedthh/pyxelate)。其 MIT 许可证和版权声明保存在 `LICENSES/Pyxelate-LICENSE.txt`。
+
+Tourgrid Studio 是非官方项目，与鹰角网络或《明日方舟》官方无隶属关系。

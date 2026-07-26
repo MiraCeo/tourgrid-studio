@@ -10,6 +10,7 @@ from uuid import uuid4
 from fastapi import APIRouter, FastAPI, File, Form, Path, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend import CONVERTER_VERSION
 from backend.converter import ConversionOptions
@@ -31,7 +32,8 @@ from .worker import run_conversion_with_timeout
 
 
 LOGGER = logging.getLogger(__name__)
-EDITOR_HTML = FilePath(__file__).resolve().parents[2] / "像素画编辑器.html"
+FRONTEND_DIR = FilePath(__file__).resolve().parents[2] / "frontend"
+EDITOR_HTML = FRONTEND_DIR / "index.html"
 ConverterCallable = Callable[
     [bytes, ConversionOptions, str, float, int],
     dict[str, Any],
@@ -289,6 +291,11 @@ def create_app(
     application.state.converter = converter
     application.state.conversion_slots = asyncio.Semaphore(
         settings.max_concurrent_conversions
+    )
+    application.mount(
+        "/static",
+        StaticFiles(directory=FRONTEND_DIR),
+        name="frontend-static",
     )
 
     @application.get("/", include_in_schema=False)

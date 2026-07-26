@@ -95,7 +95,11 @@ def test_editor_is_served_from_same_origin(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert 'id="pixelCanvas"' in response.text
-    assert "/api/v1/convert" in response.text
+    assert '/static/js/import.js' in response.text
+
+    script_response = client.get("/static/js/import.js")
+    assert script_response.status_code == 200
+    assert "/api/v1/convert" in script_response.text
 
 
 def test_palette_list_and_detail(client: TestClient) -> None:
