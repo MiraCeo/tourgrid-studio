@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "generator": "tests/fixtures/generate_visual_fixtures.py",
+  "avatarNotice": "The original project avatar was not present in the repository. avatar-reference-synthetic.png is a deterministic stand-in and must not be represented as the original user image.",
+  "fixtures": [
+    {
+      "file": "avatar-reference-synthetic.png",
+      "mode": "RGB",
+      "size": [
+        256,
+        256
+      ],
+      "sha256": "550541584fca955bf23d16fb970bae45136ff0714af8f0b83acb4ae1853ed967"
+    },
+    {
+      "file": "transparent-subject.png",
+      "mode": "RGBA",
+      "size": [
+        192,
+        192
+      ],
+      "sha256": "1c7801bf2c661dfb6de088aa62f7467d70220eb306dc7b6711e8b9dc9b2adf7c"
+    },
+    {
+      "file": "landscape-scene.png",
+      "mode": "RGB",
+      "size": [
+        360,
+        180
+      ],
+      "sha256": "34348903a80478526d58c2682c8c92d4730a0d8a8a89d947c78efe0ee263016a"
+    },
+    {
+      "file": "portrait-scene.png",
+      "mode": "RGB",
+      "size": [
+        180,
+        360
+      ],
+      "sha256": "82a5b775ae9170e9f9dde98168b490d2e5d9dc3ccb327b5c7dabd8be4635b3b1"
+    },
+    {
+      "file": "large-pattern.png",
+      "mode": "RGB",
+      "size": [
+        4096,
+        3072
+      ],
+      "sha256": "844e5ec9ef91f6a4905d778529c938989c6400e258bad23030d5beffc12b7c29"
+    }
+  ]
+}

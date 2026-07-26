@@ -94,6 +94,18 @@ def test_import_ui_supports_retry_status_and_touch_crop() -> None:
     assert "touch-action: none" in source
 
 
+def test_phone_and_tablet_responsive_contract() -> None:
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert "@media (max-width: 900px)" in css
+    assert "width: min(320px, 42dvh)" in css
+    assert "height: min(320px, 42dvh)" in css
+    assert "function checkOrientation()" in app
+    assert "window.addEventListener('resize', checkOrientation)" in app
+    assert "window.addEventListener('orientationchange'" in app
+
+
 def test_exports_include_raw_and_nearest_neighbor_preview() -> None:
     source = read_frontend()
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+from threading import Event, Lock
 from typing import Any
 
 import pytest
@@ -313,3 +315,111 @@ def test_conversion_process_errors_are_sanitized(
     assert response.json()["error"]["code"] == code
     if status_code == 500:
         assert "crashed" not in response.text
+
+
+def test_two_conversions_can_run_up_to_configured_limit(settings: ApiSettings) -> None:
+    entered = Event()
+    release = Event()
+    state_lock = Lock()
+    active = 0
+    maximum_active = 0
+
+    def blocking_converter(
+        content: bytes,
+        options: ConversionOptions,
+        palette_id: str,
+        timeout_seconds: float,
+        preview_scale: int,
+    ) -> dict[str, Any]:
+        nonlocal active, maximum_active
+        with state_lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+            if active == 2:
+                entered.set()
+        try:
+            assert release.wait(3)
+            return fake_conversion(
+                content,
+                options,
+                palette_id,
+                timeout_seconds,
+                preview_scale,
+            )
+        finally:
+            with state_lock:
+                active -= 1
+
+    concurrent_settings = ApiSettings(
+        **{
+            **settings.__dict__,
+            "max_concurrent_conversions": 2,
+            "queue_timeout_seconds": 1,
+        }
+    )
+    application = create_app(concurrent_settings, converter=blocking_converter)
+    with TestClient(application) as client, ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [
+            pool.submit(
+                client.post,
+                "/api/v1/convert",
+                files={"image": ("source.png", image_bytes(), "image/png")},
+            )
+            for _ in range(2)
+        ]
+        assert entered.wait(2), "both conversion slots should become active"
+        release.set()
+        responses = [future.result(timeout=3) for future in futures]
+
+    assert [response.status_code for response in responses] == [200, 200]
+    assert maximum_active == 2
+
+
+def test_conversion_queue_returns_busy_when_limit_is_reached(
+    settings: ApiSettings,
+) -> None:
+    entered = Event()
+    release = Event()
+
+    def blocking_converter(
+        content: bytes,
+        options: ConversionOptions,
+        palette_id: str,
+        timeout_seconds: float,
+        preview_scale: int,
+    ) -> dict[str, Any]:
+        entered.set()
+        assert release.wait(3)
+        return fake_conversion(
+            content,
+            options,
+            palette_id,
+            timeout_seconds,
+            preview_scale,
+        )
+
+    limited_settings = ApiSettings(
+        **{
+            **settings.__dict__,
+            "max_concurrent_conversions": 1,
+            "queue_timeout_seconds": 0.05,
+        }
+    )
+    application = create_app(limited_settings, converter=blocking_converter)
+    with TestClient(application) as client, ThreadPoolExecutor(max_workers=1) as pool:
+        first_future = pool.submit(
+            client.post,
+            "/api/v1/convert",
+            files={"image": ("first.png", image_bytes(), "image/png")},
+        )
+        assert entered.wait(2), "first conversion should occupy the only slot"
+        second = client.post(
+            "/api/v1/convert",
+            files={"image": ("second.png", image_bytes(), "image/png")},
+        )
+        release.set()
+        first = first_future.result(timeout=3)
+
+    assert first.status_code == 200
+    assert second.status_code == 503
+    assert second.json()["error"]["code"] == "server_busy"

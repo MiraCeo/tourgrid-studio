@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "converterOptions": {
+    "width": 24,
+    "height": 24,
+    "fit": "crop",
+    "dither": "none",
+    "sobel": 3,
+    "depth": 1,
+    "svd": true,
+    "mappingMode": "direct"
+  },
+  "baselines": {
+    "avatar-reference-synthetic.png": {
+      "pixelSha256": "b81cd0318332ffc2d63b29b0f5b3afb067c33aef9f46887cf1f3d1a39f71ecfb",
+      "usedColors": 9,
+      "usedColorIds": [
+        "N01",
+        "N02",
+        "N06",
+        "R03",
+        "R04",
+        "R08",
+        "S06",
+        "S07",
+        "BR02"
+      ],
+      "raw": "baselines/avatar-reference-synthetic-24x24.png",
+      "preview": "baselines/avatar-reference-synthetic-preview.png"
+    },
+    "transparent-subject.png": {
+      "pixelSha256": "9385c0be3c25be3a63a6c852bd98deddd18066c100320494cb3aebd4a7af754c",
+      "usedColors": 13,
+      "usedColorIds": [
+        "N02",
+        "N03",
+        "R01",
+        "R03",
+        "R04",
+        "S01",
+        "S02",
+        "C01",
+        "V01",
+        "V02",
+        "BR01",
+        "BR02",
+        "BR03"
+      ],
+      "raw": "baselines/transparent-subject-24x24.png",
+      "preview": "baselines/transparent-subject-preview.png"
+    },
+    "landscape-scene.png": {
+      "pixelSha256": "7b71f617d6a0c1511616c90b9928cf1ec1fcabc74b34998ff7fd903cf91c7d61",
+      "usedColors": 8,
+      "usedColorIds": [
+        "N01",
+        "N03",
+        "R02",
+        "S02",
+        "O05",
+        "G02",
+        "C01",
+        "C07"
+      ],
+      "raw": "baselines/landscape-scene-24x24.png",
+      "preview": "baselines/landscape-scene-preview.png"
+    },
+    "portrait-scene.png": {
+      "pixelSha256": "7774b82f787e97909cc2ce861da63f0d11264ce473a7fe523793519675f62427",
+      "usedColors": 7,
+      "usedColorIds": [
+        "N01",
+        "N07",
+        "R04",
+        "R07",
+        "S01",
+        "G02",
+        "G06"
+      ],
+      "raw": "baselines/portrait-scene-24x24.png",
+      "preview": "baselines/portrait-scene-preview.png"
+    },
+    "large-pattern.png": {
+      "pixelSha256": "d625698727e98574da6747fcb84d1731b5f0d6e84f42040e7f9dfe721189736b",
+      "usedColors": 21,
+      "usedColorIds": [
+        "N01",
+        "N02",
+        "N03",
+        "N06",
+        "N07",
+        "N08",
+        "R04",
+        "R06",
+        "S07",
+        "O05",
+        "O06",
+        "O07",
+        "O08",
+        "G02",
+        "C04",
+        "C06",
+        "C08",
+        "B04",
+        "V02",
+        "V03",
+        "V04"
+      ],
+      "raw": "baselines/large-pattern-24x24.png",
+      "preview": "baselines/large-pattern-preview.png"
+    }
+  }
+}
