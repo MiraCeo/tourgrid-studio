@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tourgrid-studio"
+version = "0.1.0"
+description = "Unofficial online editor and versioned image converter for Arknights exhibition pixel art."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "numpy>=1.26,<2.4",
+  "Pillow>=10,<13",
+  "scipy>=1.11,<2",
+  "scikit-image>=0.26,<0.27",
+  "scikit-learn>=1.8,<1.9",
+  "numba>=0.63,<0.64",
+  "matplotlib>=3.8,<4",
+  "pyxelate @ git+https://github.com/sedthh/pyxelate.git@f4a046b8b148370a20ab7681fce160551e5fc49b",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<10",
+]
+
+[project.scripts]
+tourgrid-convert = "backend.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "integration: exercises the real Pyxelate conversion dependency",
+]

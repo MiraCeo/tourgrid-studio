@@ -1,0 +1,30 @@
+# Generated from the verified Python 3.11 stage-one environment.
+# Install with: python -m pip install -r requirements.lock
+colorama==0.4.6
+contourpy==1.3.3
+cycler==0.12.1
+fonttools==4.63.0
+ImageIO==2.37.4
+iniconfig==2.3.0
+joblib==1.5.3
+kiwisolver==1.5.0
+lazy-loader==0.5
+llvmlite==0.46.0
+matplotlib==3.11.1
+networkx==3.6.1
+numba==0.63.1
+numpy==2.3.5
+packaging==26.2
+pillow==12.3.0
+pluggy==1.6.0
+Pygments==2.20.0
+pyparsing==3.3.2
+pytest==9.1.1
+python-dateutil==2.9.0.post0
+pyxelate @ git+https://github.com/sedthh/pyxelate.git@f4a046b8b148370a20ab7681fce160551e5fc49b
+scikit-image==0.26.0
+scikit-learn==1.8.0
+scipy==1.17.1
+six==1.17.0
+threadpoolctl==3.6.0
+tifffile==2026.3.3
