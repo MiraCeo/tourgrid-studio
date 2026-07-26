@@ -829,6 +829,75 @@ body {
 .crop-btn:hover {
   transform: scale(1.04);
 }
+.crop-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.conversion-mode-select {
+  min-width: 180px;
+  padding: 5px 8px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  background: #fff;
+  color: #333;
+  font-size: 11px;
+}
+.conversion-note {
+  min-height: 16px;
+  color: #666;
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: center;
+}
+.conversion-status {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: #E8F3F5;
+  color: #35545A;
+  font-size: 11px;
+}
+.conversion-status.show {
+  display: flex;
+}
+.conversion-status.error {
+  background: #FBE7E7;
+  color: #A52C2C;
+}
+.conversion-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(53,84,90,0.25);
+  border-top-color: #3A6BC5;
+  border-radius: 50%;
+  animation: conversionSpin 0.75s linear infinite;
+}
+.conversion-status.error .conversion-spinner {
+  display: none;
+}
+.conversion-cancel-btn {
+  padding: 3px 9px;
+  border: 1px solid #7A979D;
+  border-radius: 10px;
+  background: #fff;
+  color: #35545A;
+  font-size: 10px;
+}
+@keyframes conversionSpin {
+  to { transform: rotate(360deg); }
+}
+.color-usage-summary {
+  margin-top: 7px;
+  color: #aaa;
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: center;
+}
 
 /* ============================================================
    閹绘劗銇氬☉鍫熶紖
@@ -1118,7 +1187,7 @@ body {
 
 <!-- 瀹革缚绗傞崶鍓у -->
 <div class="top-image-area">
-  <img src="sucai/wenzi.png" alt="閺勫孩妫╅弬纭呭灧 Summer Carnival'26">
+  <img src="sucai/wenzi.png" alt="Summer Carnival '26" onerror="this.style.display='none'">
 </div>
 
 <!-- ============================================================
@@ -1255,6 +1324,7 @@ body {
           <div class="color-display-info" id="colorInfo">RGB(0, 0, 0)<br>#000000</div>
         </div>
       </div>
+      <div class="color-usage-summary" id="colorUsageSummary">已用颜色 0 种 · 已绘制 0 格</div>
 
       <div class="color-grid" id="colorGrid">
         <!-- JS閸斻劍鈧胶鏁撻幋?-->
@@ -1285,19 +1355,34 @@ body {
       <button class="grid-size-btn" id="gridBtn104" onclick="setCropGridSize(104, this)">104</button>
     </div>
     <div class="crop-controls">
-      <span class="crop-zoom-label">颜色数</span>
-      <input type="range" class="crop-zoom-slider" id="cropColorCount" min="4" max="64" value="32" oninput="document.getElementById('cropColorVal').textContent=this.value">
-      <span class="crop-zoom-label" id="cropColorVal">32</span>
+      <span class="crop-zoom-label">转换方式</span>
+      <select id="conversionMode" class="conversion-mode-select" onchange="updateConversionModeUI()">
+        <option value="server" selected>服务器 Pyxelate（推荐）</option>
+        <option value="local">浏览器本地备用</option>
+      </select>
+    </div>
+    <div class="crop-controls">
+      <span id="localColorOptions" style="display:none;align-items:center;gap:8px;">
+        <span class="crop-zoom-label">本地颜色数</span>
+        <input type="range" class="crop-zoom-slider" id="cropColorCount" min="4" max="64" value="32" oninput="document.getElementById('cropColorVal').textContent=this.value">
+        <span class="crop-zoom-label" id="cropColorVal">32</span>
+      </span>
       <span class="crop-zoom-label">抖动</span>
       <select id="cropDither" style="font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:3px;background:#fff;color:#333;cursor:pointer;">
-        <option value="none">无</option>
-        <option value="fs" selected>Floyd-Steinberg</option>
+        <option value="none" selected>无（推荐）</option>
+        <option value="floyd">Floyd-Steinberg</option>
         <option value="atkinson">Atkinson</option>
       </select>
     </div>
+    <div class="conversion-note" id="conversionNote">裁切图将上传到本机 API，原图不会持久保存。</div>
+    <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
+      <span class="conversion-spinner"></span>
+      <span id="conversionStatusText">正在转换…</span>
+      <button class="conversion-cancel-btn" id="conversionCancelBtn" onclick="cancelConversion()">取消请求</button>
+    </div>
     <div class="crop-btns">
       <button class="crop-btn crop-btn-cancel" onclick="cancelCrop()">取消</button>
-      <button class="crop-btn crop-btn-confirm" onclick="confirmCrop()">确认裁切</button>
+      <button class="crop-btn crop-btn-confirm" id="confirmCropBtn" onclick="confirmCrop()">确认裁切并转换</button>
     </div>
   </div>
 </div>
@@ -1311,6 +1396,9 @@ body {
 let GRID_SIZE = 24;
 const BASE_CELL_SIZE = 16; // 100%缂傗晜鏂侀弮鍓佹畱閸嶅繒绀岄弽鐓庢槀鐎?px)
 const NAV_CELL_SIZE = 4;   // 鐎佃壈鍩呴崳銊︾槨娑擃亜鍎氱槐鐘崇壐閻ㄥ嫬鏄傜€?
+const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
+const CONVERTER_VERSION = '1.0.0';
+const DEFAULT_PALETTE_ID = 'natural-64-v1';
 
 // 裁切对话框格子数选择
 let cropGridSize = 24;
@@ -1333,6 +1421,22 @@ function getUsedColors() {
   if (!sorted.includes('#000000')) sorted.push('#000000');
   sorted.push('#FFFFFF');
   return sorted;
+}
+
+function updateColorUsageSummary() {
+  var summary = document.getElementById('colorUsageSummary');
+  if (!summary || !pixelData.length) return;
+  var counts = {};
+  var painted = 0;
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      var color = pixelData[y][x].toUpperCase();
+      if (color === '#FFFFFF') continue;
+      counts[color] = (counts[color] || 0) + 1;
+      painted++;
+    }
+  }
+  summary.textContent = '已用颜色 ' + Object.keys(counts).length + ' 种 · 已绘制 ' + painted + ' 格';
 }
 
 let currentPaletteIdx = 0;
@@ -1694,8 +1798,10 @@ var STORAGE_KEY = 'pixel_editor_save';
 function saveToStorage(silent) {
   try {
     var data = {
+      schemaVersion: 2,
       gridSize: GRID_SIZE,
       pixels: pixelData.map(function(row) { return row.slice(); }),
+      paletteId: currentPaletteId,
       savedAt: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -1714,7 +1820,14 @@ function loadFromStorage() {
     var raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     var data = JSON.parse(raw);
-    if (!data.gridSize || !data.pixels || !data.pixels.length) return null;
+    if (!Number.isInteger(data.gridSize) || data.gridSize < 1 || !Array.isArray(data.pixels)) return null;
+    if (data.pixels.length !== data.gridSize) return null;
+    var valid = data.pixels.every(function(row) {
+      return Array.isArray(row) && row.length === data.gridSize && row.every(function(color) {
+        return typeof color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(color);
+      });
+    });
+    if (!valid) return null;
     return data;
   } catch(e) {
     return null;
@@ -1768,9 +1881,6 @@ function init() {
     saveToStorage(true);
   }
 
-  // push init
-  pushUndo();
-
   renderColorGrid();
   updateCanvasSize();
   renderCanvas();
@@ -1823,6 +1933,8 @@ function init() {
 
   document.getElementById('zoomSlider').value = zoom;
   document.getElementById('zoomValue').textContent = zoom + '%';
+  updateConversionModeUI();
+  loadExhibitionPalette();
   } catch(e) {
     var errDiv = document.createElement('div');
     errDiv.style.cssText = 'position:fixed;top:0;left:0;z-index:99998;background:red;color:#fff;padding:15px;max-width:90%;font:14px monospace;white-space:pre-wrap;';
@@ -2267,23 +2379,32 @@ function onTouchEnd(e) {
 
 // --- 閹俱倝鏀?闁插秴浠?---
 function pushUndo() {
-  const snapshot = pixelData.map(row => [...row]);
-  undoStack.push(snapshot);
+  undoStack.push(makeEditorSnapshot());
   if (undoStack.length > MAX_UNDO) undoStack.shift();
   redoStack = []; // 閺傜増鎼锋担婊勭缁屾椽鍣搁崑姘垽
 }
 
+function makeEditorSnapshot() {
+  return {
+    gridSize: GRID_SIZE,
+    pixels: pixelData.map(function(row) { return row.slice(); })
+  };
+}
+
+function restoreEditorSnapshot(snapshot) {
+  GRID_SIZE = snapshot.gridSize;
+  pixelData = snapshot.pixels.map(function(row) { return row.slice(); });
+  gridInfoEl.textContent = GRID_SIZE + ' × ' + GRID_SIZE + ' px';
+  updateCanvasSize();
+}
+
 function undo() {
-  if (undoStack.length <= 1) {
+  if (undoStack.length === 0) {
     showToast('Nothing to undo');
     return;
   }
-  // 娣囨繂鐡ㄨぐ鎾冲閻㈠娼伴崚浼村櫢閸嬫碍鐖ら敍鍫㈢帛閸掕泛鎮楅惃鍕波閺嬫粣绱?
-  redoStack.push(pixelData.map(row => [...row]));
-  // 瀵懓鍤張鈧潻鎴滅// pop undo
-  undoStack.pop();
-  const prev = undoStack[undoStack.length - 1];
-  pixelData = prev.map(row => [...row]);
+  redoStack.push(makeEditorSnapshot());
+  restoreEditorSnapshot(undoStack.pop());
   renderCanvas();
   renderNavigator();
   renderColorGrid();
@@ -2296,11 +2417,9 @@ function redo() {
     showToast('Nothing to redo');
     return;
   }
-  // push snapshot
-  undoStack.push(pixelData.map(row => [...row]));
-  // restore redo
-  const next = redoStack.pop();
-  pixelData = next.map(row => [...row]);
+  undoStack.push(makeEditorSnapshot());
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  restoreEditorSnapshot(redoStack.pop());
   renderCanvas();
   renderNavigator();
   renderColorGrid();
@@ -2323,50 +2442,51 @@ function clearCanvas() {
 }
 
 // --- 娣囨繂鐡ㄩ崶鍓у ---
-function saveImage() {
-  var BOARD = 26;
-  var exportScale = 16;
-  var boardSize = BOARD * exportScale; // 26×16 = 416px
-
-  var boardsX = Math.ceil(GRID_SIZE / BOARD);
-  var boardsY = Math.ceil(GRID_SIZE / BOARD);
-
-  // 生成时间戳: "26.7.26_06.46"
+function exportTimestamp() {
   var now = new Date();
-  var ts = (''+now.getFullYear()).slice(2) + '.' + (now.getMonth()+1) + '.' + now.getDate() + '_' +
-           ('0'+now.getHours()).slice(-2) + '.' + ('0'+now.getMinutes()).slice(-2);
+  return (''+now.getFullYear()).slice(2) + '.' + (now.getMonth()+1) + '.' + now.getDate() + '_' +
+         ('0'+now.getHours()).slice(-2) + '.' + ('0'+now.getMinutes()).slice(-2);
+}
 
-  var idx = 0;
-  for (var by = 0; by < boardsY; by++) {
-    for (var bx = 0; bx < boardsX; bx++) {
-      idx++;
-      var offCanvas = document.createElement('canvas');
-      offCanvas.width = boardSize;
-      offCanvas.height = boardSize;
-      var offCtx = offCanvas.getContext('2d');
-
-      // 白底
-      offCtx.fillStyle = '#FFFFFF';
-      offCtx.fillRect(0, 0, boardSize, boardSize);
-
-      // 绘制本板像素
-      for (var y = 0; y < BOARD; y++) {
-        for (var x = 0; x < BOARD; x++) {
-          var srcX = bx * BOARD + x;
-          var srcY = by * BOARD + y;
-          offCtx.fillStyle = (srcX < GRID_SIZE && srcY < GRID_SIZE) ? pixelData[srcY][srcX] : '#FFFFFF';
-          offCtx.fillRect(x * exportScale, y * exportScale, exportScale, exportScale);
-        }
-      }
-
-      var link = document.createElement('a');
-      link.download = ts + '_' + idx + '.png';
-      link.href = offCanvas.toDataURL('image/png');
-      link.click();
+function buildPixelExportCanvas(scale) {
+  var output = document.createElement('canvas');
+  output.width = GRID_SIZE * scale;
+  output.height = GRID_SIZE * scale;
+  var outputCtx = output.getContext('2d');
+  outputCtx.imageSmoothingEnabled = false;
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      outputCtx.fillStyle = pixelData[y][x];
+      outputCtx.fillRect(x * scale, y * scale, scale, scale);
     }
   }
+  return output;
+}
 
-  showToast('已导出 ' + idx + ' 张图片 (' + boardsX + '×' + boardsY + ')');
+function downloadCanvasPng(canvas, filename) {
+  var link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function exportRawPixelImage() {
+  hideExportDropdown();
+  downloadCanvasPng(
+    buildPixelExportCanvas(1),
+    exportTimestamp() + '_' + GRID_SIZE + 'x' + GRID_SIZE + '.png'
+  );
+  showToast('已导出原始 ' + GRID_SIZE + '×' + GRID_SIZE + ' PNG');
+}
+
+function exportPixelPreview() {
+  hideExportDropdown();
+  var scale = 16;
+  downloadCanvasPng(
+    buildPixelExportCanvas(scale),
+    exportTimestamp() + '_' + GRID_SIZE + 'x' + GRID_SIZE + '_preview.png'
+  );
+  showToast('已导出最近邻放大图 (' + scale + '×)');
 }
 
 // --- 导出下拉 ---
@@ -2391,7 +2511,8 @@ function toggleExportDropdown(e) {
   }
 
   // 根据按钮位置定位下拉框（使用元素实际宽度，避免硬编码）
-  var btn = e.currentTarget;
+  var btn = e && e.currentTarget ? e.currentTarget : document.querySelector('.btn-primary');
+  if (!btn) return;
   var rect = btn.getBoundingClientRect();
   var ddWidth = dd.offsetWidth || 220;
   dd.style.top = (rect.bottom + 4) + 'px';
@@ -2410,8 +2531,7 @@ function hideExportDropdown() {
 }
 
 function exportPixelImage() {
-  hideExportDropdown();
-  saveImage();
+  exportRawPixelImage();
 }
 
 function exportBeadBlueprint() {
@@ -2885,15 +3005,70 @@ let cropDragStartX = 0, cropDragStartY = 0;
 let cropImgStartX = 0, cropImgStartY = 0;
 let isCropping = false;
 
-// view mode
-let viewMode = 'canvas'; // 'canvas' | 'imported'
-let canvasPixelData = null;
 let importedPixelData = null;
 let importedPreviewImage = null;
 let navShowOriginal = false;
+let activeConversionController = null;
+let conversionInProgress = false;
+
+function updateConversionModeUI() {
+  var mode = document.getElementById('conversionMode').value;
+  var localOptions = document.getElementById('localColorOptions');
+  var note = document.getElementById('conversionNote');
+  localOptions.style.display = mode === 'local' ? '' : 'none';
+  note.textContent = mode === 'server'
+    ? '裁切后的原始分辨率图片将发送到服务器，并严格映射到 natural-64-v1 色板。'
+    : '离线备用模式在浏览器内量化颜色，结果不保证属于巡展 64 色色板。';
+}
+
+async function loadExhibitionPalette() {
+  try {
+    var response = await fetch(API_BASE_URL + '/api/v1/palettes/' + DEFAULT_PALETTE_ID);
+    if (!response.ok) return;
+    var data = await response.json();
+    if (!Array.isArray(data.colors)) return;
+    EXHIBITION_DATA.splice(0, EXHIBITION_DATA.length);
+    data.colors.forEach(function(color) {
+      EXHIBITION_DATA.push({
+        code: color.id,
+        hex: String(color.hex).toUpperCase(),
+        name: color.name || color.id
+      });
+    });
+    if (currentPaletteId === 'exhibition') {
+      OFFICIAL_COLORS = EXHIBITION_DATA;
+      paletteMode = EXHIBITION_DATA.length ? 'official' : 'canvas';
+      buildHexCodeMap();
+      renderColorGrid();
+    }
+  } catch (error) {
+    // 本地文件或服务器离线时保留画布取色模式。
+  }
+}
+
+function setConversionBusy(busy) {
+  conversionInProgress = busy;
+  document.getElementById('confirmCropBtn').disabled = busy;
+  document.getElementById('conversionMode').disabled = busy;
+}
+
+function setConversionStatus(message, isError, showCancel) {
+  var box = document.getElementById('conversionStatus');
+  box.classList.toggle('show', Boolean(message));
+  box.classList.toggle('error', Boolean(isError));
+  document.getElementById('conversionStatusText').textContent = message || '';
+  box.querySelector('.conversion-spinner').style.display = message && !isError ? '' : 'none';
+  document.getElementById('conversionCancelBtn').style.display = showCancel ? '' : 'none';
+}
+
+function cancelConversion() {
+  if (activeConversionController) activeConversionController.abort();
+}
+
 function startImport(e) {
   var file = e.target.files[0];
   if (!file) return;
+  setConversionStatus('', false, false);
   var reader = new FileReader();
   reader.onload = function(ev) {
     cropImg = new Image();
@@ -2919,7 +3094,13 @@ function startImport(e) {
         applyCropTransform();
       });
     };
+    cropImg.onerror = function() {
+      setConversionStatus('无法读取该图片，请选择 PNG、JPEG 或 WebP 文件。', true, false);
+    };
     cropImg.src = ev.target.result;
+  };
+  reader.onerror = function() {
+    setConversionStatus('读取图片失败，请重试。', true, false);
   };
   reader.readAsDataURL(file);
   e.target.value = '';
@@ -2988,15 +3169,186 @@ function onCropWheel(e) {
   updateCropZoom(newZoom);
 }
 
-function confirmCrop() {
+function getCropGeometry() {
+  var vpW = document.getElementById('cropViewport').clientWidth;
+  var scale = cropZoom / 100;
+  return {
+    viewportWidth: vpW,
+    scale: scale,
+    srcX: -cropImgX / scale,
+    srcY: -cropImgY / scale,
+    srcW: vpW / scale,
+    srcH: vpW / scale
+  };
+}
+
+function canvasToBlob(canvas) {
+  return new Promise(function(resolve, reject) {
+    canvas.toBlob(function(blob) {
+      if (blob) resolve(blob);
+      else reject(new Error('无法生成裁切图片。'));
+    }, 'image/png');
+  });
+}
+
+async function createCroppedImageBlob() {
+  var crop = getCropGeometry();
+  var outputSize = Math.min(8192, Math.max(1, Math.round(crop.srcW)));
+  var ratio = outputSize / crop.srcW;
+  var canvas = document.createElement('canvas');
+  canvas.width = outputSize;
+  canvas.height = outputSize;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, outputSize, outputSize);
+  ctx.drawImage(
+    cropImg,
+    -crop.srcX * ratio,
+    -crop.srcY * ratio,
+    cropImg.width * ratio,
+    cropImg.height * ratio
+  );
+  return canvasToBlob(canvas);
+}
+
+function setImportedPreview(blob) {
+  var objectUrl = URL.createObjectURL(blob);
+  importedPreviewImage = new Image();
+  importedPreviewImage.onload = function() {
+    URL.revokeObjectURL(objectUrl);
+    renderNavigator();
+    renderOverlay();
+  };
+  importedPreviewImage.src = objectUrl;
+}
+
+function validateHexPixels(data) {
+  if (!data || !Number.isInteger(data.width) || !Number.isInteger(data.height)) {
+    throw new Error('服务器响应缺少有效尺寸。');
+  }
+  if (!Array.isArray(data.hexPixels) || data.hexPixels.length !== data.height) {
+    throw new Error('服务器响应的像素矩阵高度不正确。');
+  }
+  var hexPattern = /^#[0-9A-Fa-f]{6}$/;
+  return data.hexPixels.map(function(row) {
+    if (!Array.isArray(row) || row.length !== data.width) {
+      throw new Error('服务器响应的像素矩阵宽度不正确。');
+    }
+    return row.map(function(color) {
+      if (color === null) return '#FFFFFF';
+      if (!hexPattern.test(color)) throw new Error('服务器返回了无效颜色。');
+      return color.toUpperCase();
+    });
+  });
+}
+
+function finishImportedPixels(usedColors, sourceLabel) {
+  navShowOriginal = false;
+  document.getElementById('cropOverlay').classList.remove('show');
+  document.getElementById('navToggleBtn').disabled = false;
+  document.getElementById('overlayControls').style.display = '';
+  document.getElementById('navToggleBtn').classList.remove('imported-mode');
+  document.getElementById('navToggleLabel').textContent = '像素图';
+
+  var fitZoom = Math.floor(480 / (GRID_SIZE * BASE_CELL_SIZE) * 100);
+  zoom = Math.max(20, Math.min(100, fitZoom));
+  var zoomSlider = document.getElementById('zoomSlider');
+  zoomSlider.value = zoom;
+  zoomSlider.min = Math.min(20, zoom);
+  document.getElementById('zoomValue').textContent = zoom + '%';
+
+  updateCanvasSize();
+  renderCanvas();
+  renderNavigator();
+  renderColorGrid();
+  saveToStorage(true);
+  showToast(sourceLabel + '转换完成：' + GRID_SIZE + '×' + GRID_SIZE + '，使用 ' + usedColors + ' 种颜色');
+}
+
+async function confirmCropServer() {
+  var cropBlob = await createCroppedImageBlob();
+  setImportedPreview(cropBlob);
+
+  var form = new FormData();
+  form.append('image', cropBlob, 'crop.png');
+  form.append('width', String(cropGridSize));
+  form.append('height', String(cropGridSize));
+  form.append('palette_id', DEFAULT_PALETTE_ID);
+  form.append('dither', document.getElementById('cropDither').value);
+  form.append('sobel', '3');
+  form.append('depth', '1');
+  form.append('fit', 'stretch');
+  form.append('mapping_mode', 'direct');
+  form.append('svd', 'true');
+  form.append('converter_version', CONVERTER_VERSION);
+
+  activeConversionController = new AbortController();
+  var response = await fetch(API_BASE_URL + '/api/v1/convert', {
+    method: 'POST',
+    body: form,
+    signal: activeConversionController.signal
+  });
+  var payload = null;
+  try { payload = await response.json(); } catch (error) {}
+  if (!response.ok) {
+    var message = payload && payload.error && payload.error.message;
+    throw new Error(message || ('服务器转换失败（HTTP ' + response.status + '）。'));
+  }
+
+  if (payload.width !== cropGridSize || payload.height !== cropGridSize) {
+    throw new Error('服务器返回尺寸与请求尺寸不一致。');
+  }
+  var convertedPixels = validateHexPixels(payload);
+  pushUndo();
+  GRID_SIZE = payload.width;
+  importedPixelData = convertedPixels.map(function(row) { return row.slice(); });
+  pixelData = convertedPixels.map(function(row) { return row.slice(); });
+  currentPaletteId = 'exhibition';
+  OFFICIAL_COLORS = EXHIBITION_DATA;
+  paletteMode = EXHIBITION_DATA.length ? 'official' : 'canvas';
+  buildHexCodeMap();
+  finishImportedPixels(payload.usedColors, '服务器');
+}
+
+async function confirmCrop() {
+  if (!cropImg || conversionInProgress) return;
+  setConversionBusy(true);
+  setConversionStatus('正在准备裁切图片…', false, true);
+  try {
+    if (document.getElementById('conversionMode').value === 'local') {
+      await new Promise(function(resolve) { setTimeout(resolve, 0); });
+      confirmCropLocal();
+    } else {
+      setConversionStatus('正在上传并转换，请稍候…', false, true);
+      await confirmCropServer();
+    }
+    setConversionStatus('', false, false);
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      setConversionStatus('转换已取消，可调整设置后重试。', true, false);
+    } else {
+      setConversionStatus(
+        (error && error.message ? error.message : '转换失败。') + ' 可切换到“浏览器本地备用”继续。',
+        true,
+        false
+      );
+    }
+  } finally {
+    activeConversionController = null;
+    setConversionBusy(false);
+  }
+}
+
+function confirmCropLocal() {
   if (!cropImg) return;
+  pushUndo();
   // 应用选择的格子数
   GRID_SIZE = cropGridSize;
   var vp = document.getElementById('cropViewport');
   var vpW = vp.clientWidth;
   var scale = cropZoom / 100;
   var colorCount = parseInt(document.getElementById('cropColorCount').value);
-  var ditherMode = document.getElementById('cropDither').value; // 'none' | 'fs' | 'atkinson'
+  var ditherMode = document.getElementById('cropDither').value; // 'none' | 'floyd' | 'atkinson'
 
   // 使用全局 colorDistRGB 感知色差函数
   function snapTo(c, r, g, b) {
@@ -3156,7 +3508,7 @@ function confirmCrop() {
   var outG = new Float64Array(total);
   var outB = new Float64Array(total);
 
-  if (ditherMode === 'fs') {
+  if (ditherMode === 'floyd') {
     // Floyd-Steinberg 误差扩散
     var errR = new Float64Array(total);
     var errG = new Float64Array(total);
@@ -3286,42 +3638,17 @@ function confirmCrop() {
   importedPreviewImage = new Image();
   importedPreviewImage.src = rawPreview.toDataURL();
 
-  canvasPixelData = pixelData.map(function(row) { return row.slice(); });
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
-  viewMode = 'imported';
-  navShowOriginal = false;
-  undoStack = [pixelData.map(function(row) { return row.slice(); })];
-  redoStack = [];
-
-  document.getElementById('cropOverlay').classList.remove('show');
-  document.getElementById('navToggleBtn').disabled = false;
-  document.getElementById('overlayControls').style.display = '';
-  document.getElementById('navToggleBtn').classList.add('imported-mode');
-  document.getElementById('navToggleLabel').textContent = '原图';
-
-  // 自动适配缩放: 使画布适合480px容器
-  var fitZoom = Math.floor(480 / (GRID_SIZE * BASE_CELL_SIZE) * 100);
-  if (fitZoom < 20) fitZoom = 20;
-  if (fitZoom > 100) fitZoom = 100;
-  zoom = fitZoom;
-  var zoomSlider = document.getElementById('zoomSlider');
-  zoomSlider.value = zoom;
-  zoomSlider.min = Math.min(20, zoom);
-  document.getElementById('zoomValue').textContent = zoom + '%';
-  if (zoom === 85) {
-    canvasContainer.scrollLeft = 0;
-    canvasContainer.scrollTop = 0;
-  }
-
-  updateCanvasSize();
-  renderCanvas();
-  renderNavigator();
-  renderColorGrid();
-  saveToStorage(true);
-  showToast('Imported: ' + coloredCount + ' / ' + (GRID_SIZE*GRID_SIZE) + ' px | ' + palette.length + ' colors  |  缩放 ' + zoom + '%');
+  paletteMode = 'canvas';
+  var usedLocalColors = new Set();
+  importedPixelData.forEach(function(row) {
+    row.forEach(function(color) { usedLocalColors.add(color); });
+  });
+  finishImportedPixels(usedLocalColors.size, '本地备用');
 }
 
 function cancelCrop() {
+  if (conversionInProgress) cancelConversion();
   document.getElementById('cropOverlay').classList.remove('show');
   cropImg = null;
 }
@@ -3387,7 +3714,7 @@ function toggleViewMode() {
     label.textContent = '原图';
   } else {
     btn.classList.remove('imported-mode');
-    label.textContent = '像素化';
+    label.textContent = '像素图';
   }
   renderNavigator();
 }
@@ -3793,6 +4120,7 @@ function renderColorGrid() {
     btn.textContent = '↻ ' + (currentPaletteIdx + 1) + '/' + totalPages;
     btn.title = '翻页 (' + totalPages + '页共' + palette.length + '色)';
   }
+  updateColorUsageSummary();
 }
 
 function selectColor(color, swatchEl) {
@@ -3860,7 +4188,7 @@ function onKeyDown(e) {
     setTool('eraser');
   } else if (e.ctrlKey && e.key === 's') {
     e.preventDefault();
-    toggleExportDropdown();
+    exportRawPixelImage();
   }
 }
 
@@ -3909,8 +4237,11 @@ window.addEventListener('orientationchange', function() {
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
-  <button class="export-item" onclick="exportPixelImage()">
-    <span>🖼</span> 导出像素图像
+  <button class="export-item" onclick="exportRawPixelImage()">
+    <span>🖼</span> 导出原始尺寸 PNG
+  </button>
+  <button class="export-item" onclick="exportPixelPreview()">
+    <span>🔍</span> 导出最近邻放大图
   </button>
   <div class="export-divider"></div>
   <div id="exportBeadSection">

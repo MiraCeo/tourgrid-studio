@@ -3,12 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path as FilePath
 from typing import Annotated, Any, Callable, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, FastAPI, File, Form, Path, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from backend import CONVERTER_VERSION
 from backend.converter import ConversionOptions
@@ -30,6 +31,7 @@ from .worker import run_conversion_with_timeout
 
 
 LOGGER = logging.getLogger(__name__)
+EDITOR_HTML = FilePath(__file__).resolve().parents[2] / "像素画编辑器.html"
 ConverterCallable = Callable[
     [bytes, ConversionOptions, str, float, int],
     dict[str, Any],
@@ -288,6 +290,10 @@ def create_app(
     application.state.conversion_slots = asyncio.Semaphore(
         settings.max_concurrent_conversions
     )
+
+    @application.get("/", include_in_schema=False)
+    async def editor() -> FileResponse:
+        return FileResponse(EDITOR_HTML, media_type="text/html")
 
     @application.exception_handler(ApiError)
     async def handle_api_error(_request: Request, error: ApiError) -> JSONResponse:

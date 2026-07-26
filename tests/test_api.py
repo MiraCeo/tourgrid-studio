@@ -89,6 +89,15 @@ def test_health(client: TestClient) -> None:
     }
 
 
+def test_editor_is_served_from_same_origin(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert 'id="pixelCanvas"' in response.text
+    assert "/api/v1/convert" in response.text
+
+
 def test_palette_list_and_detail(client: TestClient) -> None:
     list_response = client.get("/api/v1/palettes")
     detail_response = client.get("/api/v1/palettes/natural-64-v1")
