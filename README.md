@@ -13,7 +13,7 @@ tourgrid-studio/
 ├─ tests/                   # 自动测试
 ├─ LICENSES/                # 第三方许可证
 ├─ docs/                    # 设计和迁移说明
-├─ 1.py                     # 原命令的兼容入口
+├─ convert_image.py         # 图片转换命令入口
 └─ 像素画编辑器.html         # 原有单文件前端，阶段一保持不变
 ```
 
@@ -43,7 +43,7 @@ Pyxelate 尚未发布当前代码对应的 PyPI 包，因此依赖固定到其�
 原命令继续可用：
 
 ```powershell
-python 1.py input.png
+python convert_image.py input.png
 ```
 
 也可以使用模块入口：
