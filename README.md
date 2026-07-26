@@ -2,13 +2,14 @@
 
 《明日方舟》“巡展像素”非官方在线编辑器。
 
-当前仓库处于阶段一：在保留原有单文件前端行为的同时，把图片转换程序整理为可复用、可测试、可版本化的 Python 模块。
+当前仓库已完成阶段二：在保留原有单文件前端行为的同时，图片转换程序已经模块化，并提供带安全限制和处理超时的 FastAPI 服务。
 
 ## 当前结构
 
 ```text
 tourgrid-studio/
 ├─ backend/                 # 可复用转换核心与 CLI
+│  └─ api/                  # FastAPI、上传校验、子进程转换与预览缓存
 ├─ palettes/                # 版本化色板
 ├─ tests/                   # 自动测试
 ├─ LICENSES/                # 第三方许可证
@@ -88,6 +89,24 @@ print(result.hex_pixels)
 ```
 
 转换结果直接携带颜色 ID 矩阵和十六进制矩阵，后续 FastAPI 可以直接序列化这些数据，无需重新分析输出 PNG。
+
+## 启动 API
+
+```powershell
+.\.venv\Scripts\tourgrid-api.exe
+```
+
+服务默认地址为 `http://127.0.0.1:8000`，接口文档位于 `http://127.0.0.1:8000/docs`。
+
+已实现：
+
+- `GET /api/v1/health`
+- `GET /api/v1/palettes`
+- `GET /api/v1/palettes/{palette_id}`
+- `POST /api/v1/convert`
+- `GET /api/v1/results/{result_id}/preview.png`
+
+上传图片不会落盘保存。转换在可终止的独立子进程中执行，预览图只进入短期有界内存缓存。完整参数、限制和响应格式见 [API v1 文档](docs/api-v1.md)。
 
 ## 测试
 
