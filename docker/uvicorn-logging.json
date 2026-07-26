@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "default": {
+      "()": "uvicorn.logging.DefaultFormatter",
+      "fmt": "%(levelprefix)s %(message)s",
+      "use_colors": false
+    },
+    "message_only": {
+      "format": "%(message)s"
+    }
+  },
+  "handlers": {
+    "default": {
+      "class": "logging.StreamHandler",
+      "formatter": "default",
+      "stream": "ext://sys.stderr"
+    },
+    "access": {
+      "class": "logging.StreamHandler",
+      "formatter": "message_only",
+      "stream": "ext://sys.stdout"
+    }
+  },
+  "loggers": {
+    "uvicorn": {
+      "handlers": ["default"],
+      "level": "INFO",
+      "propagate": false
+    },
+    "uvicorn.error": {
+      "level": "INFO"
+    },
+    "uvicorn.access": {
+      "handlers": ["access"],
+      "level": "WARNING",
+      "propagate": false
+    },
+    "tourgrid.access": {
+      "handlers": ["access"],
+      "level": "INFO",
+      "propagate": false
+    },
+    "tourgrid.application": {
+      "handlers": ["default"],
+      "level": "INFO",
+      "propagate": false
+    }
+  },
+  "root": {
+    "handlers": ["default"],
+    "level": "INFO"
+  }
+}

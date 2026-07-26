@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-阶段三已经完成，阶段四测试体系已经建立：
+阶段五部署交付包已经建立：
 
 - Python 转换程序已经模块化并保留 CLI。
 - FastAPI 提供版本化色板和图片转换 API。
@@ -20,8 +20,23 @@
 - 真实转换结果使用 24×24 PNG、最近邻预览和像素 SHA-256 进行回归。
 - API 并发槽位、排队超时和子进程处理超时均有自动测试。
 - 桌面、平板、手机横屏和手机竖屏提示已完成浏览器回归。
+- Docker Compose 同源部署 Caddy 静态前端与 FastAPI。
+- 生产 API 容器以非 root 用户运行，并具备健康检查、上传限制和只读根文件系统。
+- Caddy 负责反向代理、自动 HTTPS、请求体限制、安全响应头和 JSON 访问日志。
+- API 提供请求 ID、转换接口限流和可选 Sentry 异常上报。
+- GitHub Actions 自动执行完整测试、镜像构建和同源烟雾测试。
 
 当前默认色板 `natural-64-v1` 是临时预测色板。未来正式色板必须使用新的 ID（例如 `official-v1`），不能覆盖旧版本。
+
+## Docker 部署
+
+```powershell
+Copy-Item deploy/.env.example deploy/local.env
+docker compose --env-file deploy/local.env up --detach --build --wait
+```
+
+本地访问 `http://localhost:8080/`。域名、HTTPS、测试环境、正式发布、灰度边界和回滚步骤见
+[部署与发布](docs/deployment.md)。
 
 ## 仓库结构
 

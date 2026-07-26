@@ -18,6 +18,12 @@ class ApiSettings:
     preview_scale: int = 10
     preview_ttl_seconds: int = 300
     preview_cache_entries: int = 128
+    rate_limit_requests: int = 60
+    rate_limit_window_seconds: float = 60.0
+    environment: str = "development"
+    release: str = "0.2.0"
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.0
 
     @classmethod
     def from_env(cls) -> "ApiSettings":
@@ -71,6 +77,24 @@ class ApiSettings:
                 "TOURGRID_PREVIEW_CACHE_ENTRIES",
                 defaults.preview_cache_entries,
             ),
+            rate_limit_requests=_env_int(
+                "TOURGRID_RATE_LIMIT_REQUESTS",
+                defaults.rate_limit_requests,
+            ),
+            rate_limit_window_seconds=_env_float(
+                "TOURGRID_RATE_LIMIT_WINDOW_SECONDS",
+                defaults.rate_limit_window_seconds,
+            ),
+            environment=os.getenv(
+                "TOURGRID_ENVIRONMENT",
+                defaults.environment,
+            ),
+            release=os.getenv("TOURGRID_RELEASE", defaults.release),
+            sentry_dsn=os.getenv("TOURGRID_SENTRY_DSN") or None,
+            sentry_traces_sample_rate=_env_float(
+                "TOURGRID_SENTRY_TRACES_SAMPLE_RATE",
+                defaults.sentry_traces_sample_rate,
+            ),
         ).validated()
 
     def validated(self) -> "ApiSettings":
@@ -87,12 +111,20 @@ class ApiSettings:
             "preview_scale": self.preview_scale,
             "preview_ttl_seconds": self.preview_ttl_seconds,
             "preview_cache_entries": self.preview_cache_entries,
+            "rate_limit_requests": self.rate_limit_requests,
+            "rate_limit_window_seconds": self.rate_limit_window_seconds,
         }
         for name, value in positive_values.items():
             if value <= 0:
                 raise ValueError(f"{name} must be positive")
         if self.min_output_size > self.max_output_size:
             raise ValueError("min_output_size cannot exceed max_output_size")
+        if not self.environment.strip():
+            raise ValueError("environment cannot be empty")
+        if not self.release.strip():
+            raise ValueError("release cannot be empty")
+        if not 0 <= self.sentry_traces_sample_rate <= 1:
+            raise ValueError("sentry_traces_sample_rate must be between 0 and 1")
         return self
 
 

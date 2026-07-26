@@ -1,0 +1,16 @@
+.git
+.github
+.pytest_cache
+.venv
+__pycache__
+*.py[cod]
+*.egg-info
+build
+dist
+tests
+docs
+tools
+deploy
+*.png
+!.dockerignore
+!palettes/*.json

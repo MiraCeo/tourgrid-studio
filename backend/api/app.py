@@ -27,6 +27,7 @@ from .models import (
     PaletteDetail,
     PaletteSummary,
 )
+from .observability import configure_error_monitoring, install_operational_middleware
 from .uploads import inspect_image, read_limited_upload
 from .worker import run_conversion_with_timeout
 
@@ -269,6 +270,7 @@ def create_app(
     converter: ConverterCallable = run_conversion_with_timeout,
 ) -> FastAPI:
     settings = (settings or ApiSettings.from_env()).validated()
+    sentry_sdk = configure_error_monitoring(settings)
     preview_cache = PreviewCache(
         max_entries=settings.preview_cache_entries,
         ttl_seconds=settings.preview_ttl_seconds,
@@ -291,6 +293,11 @@ def create_app(
     application.state.converter = converter
     application.state.conversion_slots = asyncio.Semaphore(
         settings.max_concurrent_conversions
+    )
+    install_operational_middleware(
+        application,
+        settings,
+        sentry_sdk=sentry_sdk,
     )
     application.mount(
         "/static",
