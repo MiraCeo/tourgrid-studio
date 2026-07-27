@@ -4,7 +4,7 @@
 
 // --- 鐢悂鍣?---
 const GRID_SIZE = 24;
-const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，300% 为 1200px
+const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，400% 为 1600px
 const NAV_CELL_SIZE = 4;   // 鐎佃壈鍩呴崳銊︾槨娑擃亜鍎氱槐鐘崇壐閻ㄥ嫬鏄傜€?
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
 const DEFAULT_PALETTE_ID = 'natural-64-v1';
@@ -76,6 +76,7 @@ let referenceState = TourgridStorage.defaultReference();
 let currentColor = '#222222';
 let currentTool = 'brush';
 let eyedropperActive = false;
+let moveCanvasActive = false;
 let paletteMode = 'official';
 let palettePanelMode = 'palette';
 let statisticsHighlightColor = null;

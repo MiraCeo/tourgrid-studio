@@ -140,17 +140,39 @@ function renderCanvas() {
 
   mainCtx.clearRect(0, 0, w, h);
 
-  // 缂佹ê鍩楅惂鍊熷閼冲本娅?
   mainCtx.fillStyle = '#FFFFFF';
-  mainCtx.fillRect(0, 0, w, h);
+  mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
-  // grid lines
-  for (let y = 0; y < GRID_SIZE; y++) {
-    for (let x = 0; x < GRID_SIZE; x++) {
-      const color = pixelData[y][x];
-      if (color !== '#FFFFFF') {
-        mainCtx.fillStyle = color;
-        mainCtx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+  if (canvasGuidesVisible) {
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        const color = pixelData[y][x];
+        if (color !== '#FFFFFF') {
+          mainCtx.fillStyle = color;
+          mainCtx.fillRect(
+            x * cellSize,
+            y * cellSize,
+            cellSize,
+            cellSize
+          );
+        }
+      }
+    }
+  } else {
+    // 共享整数边界完整覆盖画布，避免小数格宽抗锯齿产生白色细缝。
+    for (let y = 0; y < GRID_SIZE; y++) {
+      const top = Math.round(y * mainCanvas.height / GRID_SIZE);
+      const bottom = Math.round((y + 1) * mainCanvas.height / GRID_SIZE);
+      for (let x = 0; x < GRID_SIZE; x++) {
+        const left = Math.round(x * mainCanvas.width / GRID_SIZE);
+        const right = Math.round((x + 1) * mainCanvas.width / GRID_SIZE);
+        mainCtx.fillStyle = pixelData[y][x];
+        mainCtx.fillRect(
+          left,
+          top,
+          right - left,
+          bottom - top
+        );
       }
     }
   }
@@ -270,13 +292,15 @@ function onMouseDown(e) {
   if (historyOperationInProgress) return;
   if (e.button !== 0) return; // 閸欘亜鎼锋惔鏂夸箯闁?
   // 缁岀儤鐗?瀹革箓鏁?閳?閹锋牗瀚块獮宕囆?
-  if (spaceHeld) {
+  if (spaceHeld || moveCanvasActive) {
     isPanning = true;
     panStartX = e.clientX;
     panStartY = e.clientY;
     panScrollStartX = canvasContainer.scrollLeft;
     panScrollStartY = canvasContainer.scrollTop;
     mainCanvas.style.cursor = 'grabbing';
+    canvasContainer.classList.add('panning');
+    e.preventDefault();
     return;
   }
 
@@ -313,8 +337,9 @@ function onMouseMove(e) {
 
 function onMouseUp(e) {
   // 缂佹挻娼粚鐑樼壐閹锋牗瀚?
-  if (isPanning && spaceHeld) {
+  if (isPanning && (spaceHeld || moveCanvasActive)) {
     isPanning = false;
+    canvasContainer.classList.remove('panning');
     mainCanvas.style.cursor = 'grab';
     return;
   }
@@ -341,7 +366,7 @@ function onWheel(e) {
 
   var minZoom = getMinZoom();
   const delta = e.deltaY > 0 ? -10 : 10;
-  const newZoom = Math.max(minZoom, Math.min(300, zoom + delta));
+  const newZoom = Math.max(minZoom, Math.min(400, zoom + delta));
   if (newZoom === zoom) return;
 
   zoom = newZoom;
@@ -378,7 +403,7 @@ function onPanStart(e) {
 function onPanMove(e) {
   if (!isPanning) return;
   // 缁岀儤鐗?瀹革箓鏁幏鏍ㄥ
-  if (spaceHeld && e.buttons === 1) {
+  if ((spaceHeld || moveCanvasActive) && e.buttons === 1) {
     canvasContainer.scrollLeft = panScrollStartX - (e.clientX - panStartX);
     canvasContainer.scrollTop  = panScrollStartY - (e.clientY - panStartY);
     return;
@@ -392,10 +417,16 @@ function onPanMove(e) {
 
 function onPanEnd(e) {
   if (!isPanning) return;
-  if (e.button === 1 || (spaceHeld && e.button === 0)) {
+  if (
+    e.button === 1 ||
+    ((spaceHeld || moveCanvasActive) && e.button === 0)
+  ) {
     isPanning = false;
-    canvasContainer.style.cursor = spaceHeld ? 'grab' : '';
-    mainCanvas.style.cursor = spaceHeld ? 'grab' : 'crosshair';
+    canvasContainer.classList.remove('panning');
+    canvasContainer.style.cursor =
+      (spaceHeld || moveCanvasActive) ? 'grab' : '';
+    mainCanvas.style.cursor =
+      (spaceHeld || moveCanvasActive) ? 'grab' : 'crosshair';
   }
 }
 
@@ -408,6 +439,18 @@ function onTouchStart(e) {
   if (historyOperationInProgress) return;
   e.preventDefault();
   if (e.touches.length === 1) {
+    if (moveCanvasActive) {
+      isDrawing = false;
+      isPanning = true;
+      touchPanStart = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        scrollLeft: canvasContainer.scrollLeft,
+        scrollTop: canvasContainer.scrollTop
+      };
+      canvasContainer.classList.add('panning');
+      return;
+    }
     if (eyedropperActive) {
       const samplePos = getGridPos(e.touches[0]);
       sampleCanvasColor(samplePos.x, samplePos.y);
@@ -445,7 +488,19 @@ function onTouchStart(e) {
 
 function onTouchMove(e) {
   e.preventDefault();
-  if (isDrawing && e.touches.length === 1) {
+  if (
+    moveCanvasActive &&
+    e.touches.length === 1 &&
+    touchPanStart
+  ) {
+    canvasContainer.scrollLeft =
+      touchPanStart.scrollLeft +
+      (touchPanStart.x - e.touches[0].clientX);
+    canvasContainer.scrollTop =
+      touchPanStart.scrollTop +
+      (touchPanStart.y - e.touches[0].clientY);
+    updateNavigatorViewport();
+  } else if (isDrawing && e.touches.length === 1) {
     const pos = getGridPos(e.touches[0]);
     paintPixel(pos.x, pos.y);
     renderCanvas();
@@ -461,7 +516,7 @@ function onTouchMove(e) {
     if (touchPinchDist > 0 && Math.abs(newDist - touchPinchDist) > 3) {
       var ratio = newDist / touchPinchDist;
       var newZoom = Math.round(touchPinchZoom * ratio);
-      newZoom = Math.max(20, Math.min(300, newZoom));
+      newZoom = Math.max(20, Math.min(400, newZoom));
       if (newZoom !== zoom) {
         // 以双指中点为中心缩放：调整滚动位置
         var rect = canvasContainer.getBoundingClientRect();
@@ -503,7 +558,8 @@ function onTouchEnd(e) {
   touchPinchZoom = 0;
   if (isPanning) {
     isPanning = false;
-    mainCanvas.style.cursor = 'grab';
+    canvasContainer.classList.remove('panning');
+    mainCanvas.style.cursor = moveCanvasActive ? 'grab' : 'crosshair';
   }
 }
 

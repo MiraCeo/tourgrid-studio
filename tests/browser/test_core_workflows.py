@@ -21,6 +21,7 @@ from .helpers import (
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 BLACK = "#222222"
 WHITE = "#FFFFFF"
+RED = "#D42F37"
 
 
 pytestmark = pytest.mark.browser
@@ -54,6 +55,31 @@ def test_canvas_guides_toggle_hides_visual_aids_and_persists(
     expect(guides_button).to_have_attribute("title", "显示辅助线")
     assert "active" in (guides_button.get_attribute("class") or "").split()
 
+    select_color(editor_page, BLACK)
+    paint_cells(editor_page, [(1, 1)])
+    select_color(editor_page, RED)
+    paint_cells(editor_page, [(2, 1)])
+    rendered_colors = set(
+        editor_page.locator("#pixelCanvas").evaluate(
+            """canvas => {
+              const pixels = canvas.getContext('2d').getImageData(
+                0, 0, canvas.width, canvas.height
+              ).data;
+              const colors = new Set();
+              for (let index = 0; index < pixels.length; index += 4) {
+                colors.add(
+                  '#' + [pixels[index], pixels[index + 1], pixels[index + 2]]
+                    .map(value => value.toString(16).padStart(2, '0'))
+                    .join('')
+                    .toUpperCase()
+                );
+              }
+              return [...colors];
+            }"""
+        )
+    )
+    assert rendered_colors <= {WHITE, BLACK, RED}
+
     editor_page.locator("#statisticsTab").click()
     editor_page.locator(
         '.statistics-color[data-color="#FFFFFF"]'
@@ -68,6 +94,56 @@ def test_canvas_guides_toggle_hides_visual_aids_and_persists(
 
     editor_page.locator("#canvasGuidesBtn").click()
     assert editor_state(editor_page)["canvasGuidesVisible"] is True
+
+
+def test_move_canvas_tool_pans_without_editing_and_is_mutually_exclusive(
+    editor_page: Page,
+) -> None:
+    initial = editor_state(editor_page)
+    initial_pixels = pixel_signature(initial)
+    initial_undo_depth = initial["undoDepth"]
+
+    editor_page.locator("#zoomSlider").evaluate(
+        """slider => {
+          slider.value = '400';
+          slider.dispatchEvent(new Event('input', {bubbles: true}));
+        }"""
+    )
+    move_button = editor_page.locator("#moveCanvasBtn")
+    move_button.click()
+    assert editor_state(editor_page)["moveCanvasActive"] is True
+    expect(move_button).to_have_attribute("aria-pressed", "true")
+
+    container = editor_page.locator("#canvasContainer")
+    box = container.bounding_box()
+    assert box is not None
+    before_scroll = container.evaluate(
+        "element => ({left: element.scrollLeft, top: element.scrollTop})"
+    )
+    start_x = box["x"] + box["width"] / 2
+    start_y = box["y"] + box["height"] / 2
+    editor_page.mouse.move(start_x, start_y)
+    editor_page.mouse.down()
+    editor_page.mouse.move(start_x - 90, start_y - 70, steps=8)
+    editor_page.mouse.up()
+    after_scroll = container.evaluate(
+        "element => ({left: element.scrollLeft, top: element.scrollTop})"
+    )
+
+    assert after_scroll["left"] > before_scroll["left"]
+    assert after_scroll["top"] > before_scroll["top"]
+    moved = editor_state(editor_page)
+    assert pixel_signature(moved) == initial_pixels
+    assert moved["undoDepth"] == initial_undo_depth
+
+    editor_page.locator("#eyedropperBtn").click()
+    exclusive = editor_state(editor_page)
+    assert exclusive["moveCanvasActive"] is False
+    editor_page.keyboard.press("Escape")
+
+    move_button.click()
+    editor_page.keyboard.press("Escape")
+    assert editor_state(editor_page)["moveCanvasActive"] is False
 
 
 def test_continuous_stroke_is_one_undo_step_and_can_be_redone(

@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260727-6"
+    asset_version = "20260727-8"
 
     assert (
         f'<link rel="stylesheet" '
@@ -117,10 +117,11 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
     assert 'class="editorial-area-label">Editorial Area</div>' in html
-    assert html.count('class="tool-icon-btn"') == 4
+    assert html.count('class="tool-icon-btn"') == 5
     assert 'title="撤销"' in html
     assert 'title="重做"' in html
     assert 'id="eyedropperBtn"' in html
+    assert 'id="moveCanvasBtn"' in html
     assert 'aria-label="吸管取色"' in html
     assert 'aria-pressed="false"' in html
     assert 'id="brushTool"' not in html
@@ -164,6 +165,10 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "selectStatisticsColor" in app
     assert "function findClosestPaletteColor(sourceHex)" in app
     assert "function toggleEyedropper()" in app
+    assert "function toggleMoveCanvas()" in app
+    assert "function setMoveCanvasActive(active)" in app
+    assert "if (active && moveCanvasActive) setMoveCanvasActive(false)" in app
+    assert "if (active && eyedropperActive) setEyedropperActive(false)" in app
     assert "function sampleCanvasColor(gx, gy)" in app
     assert "focusPanelColor('.color-swatch', 'paletteColorScroll', matchedColor)" in app
     assert "focusPanelColor('.statistics-color', 'statisticsColorScroll', matchedColor)" in app
@@ -182,6 +187,8 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert ".tool-icon-btn.active {" in css
     assert ".eyedropper-icon," in css
     assert ".canvas-guides-icon {" in css
+    assert ".move-canvas-icon {" in css
+    assert ".canvas-container.move-canvas-active #pixelCanvas" in css
     assert ".color-pick-popup" not in css
     assert "box-sizing: border-box" in css
     assert ".right-panel {" in css
@@ -526,8 +533,24 @@ def test_canvas_guides_toggle_controls_grid_axes_and_statistics_highlight() -> N
     assert "function toggleCanvasGuides()" in editor
     assert "if (canvasGuidesVisible)" in editor
     assert "if (!canvasGuidesVisible) return;" in editor
+    assert "Math.round(y * mainCanvas.height / GRID_SIZE)" in editor
+    assert "Math.round(x * mainCanvas.width / GRID_SIZE)" in editor
+    assert "right - left" in editor
+    assert "bottom - top" in editor
     assert "!canvasGuidesVisible" in app
     assert "tourgrid_canvas_guides_visible" in state
+
+
+def test_all_canvas_zoom_controls_share_20_to_400_percent_range() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+
+    assert 'min="20" max="400" value="100"' in html
+    assert "function getMinZoom() {\n  return 20;" in app
+    assert "Math.min(400, targetZoom)" in app
+    assert "Math.min(400, zoom + delta)" in editor
+    assert "Math.min(400, newZoom)" in editor
 
 
 def test_canvas_viewport_background_is_transparent() -> None:

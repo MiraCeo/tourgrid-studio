@@ -1,5 +1,5 @@
 function getMinZoom() {
-  return Math.max(20, Math.min(85, Math.floor(400 / (GRID_SIZE * BASE_CELL_SIZE) * 100)));
+  return 20;
 }
 
 function updateZoomControlState() {
@@ -7,7 +7,7 @@ function updateZoomControlState() {
   if (!slider) return;
   slider.value = zoom;
   var min = parseFloat(slider.min) || 20;
-  var max = parseFloat(slider.max) || 300;
+  var max = parseFloat(slider.max) || 400;
   var progress = max > min ? (zoom - min) / (max - min) * 100 : 0;
   progress = Math.max(0, Math.min(100, progress));
   slider.style.setProperty('--zoom-progress', progress + '%');
@@ -38,7 +38,7 @@ function fitCanvasToViewport() {
   var targetZoom = Math.floor(
     availableSize / (GRID_SIZE * BASE_CELL_SIZE) * 100
   );
-  targetZoom = Math.max(20, Math.min(300, targetZoom));
+  targetZoom = Math.max(20, Math.min(400, targetZoom));
   setZoom(targetZoom);
   showToast('画布已适应当前视口');
 }
@@ -178,6 +178,7 @@ function findClosestPaletteColor(sourceHex) {
 }
 
 function setEyedropperActive(active) {
+  if (active && moveCanvasActive) setMoveCanvasActive(false);
   eyedropperActive = Boolean(active);
   var button = document.getElementById('eyedropperBtn');
   if (button) {
@@ -192,6 +193,32 @@ function setEyedropperActive(active) {
 function toggleEyedropper() {
   setEyedropperActive(!eyedropperActive);
   showToast(eyedropperActive ? '吸管已启用：请选择画布格子' : '已取消吸管');
+}
+
+function setMoveCanvasActive(active) {
+  if (active && eyedropperActive) setEyedropperActive(false);
+  moveCanvasActive = Boolean(active);
+  isDrawing = false;
+  isPanning = false;
+
+  var button = document.getElementById('moveCanvasBtn');
+  if (button) {
+    button.classList.toggle('active', moveCanvasActive);
+    button.setAttribute('aria-pressed', String(moveCanvasActive));
+    button.title = moveCanvasActive ? '退出移动画布' : '移动画布';
+  }
+  if (canvasContainer) {
+    canvasContainer.classList.toggle(
+      'move-canvas-active',
+      moveCanvasActive
+    );
+    canvasContainer.classList.remove('panning');
+  }
+}
+
+function toggleMoveCanvas() {
+  setMoveCanvasActive(!moveCanvasActive);
+  showToast(moveCanvasActive ? '移动画布已启用' : '已恢复画笔');
 }
 
 function focusPanelColor(selector, scrollId, color) {
@@ -554,6 +581,12 @@ function onKeyDown(e) {
       showToast('已取消吸管');
       return;
     }
+    if (moveCanvasActive) {
+      e.preventDefault();
+      setMoveCanvasActive(false);
+      showToast('已恢复画笔');
+      return;
+    }
   }
   // 缁岀儤鐗搁幐澶夌瑓閿涘牅绗夐崷銊ㄧ翻閸忋儲顢嬮崘鍜冪礆閳?閸氼垳鏁ら幏鏍ㄥ楠炲磭些
   if (e.code === 'Space' && !e.target.closest('input,textarea,button')) {
@@ -586,8 +619,8 @@ function onKeyUp(e) {
   if (e.code === 'Space') {
     spaceHeld = false;
     if (!isPanning) {
-      mainCanvas.style.cursor = 'crosshair';
-      canvasContainer.style.cursor = '';
+      mainCanvas.style.cursor = moveCanvasActive ? 'grab' : 'crosshair';
+      canvasContainer.style.cursor = moveCanvasActive ? 'grab' : '';
     }
   }
 }
@@ -628,6 +661,7 @@ function installTourgridTestApi() {
         overlayVisible: overlayVisible,
         overlayOpacity: overlayOpacity,
         canvasGuidesVisible: canvasGuidesVisible,
+        moveCanvasActive: moveCanvasActive,
         conversionInProgress: conversionInProgress,
         historyOperationInProgress: historyOperationInProgress
       };
