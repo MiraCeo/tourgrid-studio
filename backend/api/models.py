@@ -16,7 +16,7 @@ class ApiModel(BaseModel):
 
 class HealthResponse(ApiModel):
     status: str
-    converter_version: str
+    app_version: str
     default_palette_id: str
 
 
@@ -41,22 +41,6 @@ class PaletteDetail(PaletteSummary):
     sampled_color_count: int
     predicted_color_count: int
     colors: list[PaletteColorResponse]
-
-
-class ConvertResponse(ApiModel):
-    width: int
-    height: int
-    palette_id: str
-    palette_version: int
-    converter_version: str
-    used_colors: int
-    used_color_ids: list[str]
-    pixels: list[list[str | None]]
-    hex_pixels: list[list[str | None]]
-    preview_url: str
-    mapping_mode: str
-    learned_colors: int | None = None
-    cleanup_changes: int = 0
 
 
 class SaveWorkRequest(ApiModel):
@@ -104,10 +88,3 @@ class ErrorDetail(ApiModel):
 
 class ErrorResponse(ApiModel):
     error: ErrorDetail
-
-
-class ImageMetadata(ApiModel):
-    format: str = Field(description="Decoded Pillow image format.")
-    width: int
-    height: int
-    frames: int

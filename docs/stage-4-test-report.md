@@ -1,92 +1,70 @@
-# 阶段四：测试与视觉基线报告
+# 阶段四：回归测试报告
 
-## 目标
+## 测试边界
 
-阶段四建立可重复的转换回归体系，覆盖：
+当前测试围绕两个独立边界：
 
-- 严格 24×24 输出
-- 版本化色板约束
-- 相同输入和参数的稳定性
-- 透明 PNG、横图、竖图和大图
-- 原始 PNG 与最近邻预览
-- API 并发、排队和处理超时
-- 桌面、手机和平板浏览器布局
+1. 浏览器负责图片裁切、固定64色转换、Canvas编辑、复刻和导出。
+2. FastAPI负责色板查询、不可变作品保存和凭码读取。
 
-## 固定测试图片集
+服务器图片转换、上传、worker、转换超时和临时预览基线已移除，不再属于测试范围。
 
-测试素材位于 `tests/fixtures/`，由
-`generate_visual_fixtures.py` 确定性生成。`manifest.json` 保存每张源图的尺寸、模式和 SHA-256。
+## 确定性源图片
 
-| 文件 | 尺寸 | 用途 |
+`tests/fixtures/` 中的图片由 `generate_visual_fixtures.py` 生成：
+
+| 文件 | 尺寸 | 浏览器回归用途 |
 |---|---:|---|
-| `avatar-reference-synthetic.png` | 256×256 | 五官、头发和主体轮廓的合成头像替代物 |
-| `transparent-subject.png` | 192×192 RGBA | 完全透明、半透明和不透明区域 |
-| `landscape-scene.png` | 360×180 | 横图中心裁切 |
-| `portrait-scene.png` | 180×360 | 竖图中心裁切 |
-| `large-pattern.png` | 4096×3072 | 大尺寸解码和转换 |
+| `avatar-reference-synthetic.png` | 256×256 | 主体和五官可辨识性 |
+| `transparent-subject.png` | 192×192 RGBA | 透明像素默认白色 |
+| `landscape-scene.png` | 360×180 | 横图裁切和历史恢复 |
+| `portrait-scene.png` | 180×360 | 竖图裁切和历史恢复 |
+| `large-pattern.png` | 4096×3072 | 保留的大图手动性能素材 |
 
-### 原始头像素材状态
+这些文件是浏览器本地转换输入，不是服务器转换视觉基线。旧
+`tests/fixtures/baselines/` 已删除。
 
-最初项目总结要求包含“当前头像测试图”，但该原图不在仓库、用户目录或本次会话提供的文件中。当前使用可复现的合成头像建立测试框架，并在 `manifest.json` 中明确标记它不是用户原图。
+## 自动测试分层
 
-获得原始头像后，应保存为 `tests/fixtures/avatar-reference-original.png`，加入生成清单并通过基线更新脚本发布新的视觉基线。不能用合成图片冒充原始素材。
+- `test_api.py`：health、色板、作品接口、同源页面和旧路由404。
+- `test_work_store.py`：不可变内容、Base58短码和内存存储。
+- `test_postgres_work_store.py`：可选真实PostgreSQL集成。
+- `test_frontend.py`：HTML、CSS、JavaScript和状态契约。
+- `test_deployment.py`：Compose、Caddy、生产依赖与容器安全。
+- `test_observability.py`：请求ID、作品写入限流和监控配置。
+- `tests/browser/`：真实Chromium用户流程。
 
-## 视觉基线
+## 浏览器回归
 
-基线位于 `tests/fixtures/baselines/`：
+主要场景包括：
 
-- 每个输入对应一个严格 24×24 PNG。
-- 每个输入对应一个 240×240 的 10 倍最近邻预览。
-- `baseline.json` 记录像素 SHA-256、实际使用颜色数和颜色 ID。
+- 24×24全白初始画布和固定64色色板；
+- 连续绘制、撤销重做和100步历史上限；
+- 手动保存点及恢复后再次撤销；
+- 复刻模式只读、颜色完成状态和每作品进度；
+- 吸管最近色匹配与面板定位；
+- 横图、竖图、透明图的本地转换；
+- 参考图256×256 WebP持久化；
+- 导入、清空和参考图的完整撤销恢复；
+- 24×24 PNG及16倍最近邻图导出；
+- 作品发布、分享码复制和凭码读取；
+- 640、768、900px窄屏导出菜单边界。
 
-发布基线使用默认参数：
+浏览器用例使用独立上下文，不依赖其他用例留下的localStorage或IndexedDB。
 
-```text
-width=24
-height=24
-fit=crop
-dither=none
-sobel=3
-depth=1
-svd=true
-mapping_mode=direct
-palette_id=natural-64-v1
-```
+## API回归
 
-测试会重新运行真实 Pyxelate 转换，逐像素比对基线，并确认所有不透明像素属于 64 色色板。
+API测试确认：
 
-仅在算法、依赖或色板版本被有意升级，并完成视觉审查后运行：
-
-```powershell
-.\.venv\Scripts\python.exe tests\fixtures\update_visual_baselines.py
-```
-
-## API 并发与超时
-
-自动测试覆盖：
-
-- `max_concurrent_conversions=2` 时，两次转换可以同时进入处理器。
-- `max_concurrent_conversions=1` 时，第二次请求在队列超时后返回 `503 server_busy`。
-- 实际转换子进程超过处理时限会被终止并产生 `ConversionTimedOut`。
-- API 将处理超时映射为 `504 conversion_timeout`。
-
-## 浏览器回归矩阵
-
-测试地址为本地 FastAPI 同源页面。
-
-| 场景 | 视口 | 结果 |
-|---|---:|---|
-| 桌面 | 1280×900 | 编辑器完整显示，无横屏提示 |
-| 平板横屏 | 1024×768 | 编辑器完整显示，无横屏提示 |
-| 手机横屏 | 844×390 | 编辑器位于视口内，裁切框保持正方形 |
-| 手机竖屏 | 390×844 | 正确显示“请横屏使用” |
-
-响应式契约还会自动检查：
-
-- `900px` 移动端断点存在。
-- 移动裁切框宽高使用相同的 `min(320px, 42dvh)`。
-- 页面监听 `resize` 和 `orientationchange`。
-- 裁切区启用触摸手势并禁止浏览器默认触摸缩放。
+- health返回 `appVersion` 和默认色板；
+- 色板列表与详情可查询；
+- 作品像素解码后严格为432字节；
+- 同内容返回相同12位Base58分享码；
+- 后续提交不能覆盖首次标题与作者；
+- 成功读取原子增加浏览次数；
+- 未配置数据库时返回统一503错误；
+- `/api/v1/convert` 和临时预览路由返回404；
+- OpenAPI不再发布服务器转换接口。
 
 ## 执行
 
@@ -96,8 +74,22 @@ palette_id=natural-64-v1
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-仅运行视觉回归：
+浏览器回归：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests\test_visual_regression.py
+.\.venv\Scripts\python.exe -m pytest -m browser
 ```
+
+PostgreSQL集成测试：
+
+```powershell
+$env:TOURGRID_TEST_DATABASE_URL='postgresql://...'
+.\.venv\Scripts\python.exe -m pytest tests/test_postgres_work_store.py
+```
+
+## 维护规则
+
+- 新增用户流程时同步增加浏览器回归。
+- 修改作品编码或色板版本时同步更新API和codec测试。
+- 新增源图片必须记录用途和确定性生成方式。
+- 不重新建立服务器转换PNG基线；算法视觉验证应针对浏览器实际输出。

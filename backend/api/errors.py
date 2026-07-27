@@ -15,11 +15,3 @@ class ApiError(Exception):
         self.code = code
         self.message = message
         self.details = details
-
-
-class ConversionTimedOut(RuntimeError):
-    pass
-
-
-class ConversionProcessFailed(RuntimeError):
-    pass

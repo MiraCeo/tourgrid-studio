@@ -1,17 +1,13 @@
 # Tourgrid Studio API v1
 
-FastAPI 同时提供同源前端：
+FastAPI提供版本化色板查询与不可变作品分享，并在本地开发时提供同源前端：
 
 - `GET /`：编辑器页面
-- `GET /static/*`：前端 CSS 和 JavaScript 静态资源
+- `GET /static/*`：前端静态资源
+- `/docs`：Swagger UI
+- `/openapi.json`：OpenAPI文档
 
-第二阶段提供 FastAPI 服务，默认监听 `127.0.0.1:8000`。Swagger UI 位于 `/docs`，OpenAPI 文档位于 `/openapi.json`。
-
-## 转换器版本
-
-- `1.1.0`：透明 PNG 只使用非透明 RGB 样本拟合颜色模型，保留原 alpha 蒙版，
-  避免 Pyxelate 2.1.1 的 RGBA 拟合性能问题和透明区域伪色。
-- `1.0.0`：初始直接映射版本。
+服务器不接收用户图片。图片裁切、64色转换和参考图保存均在浏览器本地完成。
 
 ## 启动
 
@@ -19,90 +15,38 @@ FastAPI 同时提供同源前端：
 .\.venv\Scripts\tourgrid-api.exe
 ```
 
-开发时也可以直接运行 Uvicorn：
+开发模式：
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn backend.api.app:app --reload
 ```
 
-## 接口
+## `GET /api/v1/health`
 
-### `GET /api/v1/health`
-
-返回服务状态、转换器版本和默认色板 ID。
-
-### `GET /api/v1/palettes`
-
-返回当前可用的版本化色板摘要。
-
-### `GET /api/v1/palettes/{palette_id}`
-
-返回色板元数据和全部颜色。不存在的色板返回 `404 palette_not_found`。
-
-### `POST /api/v1/convert`
-
-请求类型是 `multipart/form-data`。
-
-字段：
-
-| 字段 | 默认值 | 限制 |
-|---|---:|---|
-| `image` | 必填 | PNG、JPEG 或 WebP |
-| `width` | 24 | 仅允许 24 |
-| `height` | 24 | 仅允许 24 |
-| `palette_id` | `natural-64-v1` | 已注册色板 |
-| `dither` | `none` | `none`、`naive`、`bayer`、`floyd`、`atkinson` |
-| `sobel` | 3 | 2～9 |
-| `depth` | 1 | 1～3 |
-| `fit` | `crop` | `crop`、`stretch` |
-| `mapping_mode` | `direct` | `direct`、`two-stage` |
-| `auto_colors` | 18 | 2～64，仅实验模式使用 |
-| `cleanup_passes` | 2 | 0～4，仅实验模式使用 |
-| `cleanup_delta_e` | 14 | 0～100，仅实验模式使用 |
-| `svd` | `true` | 布尔值 |
-| `converter_version` | `1.1.0` | 必须与服务器版本一致 |
-
-示例：
-
-```powershell
-curl.exe -X POST http://127.0.0.1:8000/api/v1/convert `
-  -F "image=@sample.png;type=image/png" `
-  -F "width=24" `
-  -F "height=24" `
-  -F "palette_id=natural-64-v1" `
-  -F "dither=none"
-```
-
-成功响应：
+返回应用状态、应用版本和默认色板：
 
 ```json
 {
-  "width": 24,
-  "height": 24,
-  "paletteId": "natural-64-v1",
-  "paletteVersion": 1,
-  "converterVersion": "1.1.0",
-  "usedColors": 28,
-  "usedColorIds": ["N01", "N07"],
-  "pixels": [["N07", "N07"]],
-  "hexPixels": [["#EAE6DE", "#EAE6DE"]],
-  "previewUrl": "/api/v1/results/0123456789abcdef0123456789abcdef/preview.png",
-  "mappingMode": "direct",
-  "learnedColors": null,
-  "cleanupChanges": 0
+  "status": "ok",
+  "appVersion": "0.3.0",
+  "defaultPaletteId": "natural-64-v1"
 }
 ```
 
-完全透明的像素在两个矩阵中都表示为 `null`。
+## `GET /api/v1/palettes`
 
-### `GET /api/v1/results/{result_id}/preview.png`
+返回可用色板的ID、名称、版本、状态和颜色数量。
 
-返回最近邻放大的 PNG 预览。预览只保存在当前 API 进程的有界内存缓存中，默认五分钟后过期；用户上传的原始图片不会写入磁盘。
+## `GET /api/v1/palettes/{palette_id}`
 
-### `POST /api/v1/works`
+返回色板元数据和全部颜色。不存在时返回 `404 palette_not_found`。
 
-匿名保存不可变的24×24分享作品。前端按照色板固定顺序将每个像素编码为6位索引，
-每4格打包为3字节，最终得到严格432字节；请求中使用Base64传输。
+已经发布的色板不能被同ID的新内容覆盖。
+
+## `POST /api/v1/works`
+
+匿名保存不可变的24×24作品。浏览器按照64色色板顺序将每格编码为6位索引，
+每4格打包为3字节，最终得到严格432字节；JSON请求中使用Base64传输。
 
 ```json
 {
@@ -115,60 +59,81 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/convert `
 }
 ```
 
-`title` 与 `authorName` 均为可选字段，去除首尾空白后最长10个字符；空字符串按
-未填写处理。服务器只以“编码版本、色板ID、色板版本和像素数据”的完整SHA-256
-去重。相同画面始终返回同一个12位Base58分享码；标题与作者只在首次保存时写入，
-后续提交相同画面时不会覆盖首次署名。分享记录不可修改。
+约束：
 
-### `GET /api/v1/works/{code}`
+- `schemaVersion` 当前必须为 `1`。
+- 色板必须存在、版本匹配且恰好包含64色。
+- Base64解码后必须严格为432字节。
+- `title` 和 `authorName` 可选，去除首尾空白后最长10个字符。
+- 空标题或作者按未填写处理。
+
+服务器只以“编码版本、色板ID、色板版本和像素数据”的完整SHA-256去重。
+相同作品始终返回同一个12位Base58分享码；标题与作者只在首次保存时写入，
+后续提交不能覆盖首次署名。
+
+成功响应：
+
+```json
+{
+  "code": "7Kp3mXqB4NzR",
+  "schemaVersion": 1,
+  "paletteId": "natural-64-v1",
+  "paletteVersion": 1,
+  "pixels": "<长度576的Base64字符串>",
+  "authorName": "博士",
+  "title": "很糊的画",
+  "viewCount": 0,
+  "createdAt": "2026-07-28T00:00:00Z"
+}
+```
+
+## `GET /api/v1/works/{code}`
 
 凭区分大小写的12位Base58分享码读取作品。每次成功读取会原子增加浏览次数。
-作品只包含像素索引，不包含用户原图、本地参考图或导出的PNG。
+作品不包含用户原图、本地参考图或导出的PNG。
 
-## 默认安全限制
+可能错误：
 
-- 上传文件最大 10 MiB；
-- 解码图片宽高最大 8192×8192；
-- 解码图片最大 2500 万像素；
-- 不接受动画图片；
-- MIME 必须是受支持的图片类型，并与真实解码格式一致；
-- 单次转换默认最多 30 秒；
-- 单个 API 进程最多同时执行两个转换；
-- 等待转换槽位默认最多两秒；
-- 预览缓存最多 128 项，TTL 为 300 秒。
+- `404 work_not_found`
+- `422 request_validation_failed`
+- `503 work_storage_unavailable`
 
-转换任务在独立子进程运行。超时后服务会终止该子进程，不会让已经超时的 Pyxelate 任务继续占用计算资源。
+## 已移除接口
 
-## 环境变量
+以下服务器图片转换接口自0.3.0起不存在：
 
-所有限制均可在部署时覆盖：
+- `POST /api/v1/convert`
+- `GET /api/v1/results/{result_id}/preview.png`
+
+客户端不得回退调用这些接口。
+
+## 限流和请求体
+
+- `POST /api/v1/works` 使用按客户端IP的进程内滑动窗口限流。
+- Caddy默认将请求体限制为128KB。
+- API请求ID通过 `X-Request-ID` 返回。
+- 多实例部署前应把限流迁移到Redis等共享服务。
+
+相关环境变量：
 
 ```text
-TOURGRID_MAX_UPLOAD_BYTES
-TOURGRID_MAX_IMAGE_WIDTH
-TOURGRID_MAX_IMAGE_HEIGHT
-TOURGRID_MAX_IMAGE_PIXELS
-TOURGRID_PROCESSING_TIMEOUT_SECONDS
-TOURGRID_QUEUE_TIMEOUT_SECONDS
-TOURGRID_MAX_CONCURRENT_CONVERSIONS
-TOURGRID_PREVIEW_SCALE
-TOURGRID_PREVIEW_TTL_SECONDS
-TOURGRID_PREVIEW_CACHE_ENTRIES
 TOURGRID_RATE_LIMIT_REQUESTS
 TOURGRID_RATE_LIMIT_WINDOW_SECONDS
 TOURGRID_RATE_LIMIT_MAX_CLIENTS
 TOURGRID_DATABASE_URL
+TOURGRID_ENVIRONMENT
+TOURGRID_RELEASE
+TOURGRID_SENTRY_DSN
+TOURGRID_SENTRY_TRACES_SAMPLE_RATE
 ```
 
 ## 错误格式
 
-API 自身产生的错误使用统一结构：
-
 ```json
 {
   "error": {
-    "code": "invalid_image",
-    "message": "The uploaded file is not a valid supported image."
+    "code": "work_not_found",
+    "message": "Shared work does not exist."
   }
 }
 ```

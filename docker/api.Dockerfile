@@ -5,10 +5,6 @@ FROM python:3.12-slim-bookworm AS builder
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /build
 COPY pyproject.toml README.md requirements-prod.lock ./
 COPY backend ./backend
@@ -22,10 +18,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends libgomp1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system --gid 10001 tourgrid \
+RUN groupadd --system --gid 10001 tourgrid \
     && useradd --system --uid 10001 --gid tourgrid --home-dir /app tourgrid
 
 COPY --from=builder /install /usr/local

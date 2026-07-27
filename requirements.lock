@@ -17,16 +17,10 @@ colorama==0.4.6
     # via
     #   click
     #   pytest
-contourpy==1.3.3
-    # via matplotlib
-cycler==0.12.1
-    # via matplotlib
 fastapi==0.140.0
     # via
     #   tourgrid-studio (pyproject.toml)
     #   sentry-sdk
-fonttools==4.63.0
-    # via matplotlib
 greenlet==3.5.4
     # via playwright
 h11==0.16.0
@@ -43,49 +37,12 @@ idna==3.18
     # via
     #   anyio
     #   httpx2
-imageio==2.37.4
-    # via scikit-image
 iniconfig==2.3.0
     # via pytest
-joblib==1.5.3
-    # via scikit-learn
-kiwisolver==1.5.0
-    # via matplotlib
-lazy-loader==0.5
-    # via scikit-image
-llvmlite==0.46.0
-    # via numba
-matplotlib==3.11.1
-    # via tourgrid-studio (pyproject.toml)
-networkx==3.6.1
-    # via scikit-image
-numba==0.63.1
-    # via
-    #   tourgrid-studio (pyproject.toml)
-    #   pyxelate
-numpy==2.3.5
-    # via
-    #   tourgrid-studio (pyproject.toml)
-    #   contourpy
-    #   imageio
-    #   matplotlib
-    #   numba
-    #   scikit-image
-    #   scikit-learn
-    #   scipy
-    #   tifffile
 packaging==26.2
-    # via
-    #   lazy-loader
-    #   matplotlib
-    #   pytest
-    #   scikit-image
+    # via pytest
 pillow==12.3.0
-    # via
-    #   tourgrid-studio (pyproject.toml)
-    #   imageio
-    #   matplotlib
-    #   scikit-image
+    # via tourgrid-studio (pyproject.toml)
 playwright==1.61.0
     # via tourgrid-studio (pyproject.toml)
 pluggy==1.6.0
@@ -104,43 +61,16 @@ pyee==13.0.1
     # via playwright
 pygments==2.20.0
     # via pytest
-pyparsing==3.3.2
-    # via matplotlib
 pytest==9.1.1
     # via tourgrid-studio (pyproject.toml)
-python-dateutil==2.9.0.post0
-    # via matplotlib
 python-dotenv==1.2.2
     # via uvicorn
-python-multipart==0.0.32
-    # via tourgrid-studio (pyproject.toml)
-pyxelate @ git+https://github.com/sedthh/pyxelate.git@f4a046b8b148370a20ab7681fce160551e5fc49b
-    # via tourgrid-studio (pyproject.toml)
 pyyaml==6.0.3
     # via uvicorn
-scikit-image==0.26.0
-    # via
-    #   tourgrid-studio (pyproject.toml)
-    #   pyxelate
-scikit-learn==1.8.0
-    # via
-    #   tourgrid-studio (pyproject.toml)
-    #   pyxelate
-scipy==1.17.1
-    # via
-    #   tourgrid-studio (pyproject.toml)
-    #   scikit-image
-    #   scikit-learn
 sentry-sdk==2.66.1
     # via tourgrid-studio (pyproject.toml)
-six==1.17.0
-    # via python-dateutil
 starlette==1.3.1
     # via fastapi
-threadpoolctl==3.6.0
-    # via scikit-learn
-tifffile==2026.3.3
-    # via scikit-image
 truststore==0.10.4
     # via
     #   httpcore2

@@ -38,14 +38,11 @@ jobs:
         run: |
           curl --fail --show-error http://127.0.0.1:8080/api/v1/health | grep -q '"status":"ok"'
           curl --fail --show-error http://127.0.0.1:8080/ | grep -q 'pixelCanvas'
+          python -c "import base64,json; print(json.dumps({'schemaVersion':1,'paletteId':'natural-64-v1','paletteVersion':1,'pixels':base64.b64encode(bytes(432)).decode()}))" > /tmp/work.json
           curl --fail --show-error \
-            -F "image=@tests/fixtures/avatar-reference-synthetic.png;type=image/png" \
-            -F "width=24" \
-            -F "height=24" \
-            -F "palette_id=natural-64-v1" \
-            -F "dither=none" \
-            -F "mapping_mode=direct" \
-            http://127.0.0.1:8080/api/v1/convert | grep -q '"width":24'
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/work.json \
+            http://127.0.0.1:8080/api/v1/works | grep -q '"code"'
       - name: Show logs after a failure
         if: failure()
         run: docker compose logs --no-color

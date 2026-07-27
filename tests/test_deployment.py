@@ -82,13 +82,21 @@ def test_production_image_is_non_root_and_has_healthcheck() -> None:
     assert "requirements-prod.lock" in dockerfile
 
 
-def test_production_lock_pins_pyxelate_to_immutable_commit() -> None:
+def test_production_lock_excludes_server_conversion_dependencies() -> None:
     lock = (ROOT / "requirements-prod.lock").read_text(encoding="utf-8")
 
-    assert (
-        "pyxelate @ git+https://github.com/sedthh/pyxelate.git@"
-        "f4a046b8b148370a20ab7681fce160551e5fc49b"
-    ) in lock
+    forbidden = [
+        "pyxelate",
+        "numpy==",
+        "pillow==",
+        "scipy==",
+        "scikit-image==",
+        "scikit-learn==",
+        "numba==",
+        "matplotlib==",
+        "python-multipart==",
+    ]
+    assert all(package not in lock.lower() for package in forbidden)
 
 
 def test_palette_examples_never_replace_the_provisional_palette() -> None:
@@ -99,12 +107,23 @@ def test_palette_examples_never_replace_the_provisional_palette() -> None:
     assert "不能覆盖" in deployment
 
 
-def test_server_converter_removal_is_guarded_by_backup_checklist() -> None:
+def test_server_converter_removal_is_documented_as_complete() -> None:
     limitations = (ROOT / "docs/known-limitations.md").read_text(
         encoding="utf-8"
     )
 
-    assert "延后移除服务器图片转换子系统" in limitations
-    assert "不得只删除 `convert_image.py`" in limitations
-    assert "PostgreSQL 作品数据" in limitations
-    assert "requirements-prod.lock" in limitations
+    assert "服务器图片转换子系统已经移除" in limitations
+    assert "浏览器本地转换" in limitations
+
+
+def test_container_no_longer_carries_conversion_runtime_packages() -> None:
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    dockerfile = (ROOT / "docker/api.Dockerfile").read_text(encoding="utf-8")
+    caddyfile = (ROOT / "docker/Caddyfile").read_text(encoding="utf-8")
+
+    assert "libgomp1" not in dockerfile
+    assert "apt-get install --yes --no-install-recommends git" not in dockerfile
+    assert "TOURGRID_MAX_UPLOAD_BYTES" not in compose
+    assert "TOURGRID_MAX_CONCURRENT_CONVERSIONS" not in compose
+    assert "/tmp:size=32m" in compose
+    assert "128KB" in caddyfile

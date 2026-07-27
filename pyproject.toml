@@ -4,28 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tourgrid-studio"
-version = "0.2.0"
-description = "Unofficial online editor and versioned image converter for Arknights exhibition pixel art."
+version = "0.3.0"
+description = "Unofficial browser-based editor and immutable work sharing service for Arknights exhibition pixel art."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "fastapi>=0.115,<1",
-  "numpy>=1.26,<2.4",
-  "Pillow>=10,<13",
-  "python-multipart>=0.0.20,<1",
   "psycopg[binary,pool]>=3.2,<4",
-  "scipy>=1.11,<2",
-  "scikit-image>=0.26,<0.27",
-  "scikit-learn>=1.8,<1.9",
-  "numba>=0.63,<0.64",
-  "matplotlib>=3.8,<4",
-  "pyxelate @ git+https://github.com/sedthh/pyxelate.git@f4a046b8b148370a20ab7681fce160551e5fc49b",
   "uvicorn[standard]>=0.34,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
   "httpx2>=2.9,<3",
+  "Pillow>=10,<13",
   "playwright>=1.50,<2",
   "pytest>=8,<10",
 ]
@@ -34,7 +26,6 @@ monitoring = [
 ]
 
 [project.scripts]
-tourgrid-convert = "backend.cli:main"
 tourgrid-api = "backend.api.app:run"
 
 [tool.setuptools.packages.find]
@@ -45,5 +36,5 @@ testpaths = ["tests"]
 addopts = "-ra"
 markers = [
   "browser: runs the real Chromium frontend regression suite",
-  "integration: exercises the real Pyxelate conversion dependency",
+  "integration: requires an explicitly configured external service",
 ]

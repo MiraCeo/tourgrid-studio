@@ -6,21 +6,11 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ApiSettings:
-    max_upload_bytes: int = 10 * 1024 * 1024
-    max_image_width: int = 8192
-    max_image_height: int = 8192
-    max_image_pixels: int = 25_000_000
-    processing_timeout_seconds: float = 30.0
-    queue_timeout_seconds: float = 2.0
-    max_concurrent_conversions: int = 2
-    preview_scale: int = 10
-    preview_ttl_seconds: int = 300
-    preview_cache_entries: int = 128
     rate_limit_requests: int = 60
     rate_limit_window_seconds: float = 60.0
     rate_limit_max_clients: int = 10_000
     environment: str = "development"
-    release: str = "0.2.0"
+    release: str = "0.3.0"
     database_url: str | None = None
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.0
@@ -29,46 +19,6 @@ class ApiSettings:
     def from_env(cls) -> "ApiSettings":
         defaults = cls()
         return cls(
-            max_upload_bytes=_env_int(
-                "TOURGRID_MAX_UPLOAD_BYTES",
-                defaults.max_upload_bytes,
-            ),
-            max_image_width=_env_int(
-                "TOURGRID_MAX_IMAGE_WIDTH",
-                defaults.max_image_width,
-            ),
-            max_image_height=_env_int(
-                "TOURGRID_MAX_IMAGE_HEIGHT",
-                defaults.max_image_height,
-            ),
-            max_image_pixels=_env_int(
-                "TOURGRID_MAX_IMAGE_PIXELS",
-                defaults.max_image_pixels,
-            ),
-            processing_timeout_seconds=_env_float(
-                "TOURGRID_PROCESSING_TIMEOUT_SECONDS",
-                defaults.processing_timeout_seconds,
-            ),
-            queue_timeout_seconds=_env_float(
-                "TOURGRID_QUEUE_TIMEOUT_SECONDS",
-                defaults.queue_timeout_seconds,
-            ),
-            max_concurrent_conversions=_env_int(
-                "TOURGRID_MAX_CONCURRENT_CONVERSIONS",
-                defaults.max_concurrent_conversions,
-            ),
-            preview_scale=_env_int(
-                "TOURGRID_PREVIEW_SCALE",
-                defaults.preview_scale,
-            ),
-            preview_ttl_seconds=_env_int(
-                "TOURGRID_PREVIEW_TTL_SECONDS",
-                defaults.preview_ttl_seconds,
-            ),
-            preview_cache_entries=_env_int(
-                "TOURGRID_PREVIEW_CACHE_ENTRIES",
-                defaults.preview_cache_entries,
-            ),
             rate_limit_requests=_env_int(
                 "TOURGRID_RATE_LIMIT_REQUESTS",
                 defaults.rate_limit_requests,
@@ -96,16 +46,6 @@ class ApiSettings:
 
     def validated(self) -> "ApiSettings":
         positive_values = {
-            "max_upload_bytes": self.max_upload_bytes,
-            "max_image_width": self.max_image_width,
-            "max_image_height": self.max_image_height,
-            "max_image_pixels": self.max_image_pixels,
-            "processing_timeout_seconds": self.processing_timeout_seconds,
-            "queue_timeout_seconds": self.queue_timeout_seconds,
-            "max_concurrent_conversions": self.max_concurrent_conversions,
-            "preview_scale": self.preview_scale,
-            "preview_ttl_seconds": self.preview_ttl_seconds,
-            "preview_cache_entries": self.preview_cache_entries,
             "rate_limit_requests": self.rate_limit_requests,
             "rate_limit_window_seconds": self.rate_limit_window_seconds,
             "rate_limit_max_clients": self.rate_limit_max_clients,

@@ -2,7 +2,7 @@
 	encode zstd gzip
 
 	request_body {
-		max_size {$TOURGRID_PROXY_MAX_BODY_SIZE:11MB}
+		max_size {$TOURGRID_PROXY_MAX_BODY_SIZE:128KB}
 	}
 
 	header {

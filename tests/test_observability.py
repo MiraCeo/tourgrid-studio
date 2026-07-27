@@ -7,11 +7,11 @@ from backend.api.config import ApiSettings
 from backend.api.observability import SlidingWindowRateLimiter
 from backend.api.work_store import InMemoryWorkStore
 
-from test_api import fake_conversion, image_bytes, work_payload
+from test_api import work_payload
 
 
 def test_request_id_is_preserved_when_valid() -> None:
-    application = create_app(ApiSettings(), converter=fake_conversion)
+    application = create_app(ApiSettings(), work_store=InMemoryWorkStore())
     with TestClient(application) as client:
         response = client.get(
             "/api/v1/health",
@@ -23,7 +23,7 @@ def test_request_id_is_preserved_when_valid() -> None:
 
 
 def test_invalid_request_id_is_replaced() -> None:
-    application = create_app(ApiSettings(), converter=fake_conversion)
+    application = create_app(ApiSettings(), work_store=InMemoryWorkStore())
     with TestClient(application) as client:
         response = client.get(
             "/api/v1/health",
@@ -35,37 +35,13 @@ def test_invalid_request_id_is_replaced() -> None:
     assert generated.isalnum()
 
 
-def test_convert_rate_limit_is_per_client_and_does_not_limit_health() -> None:
-    settings = ApiSettings(
-        rate_limit_requests=2,
-        rate_limit_window_seconds=60,
-    )
-    application = create_app(settings, converter=fake_conversion)
-    with TestClient(application) as client:
-        responses = [
-            client.post(
-                "/api/v1/convert",
-                files={"image": ("source.png", image_bytes(), "image/png")},
-            )
-            for _ in range(3)
-        ]
-        health = client.get("/api/v1/health")
-
-    assert [response.status_code for response in responses] == [200, 200, 429]
-    assert responses[0].headers["X-RateLimit-Remaining"] == "1"
-    assert responses[2].headers["Retry-After"] == "60"
-    assert responses[2].json()["error"]["code"] == "rate_limit_exceeded"
-    assert health.status_code == 200
-
-
-def test_shared_work_writes_use_the_same_per_client_rate_limit() -> None:
+def test_shared_work_rate_limit_is_per_client_and_does_not_limit_health() -> None:
     settings = ApiSettings(
         rate_limit_requests=2,
         rate_limit_window_seconds=60,
     )
     application = create_app(
         settings,
-        converter=fake_conversion,
         work_store=InMemoryWorkStore(),
     )
     with TestClient(application) as client:
@@ -73,9 +49,13 @@ def test_shared_work_writes_use_the_same_per_client_rate_limit() -> None:
             client.post("/api/v1/works", json=work_payload())
             for _ in range(3)
         ]
+        health = client.get("/api/v1/health")
 
     assert [response.status_code for response in responses] == [201, 201, 429]
+    assert responses[0].headers["X-RateLimit-Remaining"] == "1"
+    assert responses[2].headers["Retry-After"] == "60"
     assert responses[2].json()["error"]["code"] == "rate_limit_exceeded"
+    assert health.status_code == 200
 
 
 def test_rate_limiter_removes_clients_after_their_window_expires() -> None:
@@ -112,7 +92,7 @@ def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
     monkeypatch.setenv("TOURGRID_RATE_LIMIT_WINDOW_SECONDS", "45")
     monkeypatch.setenv("TOURGRID_RATE_LIMIT_MAX_CLIENTS", "4321")
     monkeypatch.setenv("TOURGRID_ENVIRONMENT", "staging")
-    monkeypatch.setenv("TOURGRID_RELEASE", "0.2.0-rc.1")
+    monkeypatch.setenv("TOURGRID_RELEASE", "0.3.0-rc.1")
     monkeypatch.setenv("TOURGRID_SENTRY_TRACES_SAMPLE_RATE", "0.1")
     monkeypatch.setenv(
         "TOURGRID_DATABASE_URL",
@@ -125,7 +105,7 @@ def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
     assert settings.rate_limit_window_seconds == 45
     assert settings.rate_limit_max_clients == 4321
     assert settings.environment == "staging"
-    assert settings.release == "0.2.0-rc.1"
+    assert settings.release == "0.3.0-rc.1"
     assert settings.sentry_traces_sample_rate == 0.1
     assert settings.database_url == (
         "postgresql://tourgrid:secret@db:5432/tourgrid"
