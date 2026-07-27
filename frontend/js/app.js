@@ -28,11 +28,15 @@ function adjustZoom(delta) {
 
 // --- 妫版粏澹婇弰鍓с仛閺囧瓨鏌?---
 function updateColorDisplay(hex, label, extra) {
+  var swatch = document.getElementById('colorSwatch');
+  var labelElement = document.getElementById('colorLabel');
+  var infoElement = document.getElementById('colorInfo');
+  if (!swatch || !labelElement || !infoElement) return;
   const r = parseInt(hex.slice(1,3), 16);
   const g = parseInt(hex.slice(3,5), 16);
   const b = parseInt(hex.slice(5,7), 16);
-  document.getElementById('colorSwatch').style.background = hex;
-  document.getElementById('colorLabel').textContent = label || 'Brush';
+  swatch.style.background = hex;
+  labelElement.textContent = label || 'Brush';
   var info = 'RGB(' + r + ', ' + g + ', ' + b + ')<br>' + hex;
   // 官方模式下查找色号
   if (paletteMode === 'official') {
@@ -42,21 +46,14 @@ function updateColorDisplay(hex, label, extra) {
     }
   }
   if (extra) info += '<br>' + extra;
-  document.getElementById('colorInfo').innerHTML = info;
+  infoElement.innerHTML = info;
 }
 
 // --- 瀹搞儱鍙块崚鍥ㄥ床 ---
 function setTool(tool) {
-  currentTool = tool;
-  document.getElementById('brushTool').classList.toggle('active', tool === 'brush');
-  document.getElementById('eraserTool').classList.toggle('active', tool === 'eraser');
-  document.getElementById('inspectTool').classList.toggle('active', tool === 'inspect');
-
+  currentTool = 'brush';
   if (tool === 'eraser') {
-    updateColorDisplay('#FFFFFF', 'Eraser');
-  } else if (tool === 'inspect') {
-    document.getElementById('colorLabel').textContent = 'Inspector';
-    document.getElementById('colorInfo').textContent = 'Click a pixel to inspect';
+    selectColor('#FFFFFF');
   } else {
     updateColorDisplay(currentColor, 'Brush');
   }
@@ -189,8 +186,7 @@ function selectPickOption(hex) {
 // 查找与目标RGB最接近的5个色板颜色
 function findTop5Closest(r, g, b) {
   var palette = OFFICIAL_COLORS;
-  // 如果当前是画布用色模式, 也用官方色板(至少MARD_DATA)
-  if (palette.length === 0) palette = MARD_DATA;
+  if (palette.length === 0) palette = EXHIBITION_DATA;
 
   var results = [];
   for (var i = 0; i < palette.length; i++) {
@@ -218,15 +214,9 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// --- 色板渲染 ---
-const PALETTE_SLOTS = 24; // 色板最大槽位
-
-// 获取当前模式下的纯hex颜色数组
+// --- 色板与统计面板 ---
 function getCurrentPaletteColors() {
-  if (paletteMode === 'official' && OFFICIAL_COLORS.length > 0) {
-    return OFFICIAL_COLORS.map(paletteHex);
-  }
-  return getUsedColors();
+  return EXHIBITION_DATA.map(paletteHex);
 }
 
 // 感知色差 (人眼对G最敏感, 权重: R×2 G×4 B×3)
@@ -235,213 +225,219 @@ function colorDistRGB(r1, g1, b1, r2, g2, b2) {
   return 2*dr*dr + 4*dg*dg + 3*db*db;
 }
 
-// ============================================================
-// 色板选择系统 (下拉面板)
-// ============================================================
-function togglePalettePicker() {
-  var picker = document.getElementById('palettePicker');
-  var menu = document.getElementById('palettePickerMenu');
-  if (menu.style.display !== 'none') {
-    menu.style.display = 'none';
-    picker.classList.remove('open');
-  } else {
-    renderPaletteMenu();
-    menu.style.display = 'block';
-    picker.classList.add('open');
-  }
+function isStatisticsMode() {
+  return palettePanelMode === 'statistics';
 }
 
-function renderPaletteMenu() {
-  var menu = document.getElementById('palettePickerMenu');
-  menu.innerHTML = '';
-  PALETTE_DEFS.forEach(function(def) {
-    var item = document.createElement('button');
-    item.className = 'palette-picker-item';
-    if (def.id === currentPaletteId) item.classList.add('active');
-    if (def.colors.length === 0 && def.id !== 'exhibition') {
-      item.classList.add('empty');
-      item.textContent = def.label;
-      item.disabled = true;
-    } else {
-      item.innerHTML = '<span class="item-dot" style="background:' + def.color + '"></span>' + def.label;
+function getPaletteUsageEntries() {
+  var counts = {};
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      var color = String(pixelData[y][x]).toUpperCase();
+      counts[color] = (counts[color] || 0) + 1;
     }
-    item.addEventListener('click', function() {
-      selectPalette(def.id);
+  }
+
+  var known = {};
+  var entries = EXHIBITION_DATA.map(function(entry, index) {
+    var hex = paletteHex(entry).toUpperCase();
+    known[hex] = true;
+    return {
+      hex: hex,
+      count: counts[hex] || 0,
+      paletteEntry: entry,
+      paletteIndex: index
+    };
+  });
+
+  Object.keys(counts).sort().forEach(function(hex, legacyIndex) {
+    if (!known[hex]) {
+      entries.push({
+        hex: hex,
+        count: counts[hex],
+        paletteEntry: null,
+        paletteIndex: EXHIBITION_DATA.length + legacyIndex
+      });
+    }
+  });
+  return entries;
+}
+
+function sortStatisticsEntries(entries) {
+  if (statisticsSortMode === 'palette-order') {
+    return entries.slice().sort(function(a, b) {
+      return a.paletteIndex - b.paletteIndex;
     });
-    menu.appendChild(item);
+  }
+
+  return entries.filter(function(entry) {
+    return entry.count > 0;
+  }).sort(function(a, b) {
+    var countDifference = statisticsSortMode === 'count-asc'
+      ? a.count - b.count
+      : b.count - a.count;
+    return countDifference || a.paletteIndex - b.paletteIndex;
   });
 }
 
-function selectPalette(id) {
-  var def = PALETTE_DEFS.find(function(d) { return d.id === id; });
-  if (!def) return;
-
-  currentPaletteId = id;
-  documentMetadata.sourceMode = 'canvas';
-  documentMetadata.paletteId = id;
-  documentMetadata.editorPaletteId = id;
-  documentMetadata.paletteVersion = null;
-  documentMetadata.converterVersion = null;
-  OFFICIAL_COLORS = def.colors;
-  buildHexCodeMap();
-
-  // 更新按钮外观
-  var btn = document.getElementById('palettePickerBtn');
-  var label = document.getElementById('palettePickerLabel');
-  label.textContent = '色板: ' + def.label;
-  btn.style.background = def.colors.length > 0 ? '#C57820' : '#3A6BC5';
-
-  paletteMode = (def.colors.length > 0) ? 'official' : 'canvas';
-  currentPaletteIdx = 0;
-
-  // 有颜色数据时自动匹配替换
-  var snapped = 0;
-  if (def.colors.length > 0) {
-    currentColor = paletteHex(def.colors[0]);
-    currentTool = 'brush';
-
-    var officialRGB = def.colors.map(function(e) {
-      var h = e.hex;
-      return { r: parseInt(h.slice(1,3),16), g: parseInt(h.slice(3,5),16), b: parseInt(h.slice(5,7),16), hex: h };
-    });
-
-    pushUndo();
-    for (var y = 0; y < GRID_SIZE; y++) {
-      for (var x = 0; x < GRID_SIZE; x++) {
-        var c = pixelData[y][x];
-        if (c === '#FFFFFF') continue;
-        var r = parseInt(c.slice(1,3),16);
-        var g = parseInt(c.slice(3,5),16);
-        var b = parseInt(c.slice(5,7),16);
-        var best = officialRGB[0], bestD = Infinity;
-        for (var i = 0; i < officialRGB.length; i++) {
-          var d = colorDistRGB(r, g, b, officialRGB[i].r, officialRGB[i].g, officialRGB[i].b);
-          if (d < bestD) { bestD = d; best = officialRGB[i]; }
-        }
-        if (best.hex !== c) {
-          pixelData[y][x] = best.hex;
-          snapped++;
-        }
-      }
-    }
-  }
-
-  // 关闭菜单
-  document.getElementById('palettePickerMenu').style.display = 'none';
-  document.getElementById('palettePicker').classList.remove('open');
-
-  renderColorGrid();
-  renderCanvas();
-  renderNavigator();
-
-  if (snapped > 0) {
-    showToast('已匹配 ' + snapped + ' 个像素到' + def.label + '色板 (Ctrl+Z可撤销)');
-  }
-}
-
-// 点击外部关闭下拉
-document.addEventListener('click', function(e) {
-  var picker = document.getElementById('palettePicker');
-  if (picker && !picker.contains(e.target)) {
-    document.getElementById('palettePickerMenu').style.display = 'none';
-    picker.classList.remove('open');
-  }
-});
-
 function renderColorGrid() {
-  const grid = document.getElementById('colorGrid');
-  const palette = getCurrentPaletteColors();
+  var grid = document.getElementById('colorGrid');
+  var palette = getCurrentPaletteColors();
   grid.innerHTML = '';
 
-  // 官方模式支持翻页 (291色 > 24槽位)
-  var totalPages = Math.ceil(palette.length / PALETTE_SLOTS);
-  if (currentPaletteIdx >= totalPages) currentPaletteIdx = 0;
-  var startIdx = currentPaletteIdx * PALETTE_SLOTS;
-
-  for (let i = 0; i < PALETTE_SLOTS; i++) {
-    const swatch = document.createElement('div');
+  palette.forEach(function(color) {
+    var swatch = document.createElement('button');
+    swatch.type = 'button';
     swatch.className = 'color-swatch';
-    var dataIdx = startIdx + i;
-    if (dataIdx < palette.length) {
-      const color = palette[dataIdx];
-      swatch.style.background = color;
+    swatch.style.background = color;
+    swatch.title = color === '#FFFFFF' ? '白色 / 擦除' : color;
+    swatch.setAttribute('aria-label', swatch.title);
+    swatch.dataset.color = color;
 
-      // 官方模式显示色号标签
-      var code = '';
-      if (paletteMode === 'official') {
-        code = paletteCode(OFFICIAL_COLORS[dataIdx]);
-      }
-      if (code) {
-        swatch.title = code + ' ' + color;
-        // MARD色号无80-前缀，直接显示 (如 A1, B15)
-        var shortCode = code.replace(/^80-/, '');
-        var label = document.createElement('span');
-        label.className = 'swatch-code';
-        label.textContent = shortCode;
-        swatch.appendChild(label);
-      } else {
-        swatch.title = color;
-      }
-
-      if (color === currentColor && currentTool === 'brush') {
-        swatch.classList.add('active');
-      }
-      swatch.addEventListener('click', () => selectColor(color, swatch));
-    } else {
-      swatch.style.background = '#2C2C30';
-      swatch.style.borderColor = 'rgba(255,255,255,0.12)';
-      swatch.title = 'Empty slot';
-      swatch.style.cursor = 'default';
-    }
+    if (color === currentColor) swatch.classList.add('active');
+    swatch.addEventListener('click', function() {
+      selectColor(color, swatch);
+    });
     grid.appendChild(swatch);
-  }
+  });
 
-  // 更新翻页按钮文字
-  if (paletteMode === 'official' && totalPages > 1) {
-    var btn = document.querySelector('.more-colors-btn');
-    btn.textContent = '↻ ' + (currentPaletteIdx + 1) + '/' + totalPages;
-    btn.title = '翻页 (' + totalPages + '页共' + palette.length + '色)';
-  }
   updateColorUsageSummary();
+  if (isStatisticsMode()) renderStatisticsPanel();
 }
 
 function selectColor(color, swatchEl) {
+  if (isStatisticsMode()) return;
   currentColor = color;
   currentTool = 'brush';
-  document.getElementById('brushTool').classList.add('active');
-  document.getElementById('eraserTool').classList.remove('active');
-  document.getElementById('inspectTool').classList.remove('active');
 
-  // 官方模式下显示色号
-  var entry = (paletteMode === 'official') ? findPaletteEntry(color) : null;
-  var code = entry ? paletteCode(entry) : '';
-  var display = 'Brush' + (code ? ' · ' + code : '');
-  updateColorDisplay(color, display);
-
-  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.color-swatch').forEach(function(swatch) {
+    swatch.classList.remove('active');
+  });
   if (swatchEl) {
     swatchEl.classList.add('active');
   } else {
-    const swatches = document.querySelectorAll('.color-swatch');
-    const palette = getCurrentPaletteColors();
-    const idx = palette.indexOf(color);
-    if (idx >= 0 && swatches[idx]) swatches[idx].classList.add('active');
+    var target = document.querySelector('.color-swatch[data-color="' + color + '"]');
+    if (target) target.classList.add('active');
   }
 }
 
-function cyclePalette() {
-  if (paletteMode === 'official') {
-    var palette = getCurrentPaletteColors();
-    var totalPages = Math.ceil(palette.length / PALETTE_SLOTS);
-    currentPaletteIdx = (currentPaletteIdx + 1) % totalPages;
+function renderStatisticsPanel() {
+  var grid = document.getElementById('statisticsGrid');
+  var hint = document.getElementById('statisticsHint');
+  var entries = sortStatisticsEntries(getPaletteUsageEntries());
+  grid.innerHTML = '';
+
+  entries.forEach(function(entry) {
+    var item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'statistics-color';
+    item.style.background = entry.hex;
+    item.dataset.color = entry.hex;
+    item.title = entry.hex + ' · ' + entry.count + ' 格';
+    item.setAttribute('aria-label', '颜色 ' + entry.hex + '，使用 ' + entry.count + ' 格');
+    if (entry.hex === statisticsHighlightColor) item.classList.add('active');
+
+    var count = document.createElement('span');
+    count.className = 'statistics-count';
+    count.textContent = '×' + entry.count;
+    item.appendChild(count);
+    item.addEventListener('click', function() {
+      selectStatisticsColor(entry.hex);
+    });
+    grid.appendChild(item);
+  });
+
+  updateColorUsageSummary();
+  hint.textContent = statisticsHighlightColor
+    ? '已高亮 ' + statisticsHighlightColor + '；再次选择可取消'
+    : '选择一种颜色，在画布中高亮对应格子';
+}
+
+function setStatisticsSortMode(mode) {
+  if (!['count-desc', 'count-asc', 'palette-order'].includes(mode)) return;
+  statisticsSortMode = mode;
+  document.getElementById('statisticsSort').value = mode;
+
+  if (mode !== 'palette-order' && statisticsHighlightColor) {
+    var selectedEntry = getPaletteUsageEntries().find(function(entry) {
+      return entry.hex === statisticsHighlightColor;
+    });
+    if (!selectedEntry || selectedEntry.count === 0) statisticsHighlightColor = null;
   }
-  renderColorGrid();
-  if (paletteMode === 'official') {
-    var palette = getCurrentPaletteColors();
-    var totalPages = Math.ceil(palette.length / PALETTE_SLOTS);
-    showToast('色板 ' + (currentPaletteIdx + 1) + '/' + totalPages + ' (' + palette.length + '色)');
+
+  renderStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+}
+
+function selectStatisticsColor(color) {
+  if (!isStatisticsMode()) return;
+  statisticsHighlightColor = statisticsHighlightColor === color ? null : color;
+  renderStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+}
+
+function renderStatisticsHighlightOverlay() {
+  if (!isStatisticsMode() || !statisticsHighlightColor) {
+    overlayCanvas.style.display = 'none';
+    return;
+  }
+
+  var cellSize = BASE_CELL_SIZE * (zoom / 100);
+  var canvasSize = GRID_SIZE * cellSize;
+  overlayCanvas.width = canvasSize;
+  overlayCanvas.height = canvasSize;
+  overlayCanvas.style.display = 'block';
+  overlayCtx.clearRect(0, 0, canvasSize, canvasSize);
+  overlayCtx.fillStyle = 'rgba(16, 18, 22, 0.72)';
+  overlayCtx.fillRect(0, 0, canvasSize, canvasSize);
+  overlayCtx.strokeStyle = '#72F5F2';
+  overlayCtx.lineWidth = Math.max(1.5, Math.min(3, cellSize * 0.12));
+
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      if (String(pixelData[y][x]).toUpperCase() !== statisticsHighlightColor) continue;
+      var left = x * cellSize;
+      var top = y * cellSize;
+      overlayCtx.clearRect(left, top, cellSize, cellSize);
+      overlayCtx.strokeRect(
+        left + overlayCtx.lineWidth / 2,
+        top + overlayCtx.lineWidth / 2,
+        cellSize - overlayCtx.lineWidth,
+        cellSize - overlayCtx.lineWidth
+      );
+    }
+  }
+}
+
+function setPalettePanelMode(mode) {
+  if (mode !== 'palette' && mode !== 'statistics') return;
+  palettePanelMode = mode;
+
+  var paletteTab = document.getElementById('paletteTab');
+  var statisticsTab = document.getElementById('statisticsTab');
+  var paletteView = document.getElementById('palettePanelView');
+  var statisticsView = document.getElementById('statisticsPanelView');
+  var readOnly = isStatisticsMode();
+
+  paletteTab.classList.toggle('active', !readOnly);
+  statisticsTab.classList.toggle('active', readOnly);
+  paletteTab.setAttribute('aria-selected', String(!readOnly));
+  statisticsTab.setAttribute('aria-selected', String(readOnly));
+  paletteView.hidden = readOnly;
+  statisticsView.hidden = !readOnly;
+
+  document.getElementById('undoBtn').disabled = readOnly;
+  document.getElementById('redoBtn').disabled = readOnly;
+  canvasContainer.classList.toggle('statistics-readonly', readOnly);
+
+  if (readOnly) {
+    isDrawing = false;
+    renderStatisticsPanel();
+    renderStatisticsHighlightOverlay();
   } else {
-    showToast('色板已刷新');
+    statisticsHighlightColor = null;
+    renderColorGrid();
+    renderOverlay();
   }
 }
 
@@ -464,9 +460,9 @@ function onKeyDown(e) {
   } else if (e.ctrlKey && e.key === 'y') {
     e.preventDefault();
     redo();
-  } else if (e.key === 'b' || e.key === 'B') {
+  } else if (!isStatisticsMode() && (e.key === 'b' || e.key === 'B')) {
     setTool('brush');
-  } else if (e.key === 'e' || e.key === 'E') {
+  } else if (!isStatisticsMode() && (e.key === 'e' || e.key === 'E')) {
     setTool('eraser');
   } else if (e.ctrlKey && e.key === 's') {
     e.preventDefault();

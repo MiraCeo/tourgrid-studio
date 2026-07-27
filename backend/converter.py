@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import ceil, sqrt
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,7 @@ from .palette import DEFAULT_PALETTE_ID, PaletteDefinition, load_palette
 SUPPORTED_DITHER_MODES = ("none", "naive", "bayer", "floyd", "atkinson")
 SUPPORTED_FIT_MODES = ("crop", "stretch")
 SUPPORTED_MAPPING_MODES = ("direct", "two-stage")
+RGBA_FIT_MAX_SAMPLES = 4096
 
 
 @dataclass(frozen=True)
@@ -278,6 +280,56 @@ def _build_pixel_matrices(
     return pixels, hex_pixels
 
 
+def _opaque_rgb_fit_source(
+    source: np.ndarray,
+    *,
+    min_samples: int,
+    alpha_threshold: float = 0.6,
+) -> np.ndarray:
+    """Build a compact RGB training image without transparent background pixels."""
+    visible_alpha = round(alpha_threshold * 255)
+    visible_rgb = source[source[..., 3] >= visible_alpha, :3]
+    if len(visible_rgb) == 0:
+        visible_rgb = np.zeros((1, 3), dtype=np.uint8)
+
+    max_samples = min(Pyx.BGM_RESIZE**2, RGBA_FIT_MAX_SAMPLES)
+    if len(visible_rgb) > max_samples:
+        indices = np.linspace(
+            0,
+            len(visible_rgb) - 1,
+            max_samples,
+            dtype=np.int64,
+        )
+        visible_rgb = visible_rgb[indices]
+
+    side = ceil(sqrt(max(len(visible_rgb), min_samples + 1)))
+    sample_indices = np.arange(side * side) % len(visible_rgb)
+    return visible_rgb[sample_indices].reshape(side, side, 3)
+
+
+def _fit_transform(
+    converter: Pyx,
+    source: np.ndarray,
+    *,
+    min_samples: int,
+) -> np.ndarray:
+    if source.shape[-1] == 3:
+        return converter.fit_transform(source)
+
+    # Pyxelate 2.1.1 reshapes RGBA input to a 1×N strip during fit, creating
+    # many interpolated colors and extremely slow convergence. Train on only
+    # visible RGB samples, then transform the original RGBA image so Pyxelate
+    # still performs its normal edge dilation and alpha-mask reconstruction.
+    converter.fit(
+        _opaque_rgb_fit_source(
+            source,
+            min_samples=min_samples,
+            alpha_threshold=converter.alpha,
+        )
+    )
+    return converter.transform(source)
+
+
 def convert_array(
     source: np.ndarray,
     *,
@@ -304,7 +356,11 @@ def convert_array(
             depth=options.depth,
             svd=options.svd,
         )
-        result = converter.fit_transform(source)
+        result = _fit_transform(
+            converter,
+            source,
+            min_samples=len(palette.colors),
+        )
         learned_colors = None
         cleanup_changes = 0
     else:
@@ -317,7 +373,11 @@ def convert_array(
             depth=options.depth,
             svd=options.svd,
         )
-        auto_result = converter.fit_transform(source)
+        auto_result = _fit_transform(
+            converter,
+            source,
+            min_samples=options.auto_colors,
+        )
         mapped, labels, learned_colors = map_auto_colors_to_fixed_palette(
             auto_result,
             palette,

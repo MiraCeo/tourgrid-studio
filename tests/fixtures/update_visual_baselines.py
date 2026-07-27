@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from backend import CONVERTER_VERSION
 from backend.converter import ConversionOptions, convert_path, save_conversion
 
 
@@ -37,7 +38,8 @@ def main() -> None:
         }
 
     payload = {
-        "version": 1,
+        "version": 2,
+        "converterVersion": CONVERTER_VERSION,
         "converterOptions": {
             "width": options.width,
             "height": options.height,

@@ -7,6 +7,12 @@ FastAPI 同时提供同源前端：
 
 第二阶段提供 FastAPI 服务，默认监听 `127.0.0.1:8000`。Swagger UI 位于 `/docs`，OpenAPI 文档位于 `/openapi.json`。
 
+## 转换器版本
+
+- `1.1.0`：透明 PNG 只使用非透明 RGB 样本拟合颜色模型，保留原 alpha 蒙版，
+  避免 Pyxelate 2.1.1 的 RGBA 拟合性能问题和透明区域伪色。
+- `1.0.0`：初始直接映射版本。
+
 ## 启动
 
 ```powershell
@@ -54,7 +60,7 @@ FastAPI 同时提供同源前端：
 | `cleanup_passes` | 2 | 0～4，仅实验模式使用 |
 | `cleanup_delta_e` | 14 | 0～100，仅实验模式使用 |
 | `svd` | `true` | 布尔值 |
-| `converter_version` | `1.0.0` | 必须与服务器版本一致 |
+| `converter_version` | `1.1.0` | 必须与服务器版本一致 |
 
 示例：
 
@@ -75,7 +81,7 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/convert `
   "height": 24,
   "paletteId": "natural-64-v1",
   "paletteVersion": 1,
-  "converterVersion": "1.0.0",
+  "converterVersion": "1.1.0",
   "usedColors": 28,
   "usedColorIds": ["N01", "N07"],
   "pixels": [["N07", "N07"]],

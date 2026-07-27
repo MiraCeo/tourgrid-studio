@@ -1,5 +1,6 @@
 {
-  "version": 1,
+  "version": 2,
+  "converterVersion": "1.1.0",
   "converterOptions": {
     "width": 24,
     "height": 24,
@@ -29,22 +30,12 @@
       "preview": "baselines/avatar-reference-synthetic-preview.png"
     },
     "transparent-subject.png": {
-      "pixelSha256": "9385c0be3c25be3a63a6c852bd98deddd18066c100320494cb3aebd4a7af754c",
-      "usedColors": 13,
+      "pixelSha256": "8a162fd788be7f4832e3d6767354f52c7d2aeed08cca970127735dc1f65352ac",
+      "usedColors": 3,
       "usedColorIds": [
-        "N02",
-        "N03",
-        "R01",
-        "R03",
+        "N01",
         "R04",
-        "S01",
-        "S02",
-        "C01",
-        "V01",
-        "V02",
-        "BR01",
-        "BR02",
-        "BR03"
+        "R07"
       ],
       "raw": "baselines/transparent-subject-24x24.png",
       "preview": "baselines/transparent-subject-preview.png"

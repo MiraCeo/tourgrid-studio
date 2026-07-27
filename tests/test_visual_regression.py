@@ -46,6 +46,7 @@ def test_fixture_manifest_is_complete_and_reproducible() -> None:
 
 
 def test_visual_baseline_uses_approved_default_options() -> None:
+    assert BASELINES["converterVersion"] == "1.1.0"
     assert BASELINES["converterOptions"] == {
         "width": 24,
         "height": 24,

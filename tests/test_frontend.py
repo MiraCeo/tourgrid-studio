@@ -45,6 +45,7 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     expected_scripts = [
         "storage.js",
         "conversion-api.js",
+        "natural-64-v1.js",
         "state.js",
         "editor.js",
         "export.js",
@@ -59,11 +60,23 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     assert not (PROJECT_ROOT / "像素画编辑器.html").exists()
 
 
-def test_server_conversion_is_the_default_import_path() -> None:
+def test_local_fixed_palette_is_the_default_import_path() -> None:
     source = read_frontend()
 
-    assert '<option value="server" selected>' in source
+    assert '<option value="local" selected>' in source
+    assert '<option value="server">服务器 Pyxelate（备用）</option>' in source
     assert '<option value="none" selected>' in source
+    assert "var palette = EXHIBITION_DATA.map" in source
+    assert "palette.length !== 64" in source
+    assert "browser-fixed-palette-v1" in source
+    assert "paletteId: DEFAULT_PALETTE_ID" in source
+    assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
+    assert "K-means" not in (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
+
+
+def test_server_converter_remains_an_explicit_fallback() -> None:
+    source = read_frontend()
+
     assert "new FormData()" in source
     assert "new AbortController()" in source
     assert "await confirmCropServer()" in source
@@ -72,14 +85,99 @@ def test_server_conversion_is_the_default_import_path() -> None:
     assert "if (!cropImg || conversionInProgress) return" in source
 
 
-def test_local_converter_is_explicit_fallback() -> None:
+def test_local_converter_keeps_optional_dithering() -> None:
     source = read_frontend()
 
-    assert '<option value="local">' in source
     assert "confirmCropLocal()" in source
     assert "ditherMode === 'floyd'" in source
     assert "viewMode" not in source
     assert "canvasPixelData" not in source
+
+
+def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert 'class="editorial-area-label">Editorial Area</div>' in html
+    assert html.count('class="tool-icon-btn"') == 2
+    assert 'title="撤销"' in html
+    assert 'title="重做"' in html
+    assert 'id="brushTool"' not in html
+    assert 'id="eraserTool"' not in html
+    assert 'id="inspectTool"' not in html
+    assert 'id="palettePicker"' not in html
+    assert 'id="colorDisplay"' not in html
+    assert "<span>颜料</span>" in html
+    assert "<span>统计</span>" in html
+    assert 'id="paletteTab"' in html
+    assert 'id="statisticsTab"' in html
+    assert 'id="statisticsGrid"' in html
+    assert 'id="paletteColorScroll" tabindex="0"' in html
+    assert 'id="statisticsColorScroll" tabindex="0"' in html
+    assert 'id="paletteConversionResultSummary"' in html
+    assert 'id="statisticsConversionResultSummary"' in html
+    assert 'id="conversionResultSummary"' not in html
+    assert html.count('class="conversion-result-summary"') == 2
+    assert 'id="statisticsSort"' in html
+    assert '<option value="count-desc" selected>' in html
+    assert '<option value="count-asc">' in html
+    assert '<option value="palette-order">' in html
+    assert "巡展像素 · 64色" in html
+    assert html.index('id="statisticsGrid"') < html.index('id="colorUsageSummary"')
+
+    assert "const MARD_DATA" not in state
+    assert "{ id: 'mard'" not in state
+    assert "togglePalettePicker" not in app
+    assert "selectPalette" not in app
+    assert "PALETTE_SLOTS" not in app
+    assert "cyclePalette" not in app
+    assert "palette.forEach(function(color)" in app
+    assert "getPaletteUsageEntries" in app
+    assert "sortStatisticsEntries" in app
+    assert "setStatisticsSortMode" in app
+    assert "statisticsSortMode === 'palette-order'" in app
+    assert "entry.count > 0" in app
+    assert "setPalettePanelMode" in app
+    assert "selectStatisticsColor" in app
+    assert "swatch-code" not in css
+    assert ".right-panel {" in css
+    assert "overflow: hidden" in css
+    assert ".palette-color-scroll," in css
+    assert ".statistics-color-scroll {" in css
+    assert "overflow-y: auto" in css
+    assert "border-color: #72F5F2" in css
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    overlay = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
+    assert "const color = currentColor;" in editor
+    assert "mainCtx.fillText" not in editor
+    assert "if (isStatisticsMode()) return;" in editor
+    assert "统计模式下画布为只读" in editor
+    assert "renderStatisticsHighlightOverlay()" in overlay
+    assert "overlayCtx.fillStyle = 'rgba(16, 18, 22, 0.72)'" in app
+    assert "document.querySelectorAll('.conversion-result-summary')" in state
+
+
+def test_embedded_local_palette_matches_versioned_json() -> None:
+    script = r"""
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const embedded = require(process.argv[1]);
+const source = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+assert.equal(embedded.id, source.id);
+assert.equal(embedded.version, source.version);
+assert.equal(embedded.colors.length, 64);
+assert.deepEqual(
+  embedded.colors.map(({code, hex, name}) => ({code, hex, name})),
+  source.colors.map(({id, hex, name}) => ({code: id, hex, name}))
+);
+"""
+    run_node(
+        script,
+        JAVASCRIPT_ROOT / "natural-64-v1.js",
+        PROJECT_ROOT / "palettes" / "natural-64-v1.json",
+    )
 
 
 def test_import_ui_supports_retry_status_and_touch_crop() -> None:

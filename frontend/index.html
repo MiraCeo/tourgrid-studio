@@ -129,39 +129,53 @@
 
     <!-- 閸欒櫕鐖敍姘额杹閺傛瑥浼愰崗?20% -->
     <div class="right-panel">
+      <div class="editorial-area-label">Editorial Area</div>
       <div class="tool-icons">
-        <button class="tool-icon-btn" title="撤销" onclick="undo()">↩</button>
-        <button class="tool-icon-btn" title="重做" onclick="redo()">↪</button>
-        <button class="tool-icon-btn active" id="brushTool" title="画笔" onclick="setTool('brush')">🖌</button>
-        <button class="tool-icon-btn" id="eraserTool" title="橡皮" onclick="setTool('eraser')">◻</button>
-        <button class="tool-icon-btn" id="inspectTool" title="吸管" onclick="setTool('inspect')">💉</button>
+        <button class="tool-icon-btn" id="undoBtn" title="撤销" onclick="undo()">↩</button>
+        <button class="tool-icon-btn" id="redoBtn" title="重做" onclick="redo()">↪</button>
       </div>
 
-      <!-- 色板选择下拉 -->
-      <div class="palette-picker" id="palettePicker">
-        <button class="palette-picker-btn" id="palettePickerBtn" onclick="togglePalettePicker()">
-          <span id="palettePickerLabel">色板: 巡展像素</span>
-          <span class="picker-arrow">▾</span>
+      <div class="palette-tabs" role="tablist" aria-label="右侧面板">
+        <button class="palette-tab active" id="paletteTab" role="tab" aria-selected="true"
+                onclick="setPalettePanelMode('palette')">
+          <span class="palette-section-icon">◇</span>
+          <span>颜料</span>
         </button>
-        <div class="palette-picker-menu" id="palettePickerMenu" style="display:none;"></div>
+        <button class="palette-tab" id="statisticsTab" role="tab" aria-selected="false"
+                onclick="setPalettePanelMode('statistics')">
+          <span class="statistics-tab-icon">▥</span>
+          <span>统计</span>
+        </button>
       </div>
 
-      <!-- 当前色显示 & 颜色预览 -->
-      <div class="color-display" id="colorDisplay">
-        <div class="color-display-swatch" id="colorSwatch" style="background:#000000"></div>
-        <div class="color-display-text">
-          <div class="color-display-label" id="colorLabel">当前色</div>
-          <div class="color-display-info" id="colorInfo">RGB(0, 0, 0)<br>#000000</div>
+      <div class="palette-panel-view" id="palettePanelView">
+        <div class="palette-view-caption">巡展像素 · 64色</div>
+        <div class="palette-color-scroll" id="paletteColorScroll" tabindex="0">
+          <div class="color-grid" id="colorGrid"></div>
+          <div class="conversion-result-summary" id="paletteConversionResultSummary">
+            当前画布 · 未关联转换版本
+          </div>
         </div>
       </div>
-      <div class="color-usage-summary" id="colorUsageSummary">已用颜色 0 种 · 已绘制 0 格</div>
-      <div class="conversion-result-summary" id="conversionResultSummary">当前画布 · 未关联转换版本</div>
 
-      <div class="color-grid" id="colorGrid">
-        <!-- JS閸斻劍鈧胶鏁撻幋?-->
+      <div class="statistics-panel-view" id="statisticsPanelView" hidden>
+        <div class="statistics-hint" id="statisticsHint">选择一种颜色，在画布中高亮对应格子</div>
+        <label class="statistics-sort-control" for="statisticsSort">
+          <span>排序</span>
+          <select id="statisticsSort" onchange="setStatisticsSortMode(this.value)">
+            <option value="count-desc" selected>数量：多 → 少</option>
+            <option value="count-asc">数量：少 → 多</option>
+            <option value="palette-order">色板位置顺序</option>
+          </select>
+        </label>
+        <div class="statistics-color-scroll" id="statisticsColorScroll" tabindex="0">
+          <div class="statistics-grid" id="statisticsGrid"></div>
+          <div class="statistics-summary" id="colorUsageSummary">已使用 0 种颜色 · 共 0 格</div>
+          <div class="conversion-result-summary" id="statisticsConversionResultSummary">
+            当前画布 · 未关联转换版本
+          </div>
+        </div>
       </div>
-
-      <button class="more-colors-btn" title="换一批颜色" onclick="cyclePalette()">↻</button>
     </div>
   </div>
 </div>
@@ -188,16 +202,11 @@
     <div class="crop-controls">
       <span class="crop-zoom-label">转换方式</span>
       <select id="conversionMode" class="conversion-mode-select" onchange="updateConversionModeUI()">
-        <option value="server" selected>服务器 Pyxelate（推荐）</option>
-        <option value="local">浏览器本地备用</option>
+        <option value="local" selected>浏览器本地转换（推荐）</option>
+        <option value="server">服务器 Pyxelate（备用）</option>
       </select>
     </div>
     <div class="crop-controls">
-      <span id="localColorOptions" style="display:none;align-items:center;gap:8px;">
-        <span class="crop-zoom-label">本地颜色数</span>
-        <input type="range" class="crop-zoom-slider" id="cropColorCount" min="4" max="64" value="32" oninput="document.getElementById('cropColorVal').textContent=this.value">
-        <span class="crop-zoom-label" id="cropColorVal">32</span>
-      </span>
       <span class="crop-zoom-label">抖动</span>
       <select id="cropDither" onchange="updateConversionModeUI()" style="font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:3px;background:#fff;color:#333;cursor:pointer;">
         <option value="none" selected>无（推荐）</option>
@@ -205,7 +214,7 @@
         <option value="atkinson">Atkinson</option>
       </select>
     </div>
-    <div class="conversion-note" id="conversionNote">裁切图将上传到本机 API，原图不会持久保存。</div>
+    <div class="conversion-note" id="conversionNote">浏览器本地转换，严格限制为 natural-64-v1 的 64 种颜色。</div>
     <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
       <span class="conversion-spinner"></span>
       <span id="conversionStatusText">正在转换…</span>
@@ -221,6 +230,7 @@
 
 <script src="/static/js/storage.js"></script>
 <script src="/static/js/conversion-api.js"></script>
+<script src="/static/js/natural-64-v1.js"></script>
 <script src="/static/js/state.js"></script>
 <script src="/static/js/editor.js"></script>
 <script src="/static/js/export.js"></script>

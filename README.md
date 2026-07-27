@@ -11,7 +11,8 @@
 - Python 转换程序已经模块化并保留 CLI。
 - FastAPI 提供版本化色板和图片转换 API。
 - 前端默认使用服务器 Pyxelate 转换。
-- 浏览器本地 K-means 算法作为明确标识的备用模式保留。
+- 浏览器本地固定64色色板转换为默认模式，服务器 Pyxelate 作为备用模式。
+- 右侧按固定顺序连续展示64色，并提供只读用色统计与画布高亮。
 - 前端已拆分为 HTML、CSS 和多个 JavaScript 模块。
 - 存档包含来源、色板版本和转换器版本，并兼容旧版 localStorage。
 - 裁切区支持鼠标、单指移动和双指缩放。
@@ -53,7 +54,7 @@ tourgrid-studio/
 │     ├─ state.js           # 编辑器状态和色板数据
 │     ├─ editor.js          # Canvas 编辑、撤销和导航器
 │     ├─ export.js          # PNG 与图纸导出
-│     ├─ import.js          # 裁切、上传和本地备用转换
+│     ├─ import.js          # 裁切、本地固定色板转换和服务器上传
 │     └─ app.js             # 工具、色板和页面控制
 ├─ palettes/                # 版本化色板 JSON
 ├─ tests/                   # 后端和前端行为测试
@@ -95,7 +96,7 @@ python -m venv .venv
 
 ## 图片导入模式
 
-### 服务器 Pyxelate（默认）
+### 服务器 Pyxelate（备用）
 
 - 色板：`natural-64-v1`
 - 映射模式：`direct`
@@ -107,9 +108,11 @@ python -m venv .venv
 
 前端直接校验并读取响应中的 `hexPixels`，不会重新分析预览 PNG。
 
-### 浏览器本地备用
+### 浏览器本地转换（默认）
 
-该模式保留原有 K-means++ 和误差扩散算法，用于服务器不可用时继续工作。其结果不保证属于巡展 64 色色板，界面会明确显示“本地备用转换”。
+该模式直接将裁切后的像素映射到内置的 `natural-64-v1` 固定64色色板，可选
+Floyd–Steinberg 或 Atkinson 误差扩散。图片不上传服务器，结果严格属于版本化色板。
+服务器 Pyxelate 保留为用户可选的备用模式。
 
 ## 命令行转换
 
@@ -158,7 +161,7 @@ python -m venv .venv
 - localStorage v1/v2 到 v3 的迁移
 - API 像素矩阵尺寸和颜色校验
 - HTTP 错误映射
-- 默认服务器模式和显式本地备用模式
+- 默认本地固定色板模式和显式服务器备用模式
 - 原始 PNG 与最近邻预览导出契约
 - 所有前端 JavaScript 文件的语法
 

@@ -23,13 +23,11 @@ function getSelectedConversionOptions() {
 
 function updateConversionModeUI() {
   var mode = document.getElementById('conversionMode').value;
-  var localOptions = document.getElementById('localColorOptions');
   var note = document.getElementById('conversionNote');
-  localOptions.style.display = mode === 'local' ? '' : 'none';
   note.textContent = mode === 'server'
-    ? '服务器：' + TourgridConversion.describeSettings(getSelectedConversionOptions()) +
-      '。裁切图不会长期保存。'
-    : '离线备用模式在浏览器内量化颜色，结果不保证属于巡展 64 色色板。';
+    ? '备用服务器：' + TourgridConversion.describeSettings(getSelectedConversionOptions()) +
+      '。裁切图会上传，但不会长期保存。'
+    : '本地首选：图片不上传，结果严格限制为 natural-64-v1 的 64 种颜色。';
 }
 
 async function loadExhibitionPalette() {
@@ -37,7 +35,18 @@ async function loadExhibitionPalette() {
     var response = await fetch(API_BASE_URL + '/api/v1/palettes/' + DEFAULT_PALETTE_ID);
     if (!response.ok) return;
     var data = await response.json();
-    if (!Array.isArray(data.colors)) return;
+    if (
+      data.id !== DEFAULT_PALETTE_ID ||
+      data.version !== DEFAULT_PALETTE_VERSION ||
+      !Array.isArray(data.colors) ||
+      data.colors.length !== 64
+    ) return;
+    var matchesEmbeddedPalette = data.colors.every(function(color, index) {
+      var embedded = TOURGRID_NATURAL_64_V1.colors[index];
+      return color.id === embedded.code &&
+        String(color.hex).toUpperCase() === embedded.hex.toUpperCase();
+    });
+    if (!matchesEmbeddedPalette) return;
     EXHIBITION_DATA.splice(0, EXHIBITION_DATA.length);
     data.colors.forEach(function(color) {
       EXHIBITION_DATA.push({
@@ -53,7 +62,7 @@ async function loadExhibitionPalette() {
       renderColorGrid();
     }
   } catch (error) {
-    // 本地文件或服务器离线时保留画布取色模式。
+    // API 不可用时继续使用内置的版本化 64 色色板。
   }
 }
 
@@ -404,10 +413,11 @@ async function confirmCropServer() {
 
 async function confirmCrop() {
   if (!cropImg || conversionInProgress) return;
+  var selectedMode = document.getElementById('conversionMode').value;
   setConversionBusy(true);
   setConversionStatus('正在准备裁切图片…', false, true, false);
   try {
-    if (document.getElementById('conversionMode').value === 'local') {
+    if (selectedMode === 'local') {
       await new Promise(function(resolve) { setTimeout(resolve, 0); });
       confirmCropLocal();
     } else {
@@ -421,7 +431,10 @@ async function confirmCrop() {
       setConversionStatus('转换已取消，可调整设置后重试。', true, false, true);
     } else {
       setConversionStatus(
-        (error && error.message ? error.message : '转换失败。') + ' 可切换到“浏览器本地备用”继续。',
+        (error && error.message ? error.message : '转换失败。') +
+          (selectedMode === 'local'
+            ? ' 可切换到“服务器 Pyxelate（备用）”重试。'
+            : ' 可切换到“浏览器本地转换”继续。'),
         true,
         false,
         true
@@ -441,13 +454,7 @@ function confirmCropLocal() {
   var vp = document.getElementById('cropViewport');
   var vpW = vp.clientWidth;
   var scale = cropZoom / 100;
-  var colorCount = parseInt(document.getElementById('cropColorCount').value);
   var ditherMode = document.getElementById('cropDither').value; // 'none' | 'floyd' | 'atkinson'
-
-  // 使用全局 colorDistRGB 感知色差函数
-  function snapTo(c, r, g, b) {
-    return colorDistRGB(c[0], c[1], c[2], r, g, b);
-  }
 
   // === Step 1: 超采样 → 每格平均色 ===
   var srcX = -cropImgX / scale;
@@ -508,84 +515,19 @@ function confirmCropLocal() {
     }
   }
 
-  // === Step 2+3: K-means++ 初始化 + 感知加权迭代 ===
+  // === Step 2: 使用内置 natural-64-v1 固定色板 ===
   var total = GRID_SIZE * GRID_SIZE;
-  var K = Math.min(colorCount, total);
-
-  // 构建非白像素采样池
-  var samplePool = [];
-  for (var i = 0; i < total; i++) {
-    if (rawR[i] < 250 || rawG[i] < 250 || rawB[i] < 250) {
-      samplePool.push(i);
-    }
+  var palette = EXHIBITION_DATA.map(function(color) {
+    var hex = color.hex;
+    return [
+      parseInt(hex.slice(1, 3), 16),
+      parseInt(hex.slice(3, 5), 16),
+      parseInt(hex.slice(5, 7), 16)
+    ];
+  });
+  if (palette.length !== 64) {
+    throw new Error('本地 natural-64-v1 色板加载失败。');
   }
-  if (samplePool.length === 0) {
-    for (var i = 0; i < total; i++) samplePool.push(i);
-  }
-
-  // k-means++ 初始化
-  var centers = [];
-  var firstIdx = samplePool[Math.floor(Math.random() * samplePool.length)];
-  centers.push([rawR[firstIdx], rawG[firstIdx], rawB[firstIdx]]);
-
-  var minDist = new Float64Array(total);
-  for (var k = 1; k < K; k++) {
-    var distSum = 0;
-    for (var si = 0; si < samplePool.length; si++) {
-      var i = samplePool[si];
-      var bestD = Infinity;
-      for (var c = 0; c < centers.length; c++) {
-        var d = colorDistRGB(rawR[i], rawG[i], rawB[i], centers[c][0], centers[c][1], centers[c][2]);
-        if (d < bestD) bestD = d;
-      }
-      minDist[i] = bestD;
-      distSum += bestD;
-    }
-    var threshold = Math.random() * distSum;
-    var accum = 0, picked = samplePool[0];
-    for (var si = 0; si < samplePool.length; si++) {
-      var i = samplePool[si];
-      accum += minDist[i];
-      if (accum >= threshold) { picked = i; break; }
-    }
-    centers.push([rawR[picked], rawG[picked], rawB[picked]]);
-  }
-
-  // 强制锚定黑白
-  var bestWhite = 0, bestBlack = 0;
-  for (var i = 1; i < centers.length; i++) {
-    if (snapTo(centers[i], 255, 255, 255) < snapTo(centers[bestWhite], 255, 255, 255)) bestWhite = i;
-    if (snapTo(centers[i], 0, 0, 0) < snapTo(centers[bestBlack], 0, 0, 0)) bestBlack = i;
-  }
-  centers[bestWhite] = [255, 255, 255];
-  centers[bestBlack] = [0, 0, 0];
-
-  // K-means 迭代 (12轮, 感知距离)
-  for (var iter = 0; iter < 12; iter++) {
-    var assigns = new Int32Array(total);
-    for (var si = 0; si < samplePool.length; si++) {
-      var i = samplePool[si];
-      var best = 0, bestD = Infinity;
-      for (var k = 0; k < K; k++) {
-        var d = colorDistRGB(rawR[i], rawG[i], rawB[i], centers[k][0], centers[k][1], centers[k][2]);
-        if (d < bestD) { bestD = d; best = k; }
-      }
-      assigns[i] = best;
-    }
-    var sums = [];
-    for (var k = 0; k < K; k++) sums.push({r:0, g:0, b:0, n:0});
-    for (var si = 0; si < samplePool.length; si++) {
-      var i = samplePool[si];
-      var k = assigns[i];
-      sums[k].r += rawR[i]; sums[k].g += rawG[i]; sums[k].b += rawB[i]; sums[k].n++;
-    }
-    for (var k = 0; k < K; k++) {
-      if (sums[k].n > 0) {
-        centers[k] = [Math.round(sums[k].r/sums[k].n), Math.round(sums[k].g/sums[k].n), Math.round(sums[k].b/sums[k].n)];
-      }
-    }
-  }
-  var palette = centers;
 
   // 最近色查找 (感知加权)
   function nearestColor(r, g, b) {
@@ -597,7 +539,7 @@ function confirmCropLocal() {
     return best;
   }
 
-  // === Step 4: 抖动 + 颜色映射 ===
+  // === Step 3: 抖动 + 固定色板映射 ===
   var outR = new Float64Array(total);
   var outG = new Float64Array(total);
   var outB = new Float64Array(total);
@@ -693,7 +635,7 @@ function confirmCropLocal() {
     }
   }
 
-  // === Step 5: 写入像素数据 ===
+  // === Step 4: 写入像素数据 ===
   importedPixelData = [];
   var coloredCount = 0;
   for (var y = 0; y < GRID_SIZE; y++) {
@@ -714,7 +656,7 @@ function confirmCropLocal() {
     }
   }
 
-  // === Step 6: 预览图 ===
+  // === Step 5: 预览图 ===
   var PREVIEW_SIZE = 256;
   var rawPreview = document.createElement('canvas');
   rawPreview.width = PREVIEW_SIZE;
@@ -733,20 +675,23 @@ function confirmCropLocal() {
   importedPreviewImage.src = rawPreview.toDataURL();
 
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
-  paletteMode = 'canvas';
+  currentPaletteId = 'exhibition';
+  OFFICIAL_COLORS = EXHIBITION_DATA;
+  paletteMode = 'official';
   documentMetadata = {
     sourceMode: 'local',
-    paletteId: null,
-    editorPaletteId: currentPaletteId,
-    paletteVersion: null,
-    converterVersion: 'browser-kmeans-v1',
+    paletteId: DEFAULT_PALETTE_ID,
+    editorPaletteId: 'exhibition',
+    paletteVersion: DEFAULT_PALETTE_VERSION,
+    converterVersion: 'browser-fixed-palette-v1',
     importedAt: new Date().toISOString()
   };
+  buildHexCodeMap();
   var usedLocalColors = new Set();
   importedPixelData.forEach(function(row) {
     row.forEach(function(color) { usedLocalColors.add(color); });
   });
-  finishImportedPixels(usedLocalColors.size, '本地备用');
+  finishImportedPixels(usedLocalColors.size, '本地');
 }
 
 function cancelCrop() {
@@ -771,6 +716,11 @@ function reImportCurrent() {
 
 // --- 参考图叠加 ---
 function renderOverlay() {
+  if (isStatisticsMode()) {
+    renderStatisticsHighlightOverlay();
+    return;
+  }
+
   if (!overlayVisible || !importedPreviewImage || !importedPreviewImage.complete) {
     overlayCanvas.style.display = 'none';
     return;

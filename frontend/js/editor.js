@@ -57,7 +57,6 @@ function init() {
   navCanvas.addEventListener('click', onNavClick);
 
   // 点击色卡取色
-  document.getElementById('colorSwatch').addEventListener('click', onSwatchClick);
 
   // 娑擃參鏁?缁岀儤鐗?瀹革箓鏁幏鏍ㄥ楠炲磭些
   canvasContainer.addEventListener('mousedown', onPanStart);
@@ -206,34 +205,6 @@ function renderCanvas() {
     mainCtx.stroke();
   }
 
-  // 官方模式: 像素格上显示色号 (cellSize≥14px时才可读)
-  if (paletteMode === 'official' && cellSize >= 14) {
-    var fontSize = Math.max(6, Math.min(Math.floor(cellSize * 0.42), 10));
-    mainCtx.font = 'bold ' + fontSize + 'px "Consolas", "Courier New", monospace';
-    mainCtx.textAlign = 'center';
-    mainCtx.textBaseline = 'middle';
-    mainCtx.shadowColor = 'rgba(0,0,0,0.75)';
-    mainCtx.shadowBlur = Math.max(1, cellSize * 0.12);
-    mainCtx.fillStyle = '#fff';
-
-    for (var cy = 0; cy < GRID_SIZE; cy++) {
-      for (var cx = 0; cx < GRID_SIZE; cx++) {
-        var color = pixelData[cy][cx];
-        if (color === '#FFFFFF') continue;
-        var code = hexToCodeMap[color];
-        if (code) {
-          var textX = cx * cellSize + cellSize / 2;
-          var textY = cy * cellSize + cellSize / 2;
-          mainCtx.fillText(code, textX, textY);
-        }
-      }
-    }
-
-    // 重置阴影
-    mainCtx.shadowColor = 'transparent';
-    mainCtx.shadowBlur = 0;
-  }
-
   renderOverlay();
   gridInfoEl.textContent = `${GRID_SIZE} × ${GRID_SIZE} px  |  缩放 ${zoom}%`;
 }
@@ -290,7 +261,7 @@ function paintPixel(gx, gy) {
   if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return;
   if (gx === lastPaintedX && gy === lastPaintedY) return;
 
-  const color = currentTool === 'eraser' ? '#FFFFFF' : currentColor;
+  const color = currentColor;
   if (pixelData[gy][gx] === color) return;
 
   pixelData[gy][gx] = color;
@@ -312,12 +283,7 @@ function onMouseDown(e) {
     return;
   }
 
-  // inspect mode
-  if (currentTool === 'inspect') {
-    const pos = getGridPos(e);
-    inspectPixel(pos.x, pos.y);
-    return;
-  }
+  if (isStatisticsMode()) return;
 
   isDrawing = true;
   pushUndo();
@@ -330,7 +296,7 @@ function onMouseDown(e) {
 }
 
 function onMouseMove(e) {
-  if (!isDrawing || currentTool === 'inspect') return;
+  if (!isDrawing || isStatisticsMode()) return;
   const pos = getGridPos(e);
   paintPixel(pos.x, pos.y);
   renderCanvas();
@@ -433,12 +399,7 @@ var touchPinchZoom = 0;   // 双指缩放起始zoom值
 function onTouchStart(e) {
   e.preventDefault();
   if (e.touches.length === 1) {
-    // 单指：绘制或吸管
-    if (currentTool === 'inspect') {
-      const pos = getGridPos(e.touches[0]);
-      inspectPixel(pos.x, pos.y);
-      return;
-    }
+    if (isStatisticsMode()) return;
     isDrawing = true;
     pushUndo();
     lastPaintedX = -1;
@@ -559,6 +520,10 @@ function restoreEditorSnapshot(snapshot) {
 }
 
 function undo() {
+  if (isStatisticsMode()) {
+    showToast('统计模式下画布为只读');
+    return;
+  }
   if (undoStack.length === 0) {
     showToast('Nothing to undo');
     return;
@@ -573,6 +538,10 @@ function undo() {
 }
 
 function redo() {
+  if (isStatisticsMode()) {
+    showToast('统计模式下画布为只读');
+    return;
+  }
   if (redoStack.length === 0) {
     showToast('Nothing to redo');
     return;
@@ -589,6 +558,10 @@ function redo() {
 
 // --- 濞撳懐鈹栭悽璇茬 ---
 function clearCanvas() {
+  if (isStatisticsMode()) {
+    showToast('统计模式下画布为只读');
+    return;
+  }
   if (!confirm('Clear canvas? This can be undone.')) return;
   pushUndo();
   documentMetadata = TourgridStorage.defaultMetadata();

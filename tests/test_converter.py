@@ -8,6 +8,7 @@ from backend import CONVERTER_VERSION
 from backend.cli import build_parser
 from backend.converter import (
     ConversionOptions,
+    _opaque_rgb_fit_source,
     convert_array,
     crop_to_aspect,
     save_conversion,
@@ -55,6 +56,38 @@ def test_crop_to_aspect_centers_landscape_and_portrait_images() -> None:
 
     assert crop_to_aspect(landscape, 24, 24).size == (60, 60)
     assert crop_to_aspect(portrait, 24, 24).size == (60, 60)
+
+
+def test_transparent_fit_source_contains_only_visible_rgb_samples() -> None:
+    source = np.array(
+        [
+            [[255, 0, 0, 255], [1, 2, 3, 0]],
+            [[0, 255, 0, 128], [4, 5, 6, 0]],
+        ],
+        dtype=np.uint8,
+    )
+
+    fit_source = _opaque_rgb_fit_source(source, min_samples=4)
+    colors = {tuple(map(int, pixel)) for pixel in fit_source.reshape(-1, 3)}
+
+    assert fit_source.shape == (3, 3, 3)
+    assert colors == {(255, 0, 0)}
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("opaque_pixel", [None, (16, 16)])
+def test_transparent_edge_cases_convert_without_palette_leaks(
+    opaque_pixel: tuple[int, int] | None,
+) -> None:
+    source = np.zeros((32, 32, 4), dtype=np.uint8)
+    if opaque_pixel is not None:
+        source[opaque_pixel] = [240, 20, 20, 255]
+
+    result = convert_array(source, options=ConversionOptions())
+
+    assert result.image.shape == (24, 24, 4)
+    assert set(map(int, result.image[..., 3].reshape(-1))) <= {0, 255}
+    assert result.used_colors == (0 if opaque_pixel is None else 1)
 
 
 @pytest.mark.integration
