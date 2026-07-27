@@ -25,6 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "httpx2>=2.9,<3",
+  "playwright>=1.50,<2",
   "pytest>=8,<10",
 ]
 monitoring = [
@@ -42,5 +43,6 @@ include = ["backend*"]
 testpaths = ["tests"]
 addopts = "-ra"
 markers = [
+  "browser: runs the real Chromium frontend regression suite",
   "integration: exercises the real Pyxelate conversion dependency",
 ]

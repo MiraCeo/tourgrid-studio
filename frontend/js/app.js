@@ -593,7 +593,47 @@ function showToast(msg) {
 }
 
 // --- 启动 ---
-document.addEventListener('DOMContentLoaded', init);
+function installTourgridTestApi() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('test') !== '1') return;
+
+  var api = {
+    isReady: true,
+    getState: function() {
+      return {
+        gridSize: GRID_SIZE,
+        pixels: pixelData.map(function(row) { return row.slice(); }),
+        palette: getCurrentPaletteColors().map(function(color) {
+          return String(color).toUpperCase();
+        }),
+        currentColor: currentColor,
+        palettePanelMode: palettePanelMode,
+        statisticsHighlightColor: statisticsHighlightColor,
+        undoDepth: undoStack.length,
+        redoDepth: redoStack.length,
+        maxUndo: MAX_UNDO,
+        reference: referenceSnapshotForHistory(),
+        referenceLoaded: Boolean(importedPreviewImage),
+        overlayVisible: overlayVisible,
+        overlayOpacity: overlayOpacity,
+        conversionInProgress: conversionInProgress,
+        historyOperationInProgress: historyOperationInProgress
+      };
+    }
+  };
+
+  Object.defineProperty(window, '__TOURGRID_TEST__', {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: Object.freeze(api)
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  init();
+  installTourgridTestApi();
+});
 
 // --- 移动端横竖屏检测（比CSS orientation更可靠）---
 function checkOrientation() {

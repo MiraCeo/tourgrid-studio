@@ -18,6 +18,8 @@ jobs:
           cache: pip
       - name: Install project
         run: python -m pip install -e ".[dev]"
+      - name: Install Chromium for browser regression tests
+        run: python -m playwright install --with-deps chromium
       - name: Run test suite
         run: python -m pytest
 
