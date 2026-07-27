@@ -32,7 +32,7 @@ body {
   font-family: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
   overscroll-behavior: none;
@@ -113,14 +113,16 @@ body {
    Z-INDEX 3: 缂傛牞绶崳銊ゅ瘜瀵湱鐛?
    ============================================================ */
 .editor-modal {
-  position: relative;
+  position: fixed;
+  inset: 12px;
   z-index: 3;
-  width: min(96vw, 1300px);
-  margin: 120px auto 70px;
+  width: auto;
+  height: auto;
+  margin: 0;
   background: #F2F4F5;
-  border-radius: 18px;
+  border-radius: 8px;
   border: 2px solid #D0D4D8;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 28px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -132,7 +134,8 @@ body {
   z-index: 4;
   display: flex;
   align-items: center;
-  padding: 10px 18px;
+  min-height: 58px;
+  padding: 10px 16px;
   background: #F2F4F5;
   border-bottom: 1px solid #D8DCE0;
   gap: 12px;
@@ -141,8 +144,8 @@ body {
 
 /* 閸﹀棗鑸伴崶鐐垼閹稿鎸抽柅姘辨暏 */
 .icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -259,20 +262,24 @@ body {
   z-index: 5;
   display: flex;
   flex: 1;
-  min-height: 520px;
-  max-height: calc(100vh - 300px);
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
 }
 
 /* --- 瀹革附鐖敍姘嚤閼割亜娅掓０鍕潔闂堛垺婢?20% --- */
 .left-panel {
-  width: 20%;
-  min-width: 170px;
+  flex: 0 0 clamp(190px, 17vw, 300px);
+  width: clamp(190px, 17vw, 300px);
+  min-width: 0;
+  min-height: 0;
   background: #1A1A1A;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 12px;
-  gap: 14px;
+  padding: 18px 14px;
+  gap: 16px;
   border-right: 1px solid #333;
 }
 
@@ -405,26 +412,39 @@ body {
 
 /* --- 娑擃厽鐖敍姘辨暰鐢啰绱潏鎴濆隘 60% --- */
 .center-panel {
-  width: 60%;
   flex: 1;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #E8ECEF;
   position: relative;
-  overflow: auto;
-  padding: 16px;
+  overflow: hidden;
+  padding: 18px;
 }
 
 .canvas-container {
   position: relative;
   display: grid;
   place-items: center;
-  width: 480px;
-  height: 480px;
+  width: min(100%, calc(100dvh - 116px));
+  height: auto;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
   overflow: auto;
-  background: #fff;
-  border: 1px solid #D0D4D8;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background: transparent;
+  border: none;
+}
+
+.canvas-container::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* 缂冩垶鐗搁悽璇茬 */
@@ -439,48 +459,12 @@ body {
 }
 
 /* 閸椾礁鐡х€规矮缍呯痪?*/
-.canvas-container::before,
-.canvas-container::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-  z-index: 1;
-}
-.canvas-container::before {
-  /* 濮樻潙閽╃痪?*/
-  top: 50%;
-  left: -20px;
-  right: -20px;
-  height: 1px;
-  background: rgba(200,50,50,0.35);
-  transform: translateY(-0.5px);
-}
-.canvas-container::after {
-  /* 閸ㄥ倻娲跨痪?*/
-  left: 50%;
-  top: -20px;
-  bottom: -20px;
-  width: 1px;
-  background: rgba(200,50,50,0.35);
-  transform: translateX(-0.5px);
-}
-
 /* 缂冩垶鐗哥亸鍝勵嚟閹稿洨銇?*/
-.grid-info {
-  position: absolute;
-  bottom: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  color: #888;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-
 /* --- 閸欒櫕鐖敍姘额杹閺傛瑥浼愰崗閿嬬埉 20% --- */
 .right-panel {
-  width: 20%;
-  min-width: 200px;
+  flex: 0 0 clamp(280px, 24vw, 420px);
+  width: clamp(280px, 24vw, 420px);
+  min-width: 0;
   min-height: 0;
   background: #2C2C30;
   display: flex;
@@ -1121,14 +1105,15 @@ body {
   /* 隐藏装饰元素 */
   .top-image-area, .bottom-banner, .footnote { display: none !important; }
 
-  /* 锁定为 15×7.5cm 物理尺寸，居中显示 */
+  /* 横屏移动端同样使用完整可视区域 */
   .editor-modal {
     position: fixed;
-    width: 15cm;
-    height: 7.5cm;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    inset: 0;
+    width: auto;
+    height: auto;
+    top: 0;
+    left: 0;
+    transform: none;
     margin: 0;
     border-radius: 0;
     border: none;
@@ -1142,10 +1127,29 @@ body {
     min-height: 0; max-height: none;
   }
 
-  /* 等比缩放：移除最小宽度限制 */
-  .left-panel  { min-width: 0; }
-  .right-panel { min-width: 0; }
-  .center-panel { min-width: 0; }
+  /* 横屏三栏保持紧凑比例 */
+  .left-panel {
+    flex: 0 0 19%;
+    width: 19%;
+    min-width: 0;
+    padding: 8px 6px;
+    gap: 8px;
+  }
+  .right-panel {
+    flex: 0 0 27%;
+    width: 27%;
+    min-width: 0;
+    padding-left: 6px;
+    padding-right: 6px;
+    gap: 6px;
+  }
+  .center-panel {
+    min-width: 0;
+    padding: 8px;
+  }
+  .canvas-container {
+    width: min(100%, calc(100dvh - 76px));
+  }
 
   /* 顶栏紧凑 */
   .top-bar { padding: 6px 8px; gap: 5px; }

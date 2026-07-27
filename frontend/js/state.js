@@ -4,7 +4,7 @@
 
 // --- 鐢悂鍣?---
 let GRID_SIZE = 24;
-const BASE_CELL_SIZE = 16; // 100%缂傗晜鏂侀弮鍓佹畱閸嶅繒绀岄弽鐓庢槀鐎?px)
+const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，300% 为 1200px
 const NAV_CELL_SIZE = 4;   // 鐎佃壈鍩呴崳銊︾槨娑擃亜鍎氱槐鐘崇壐閻ㄥ嫬鏄傜€?
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
 const CONVERTER_VERSION = '1.1.0';
@@ -185,6 +185,6 @@ let redoStack = [];
 
 // --- DOM瀵洜鏁?---
 let mainCanvas, mainCtx, navCanvas, navCtx;
-let canvasContainer, centerPanel, gridInfoEl;
+let canvasContainer, centerPanel;
 
 // --- init ---

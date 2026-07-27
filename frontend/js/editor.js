@@ -8,7 +8,6 @@ function init() {
   overlayCtx = overlayCanvas.getContext('2d');
   canvasContainer = document.getElementById('canvasContainer');
   centerPanel = document.getElementById('centerPanel');
-  gridInfoEl = document.getElementById('gridInfo');
 
   // init pixelData
   pixelData = Array.from({ length: GRID_SIZE }, () =>
@@ -163,6 +162,19 @@ function updateCanvasSize() {
 }
 
 // --- 濞撳弶鐓嬫稉鑽ゆ暰鐢?---
+function drawCanvasCenterAxes(ctx, width, height) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.72)';
+  ctx.lineWidth = 1.5;
+  ctx.moveTo(width / 2, 0);
+  ctx.lineTo(width / 2, height);
+  ctx.moveTo(0, height / 2);
+  ctx.lineTo(width, height / 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function renderCanvas() {
   const cellSize = BASE_CELL_SIZE * (zoom / 100);
   const w = GRID_SIZE * cellSize;
@@ -205,8 +217,8 @@ function renderCanvas() {
     mainCtx.stroke();
   }
 
+  drawCanvasCenterAxes(mainCtx, w, h);
   renderOverlay();
-  gridInfoEl.textContent = `${GRID_SIZE} × ${GRID_SIZE} px  |  缩放 ${zoom}%`;
 }
 
 // --- 濞撳弶鐓嬬€佃壈鍩呴崳銊╊暕鐟?---
@@ -515,7 +527,6 @@ function restoreEditorSnapshot(snapshot) {
   restorePaletteSelection(
     snapshot.paletteId || documentMetadata.editorPaletteId || 'exhibition'
   );
-  gridInfoEl.textContent = GRID_SIZE + ' × ' + GRID_SIZE + ' px';
   updateCanvasSize();
 }
 

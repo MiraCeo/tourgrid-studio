@@ -12,11 +12,15 @@ function setZoom(value) {
   if (slider) slider.value = zoom;
   updateCanvasSize();
   renderCanvas();
-  // 缩放到最小值时自动居中
-  if (zoom === getMinZoom()) {
-    canvasContainer.scrollLeft = 0;
-    canvasContainer.scrollTop = 0;
-  }
+  // 滑块和按钮缩放后保持画布中心位于视口中央。
+  canvasContainer.scrollLeft = Math.max(
+    0,
+    (canvasContainer.scrollWidth - canvasContainer.clientWidth) / 2
+  );
+  canvasContainer.scrollTop = Math.max(
+    0,
+    (canvasContainer.scrollHeight - canvasContainer.clientHeight) / 2
+  );
 }
 
 // 移动端缩放按钮 +/-
@@ -407,6 +411,7 @@ function renderStatisticsHighlightOverlay() {
       );
     }
   }
+  drawCanvasCenterAxes(overlayCtx, canvasSize, canvasSize);
 }
 
 function setPalettePanelMode(mode) {

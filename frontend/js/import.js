@@ -735,6 +735,7 @@ function renderOverlay() {
   overlayCtx.imageSmoothingEnabled = true;
   overlayCtx.drawImage(importedPreviewImage, 0, 0, w, w);
   overlayCtx.globalAlpha = 1;
+  drawCanvasCenterAxes(overlayCtx, w, w);
 }
 
 function toggleOverlay() {

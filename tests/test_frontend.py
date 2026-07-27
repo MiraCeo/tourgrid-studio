@@ -278,6 +278,78 @@ assert.match(conversion.describeSettings({
     run_node(script, JAVASCRIPT_ROOT / "conversion-api.js")
 
 
+def test_center_workspace_has_fixed_scrollbar_free_canvas_viewport() -> None:
+    html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+
+    assert 'id="gridInfo"' not in html
+    assert "gridInfoEl" not in state
+    assert "gridInfoEl" not in editor
+    assert ".center-panel {" in css
+    assert "overflow: hidden" in css
+    assert ".canvas-container::-webkit-scrollbar" in css
+    assert "scrollbar-width: none" in css
+    assert "overscroll-behavior: contain" in css
+    assert "canvasContainer.addEventListener('wheel', onWheel" in editor
+    assert "canvasContainer.scrollLeft" in editor
+    assert "canvasContainer.scrollTop" in editor
+
+
+def test_canvas_center_axes_render_above_pixels_in_black() -> None:
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+    image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
+
+    assert ".canvas-container::before" not in css
+    assert ".canvas-container::after" not in css
+    assert "function drawCanvasCenterAxes(ctx, width, height)" in editor
+    assert "ctx.strokeStyle = 'rgba(0, 0, 0, 0.72)'" in editor
+    assert "ctx.moveTo(width / 2, 0)" in editor
+    assert "ctx.lineTo(width / 2, height)" in editor
+    assert "ctx.moveTo(0, height / 2)" in editor
+    assert "ctx.lineTo(width, height / 2)" in editor
+    assert "drawCanvasCenterAxes(mainCtx, w, h)" in editor
+    assert "drawCanvasCenterAxes(overlayCtx, canvasSize, canvasSize)" in app
+    assert "drawCanvasCenterAxes(overlayCtx, w, w)" in image_import
+
+
+def test_canvas_viewport_background_is_transparent() -> None:
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    canvas_rule = css.split(".canvas-container {", 1)[1].split("}", 1)[0]
+
+    assert "background: transparent" in canvas_rule
+    assert "background: #fff" not in canvas_rule
+    assert "border: none" in canvas_rule
+    assert "border: 1px solid #D0D4D8" not in canvas_rule
+
+
+def test_desktop_editor_uses_large_viewport_workspace_layout() -> None:
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+
+    assert "inset: 12px" in css
+    assert "min-height: 58px" in css
+    assert "max-height: none" in css
+    assert "clamp(190px, 17vw, 300px)" in css
+    assert "clamp(280px, 24vw, 420px)" in css
+    assert "width: min(100%, calc(100dvh - 116px))" in css
+    assert "const BASE_CELL_SIZE = 50 / 3" in state
+    assert "width: min(96vw, 1300px)" not in css
+    assert "max-height: calc(100vh - 300px)" not in css
+
+
+def test_canvas_max_zoom_is_1200_square_and_controls_center_it() -> None:
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert "const BASE_CELL_SIZE = 50 / 3" in state
+    assert "(canvasContainer.scrollWidth - canvasContainer.clientWidth) / 2" in app
+    assert "(canvasContainer.scrollHeight - canvasContainer.clientHeight) / 2" in app
+
+
 def test_all_javascript_files_have_valid_syntax() -> None:
     node = shutil.which("node")
     if not node:
