@@ -90,6 +90,9 @@ Caddy 在站点地址为真实域名时自动申请和续期 HTTPS 证书。证�
 - Caddy 以 JSON 输出访问日志到 stdout。
 - API 为每次请求返回 `X-Request-ID`，并输出不包含请求体的 JSON 访问日志。
 - `POST /api/v1/convert` 使用按客户端 IP 的进程内滑动窗口限流。
+- 限流器会定期清除窗口外的客户端，并通过
+  `TOURGRID_RATE_LIMIT_MAX_CLIENTS` 限制内存中跟踪的客户端数量；达到上限时回收
+  最久未活动的客户端。
 - 设置 `TOURGRID_SENTRY_DSN` 后启用可选 Sentry 异常上报；默认不发送个人信息，
   性能采样默认关闭。
 - 容器日志由部署平台采集。生产环境应配置日志轮转和保留周期，避免磁盘被占满。

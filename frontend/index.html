@@ -15,11 +15,6 @@
      ============================================================ -->
 <div class="bg-layer"></div>
 
-<!-- 瀹革缚绗傞崶鍓у -->
-<div class="top-image-area">
-  <img src="sucai/wenzi.png" alt="Summer Carnival '26" onerror="this.style.display='none'">
-</div>
-
 <!-- ============================================================
      Z-INDEX 2: 底部横幅
      ============================================================ -->
@@ -89,19 +84,6 @@
         <div class="nav-viewport-indicator" id="navViewportIndicator" aria-hidden="true"></div>
       </div>
 
-      <!-- 吸管取色弹窗 -->
-      <div class="color-pick-popup" id="colorPickPopup">
-        <div class="pick-top">
-          <div class="pick-swatch" id="pickSwatch"></div>
-          <div class="pick-info" id="pickInfo"></div>
-        </div>
-        <div class="pick-divider"></div>
-        <div class="pick-bottom">
-          <span class="pick-bottom-label">近似色</span>
-          <div class="pick-options" id="pickOptions"></div>
-        </div>
-      </div>
-
       <section class="left-control-section reference-section" id="overlayControls" hidden>
         <div class="reference-heading-row">
           <span class="left-control-heading">画布参考图</span>
@@ -161,6 +143,15 @@
       <div class="tool-icons">
         <button class="tool-icon-btn" id="undoBtn" title="撤销" onclick="undo()">↩</button>
         <button class="tool-icon-btn" id="redoBtn" title="重做" onclick="redo()">↪</button>
+        <button class="tool-icon-btn" id="eyedropperBtn" type="button"
+                title="吸管：从画布匹配最近的巡展颜色" aria-label="吸管取色"
+                aria-pressed="false" onclick="toggleEyedropper()">
+          <svg class="eyedropper-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m14.5 5.5 4 4"></path>
+            <path d="m13 7 2-2a2.8 2.8 0 0 1 4 4l-2 2"></path>
+            <path d="m15.5 8.5-8.8 8.8-1 3 3-1 8.8-8.8"></path>
+          </svg>
+        </button>
       </div>
 
       <div class="palette-tabs" role="tablist" aria-label="右侧面板">
@@ -250,7 +241,7 @@
         </div>
         <ol class="announcement-steps">
           <li><span>导入</span>点击顶部“导入”，选择图片并确认裁切区域。</li>
-          <li><span>转换</span>浏览器会优先在本地生成巡展像素图。</li>
+          <li><span>转换</span>浏览器会在本地生成巡展像素图，图片不会上传。</li>
           <li><span>编辑</span>从右侧颜料中选色后直接绘制；选择白色即可擦除。</li>
           <li><span>核对</span>在“统计”中选择颜色，可只读高亮对应格子。</li>
           <li><span>查看</span>使用左侧参考图与缩放控制辅助对照细节。</li>
@@ -320,25 +311,17 @@
       <button class="grid-size-btn" id="gridBtn104" onclick="setCropGridSize(104, this)">104</button>
     </div>
     <div class="crop-controls">
-      <span class="crop-zoom-label">转换方式</span>
-      <select id="conversionMode" class="conversion-mode-select" onchange="updateConversionModeUI()">
-        <option value="local" selected>浏览器本地转换（推荐）</option>
-        <option value="server">服务器 Pyxelate（备用）</option>
-      </select>
-    </div>
-    <div class="crop-controls">
       <span class="crop-zoom-label">抖动</span>
-      <select id="cropDither" onchange="updateConversionModeUI()" style="font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:3px;background:#fff;color:#333;cursor:pointer;">
+      <select id="cropDither" style="font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:3px;background:#fff;color:#333;cursor:pointer;">
         <option value="none" selected>无（推荐）</option>
         <option value="floyd">Floyd-Steinberg</option>
         <option value="atkinson">Atkinson</option>
       </select>
     </div>
-    <div class="conversion-note" id="conversionNote">浏览器本地转换，严格限制为 natural-64-v1 的 64 种颜色。</div>
+    <div class="conversion-note" id="conversionNote">图片仅在浏览器本地转换，不会上传；结果严格限制为 natural-64-v1 的 64 种颜色。</div>
     <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
       <span class="conversion-spinner"></span>
       <span id="conversionStatusText">正在转换…</span>
-      <button class="conversion-cancel-btn" id="conversionCancelBtn" onclick="cancelConversion()">取消请求</button>
       <button class="conversion-retry-btn" id="conversionRetryBtn" onclick="confirmCrop()">重新尝试</button>
     </div>
     <div class="crop-btns">
@@ -349,7 +332,6 @@
 </div>
 
 <script src="/static/js/storage.js"></script>
-<script src="/static/js/conversion-api.js"></script>
 <script src="/static/js/natural-64-v1.js"></script>
 <script src="/static/js/state.js"></script>
 <script src="/static/js/editor.js"></script>

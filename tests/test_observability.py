@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from backend.api.app import create_app
 from backend.api.config import ApiSettings
+from backend.api.observability import SlidingWindowRateLimiter
 
 from test_api import fake_conversion, image_bytes
 
@@ -56,9 +57,39 @@ def test_convert_rate_limit_is_per_client_and_does_not_limit_health() -> None:
     assert health.status_code == 200
 
 
+def test_rate_limiter_removes_clients_after_their_window_expires() -> None:
+    limiter = SlidingWindowRateLimiter(
+        limit=2,
+        window_seconds=10,
+        max_clients=100,
+    )
+
+    limiter.check("client-a", now=0)
+    limiter.check("client-b", now=1)
+    assert limiter.tracked_clients == 2
+
+    limiter.check("client-c", now=11)
+
+    assert limiter.tracked_clients == 1
+
+
+def test_rate_limiter_bounds_tracked_clients_under_address_churn() -> None:
+    limiter = SlidingWindowRateLimiter(
+        limit=2,
+        window_seconds=60,
+        max_clients=3,
+    )
+
+    for index in range(10):
+        limiter.check(f"client-{index}", now=float(index))
+
+    assert limiter.tracked_clients == 3
+
+
 def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
     monkeypatch.setenv("TOURGRID_RATE_LIMIT_REQUESTS", "7")
     monkeypatch.setenv("TOURGRID_RATE_LIMIT_WINDOW_SECONDS", "45")
+    monkeypatch.setenv("TOURGRID_RATE_LIMIT_MAX_CLIENTS", "4321")
     monkeypatch.setenv("TOURGRID_ENVIRONMENT", "staging")
     monkeypatch.setenv("TOURGRID_RELEASE", "0.2.0-rc.1")
     monkeypatch.setenv("TOURGRID_SENTRY_TRACES_SAMPLE_RATE", "0.1")
@@ -67,6 +98,7 @@ def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
 
     assert settings.rate_limit_requests == 7
     assert settings.rate_limit_window_seconds == 45
+    assert settings.rate_limit_max_clients == 4321
     assert settings.environment == "staging"
     assert settings.release == "0.2.0-rc.1"
     assert settings.sentry_traces_sample_rate == 0.1

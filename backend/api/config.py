@@ -20,6 +20,7 @@ class ApiSettings:
     preview_cache_entries: int = 128
     rate_limit_requests: int = 60
     rate_limit_window_seconds: float = 60.0
+    rate_limit_max_clients: int = 10_000
     environment: str = "development"
     release: str = "0.2.0"
     sentry_dsn: str | None = None
@@ -85,6 +86,10 @@ class ApiSettings:
                 "TOURGRID_RATE_LIMIT_WINDOW_SECONDS",
                 defaults.rate_limit_window_seconds,
             ),
+            rate_limit_max_clients=_env_int(
+                "TOURGRID_RATE_LIMIT_MAX_CLIENTS",
+                defaults.rate_limit_max_clients,
+            ),
             environment=os.getenv(
                 "TOURGRID_ENVIRONMENT",
                 defaults.environment,
@@ -113,6 +118,7 @@ class ApiSettings:
             "preview_cache_entries": self.preview_cache_entries,
             "rate_limit_requests": self.rate_limit_requests,
             "rate_limit_window_seconds": self.rate_limit_window_seconds,
+            "rate_limit_max_clients": self.rate_limit_max_clients,
         }
         for name, value in positive_values.items():
             if value <= 0:

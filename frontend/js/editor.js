@@ -14,7 +14,7 @@ function init() {
     Array.from({ length: GRID_SIZE }, () => '#FFFFFF')
   );
 
-  // 优先从本地存储恢复，没有则加载演示图
+  // 优先从本地存储恢复；首次使用时保留全白画布。
   var saved = loadFromStorage();
   if (saved && saved.gridSize && saved.pixels && saved.pixels.length === saved.gridSize) {
     GRID_SIZE = saved.gridSize;
@@ -23,7 +23,6 @@ function init() {
     restorePaletteSelection(documentMetadata.editorPaletteId);
   } else {
     documentMetadata = TourgridStorage.defaultMetadata();
-    loadDemoPattern();
     saveToStorage(true);
   }
 
@@ -88,7 +87,6 @@ function init() {
 
   updateZoomControlState();
   syncOverlayControls();
-  updateConversionModeUI();
   loadExhibitionPalette();
   } catch(e) {
     var errDiv = document.createElement('div');
@@ -96,66 +94,6 @@ function init() {
     errDiv.textContent = 'INIT ERROR: ' + e.message + '\n' + (e.stack||'');
     document.body.appendChild(errDiv);
   }
-}
-
-// --- 缁€杞扮伐閸ョ偓顢?---
-function loadDemoPattern() {
-  // 閸︺劎鏁剧敮鍐ц厬婢额喚鏁炬稉鈧稉顏嗙暆閸楁洜娈戦崓蹇曠閺岀姵顎?妤楊喖鎼ч崶鐐攳
-  const cx = 6, cy = 4;
-
-  // 閺岀姵顎嬫稉璁崇秼閿涘牓绮嶉懝鍙夈亶閸﹀棴绱?
-  const lemon = [
-    [0,0],[1,0],[2,0],[3,0],[4,0],
-    [-1,1],[0,1],[1,1],[2,1],[3,1],[4,1],[5,1],
-    [-1,2],[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],
-    [-1,3],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],
-    [0,4],[1,4],[2,4],[3,4],[4,4],
-  ];
-  lemon.forEach(([dx, dy]) => {
-    if (cy+dy < GRID_SIZE && cx+dx < GRID_SIZE) {
-      pixelData[cy+dy][cx+dx] = '#FFD030';
-    }
-  });
-  // 閺岀姵顎嬫妯哄帨
-  pixelData[cy+1][cx+1] = '#FFE090';
-  pixelData[cy+1][cx+2] = '#FFE090';
-  // 閺岀姵顎嬮梼鏉戝
-  pixelData[cy+3][cx+3] = '#FFB020';
-  pixelData[cy+3][cx+4] = '#FFB020';
-
-  // 缁俱垼澹婇崥鍝ヮ吀
-  const sx = 17, sy = 2;
-  for (let i = 0; i < 11; i++) {
-    if (sy+i < GRID_SIZE) {
-      pixelData[sy+i][sx] = '#E03030';
-      pixelData[sy+i][sx+1] = '#E03030';
-    }
-  }
-  // 閸氬摜顓搁弶锛勬睏
-  for (let i = 2; i < 9; i += 3) {
-    if (sy+i < GRID_SIZE) {
-      pixelData[sy+i][sx] = '#FFFFFF';
-    }
-  }
-
-  // 閽栧嫯宓庨拑婵嬨偖閸濅焦婢?
-  const bx = 12, by = 13;
-  const cupPixels = [
-    [0,0],[1,0],[2,0],[3,0],[4,0],[5,0],
-    [-1,1],[0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],
-    [-1,2],[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],
-    [-1,3],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],
-    [0,4],[1,4],[2,4],[3,4],[4,4],[5,4],
-    [1,5],[2,5],[3,5],[4,5],
-  ];
-  cupPixels.forEach(([dx, dy]) => {
-    if (by+dy < GRID_SIZE && bx+dx < GRID_SIZE) {
-      pixelData[by+dy][bx+dx] = '#30C0D8';
-    }
-  });
-  // 閺夘垯鑵戝☉韫秼妤傛ê鍘?
-  pixelData[by+1][bx+2] = '#80D8F0';
-  pixelData[by+1][bx+3] = '#80D8F0';
 }
 
 // --- 閺囧瓨鏌婇悽璇茬鐏忓搫顕敍鍫滅矌閺囧瓨鏌婇崘鍛村劥閸掑棜椴搁悳鍥风礉CSS鐏忓搫顕捄鐔兼閸愬懎顔愰懛顏堚偓鍌氱安閿?--
@@ -271,6 +209,7 @@ function paintPixel(gx, gy) {
   if (gx === lastPaintedX && gy === lastPaintedY) return;
 
   const color = currentColor;
+  if (!color) return;
   if (pixelData[gy][gx] === color) return;
 
   pixelData[gy][gx] = color;
@@ -292,7 +231,18 @@ function onMouseDown(e) {
     return;
   }
 
+  if (eyedropperActive) {
+    const samplePos = getGridPos(e);
+    sampleCanvasColor(samplePos.x, samplePos.y);
+    e.preventDefault();
+    return;
+  }
+
   if (isStatisticsMode()) return;
+  if (!currentColor) {
+    showToast('请先从颜料中选择一种颜色');
+    return;
+  }
 
   isDrawing = true;
   pushUndo();
@@ -408,7 +358,16 @@ var touchPinchZoom = 0;   // 双指缩放起始zoom值
 function onTouchStart(e) {
   e.preventDefault();
   if (e.touches.length === 1) {
+    if (eyedropperActive) {
+      const samplePos = getGridPos(e.touches[0]);
+      sampleCanvasColor(samplePos.x, samplePos.y);
+      return;
+    }
     if (isStatisticsMode()) return;
+    if (!currentColor) {
+      showToast('请先从颜料中选择一种颜色');
+      return;
+    }
     isDrawing = true;
     pushUndo();
     lastPaintedX = -1;

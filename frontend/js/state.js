@@ -7,7 +7,6 @@ let GRID_SIZE = 24;
 const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，300% 为 1200px
 const NAV_CELL_SIZE = 4;   // 鐎佃壈鍩呴崳銊︾槨娑擃亜鍎氱槐鐘崇壐閻ㄥ嫬鏄傜€?
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
-const CONVERTER_VERSION = '1.1.0';
 const DEFAULT_PALETTE_ID = 'natural-64-v1';
 const DEFAULT_PALETTE_VERSION = TOURGRID_NATURAL_64_V1.version;
 let documentMetadata = TourgridStorage.defaultMetadata();
@@ -74,8 +73,9 @@ function updateConversionResultSummary() {
 
 let overlayVisible = false;   // overlay toggle state
 let overlayOpacity = 0.4;      // overlay opacity
-let currentColor = '#000000';
+let currentColor = '#222222';
 let currentTool = 'brush';
+let eyedropperActive = false;
 let paletteMode = 'official';
 let palettePanelMode = 'palette';
 let statisticsHighlightColor = null;

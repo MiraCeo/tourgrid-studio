@@ -43,63 +43,12 @@ function fitCanvasToViewport() {
   showToast('画布已适应当前视口');
 }
 
-// --- 妫版粏澹婇弰鍓с仛閺囧瓨鏌?---
-function updateColorDisplay(hex, label, extra) {
-  var swatch = document.getElementById('colorSwatch');
-  var labelElement = document.getElementById('colorLabel');
-  var infoElement = document.getElementById('colorInfo');
-  if (!swatch || !labelElement || !infoElement) return;
-  const r = parseInt(hex.slice(1,3), 16);
-  const g = parseInt(hex.slice(3,5), 16);
-  const b = parseInt(hex.slice(5,7), 16);
-  swatch.style.background = hex;
-  labelElement.textContent = label || 'Brush';
-  var info = 'RGB(' + r + ', ' + g + ', ' + b + ')<br>' + hex;
-  // 官方模式下查找色号
-  if (paletteMode === 'official') {
-    var entry = findPaletteEntry(hex);
-    if (entry && paletteCode(entry)) {
-      info += '<br>色号: ' + paletteCode(entry);
-    }
-  }
-  if (extra) info += '<br>' + extra;
-  infoElement.innerHTML = info;
-}
-
-// --- 瀹搞儱鍙块崚鍥ㄥ床 ---
+// --- 绘制工具 ---
 function setTool(tool) {
   currentTool = 'brush';
   if (tool === 'eraser') {
     selectColor('#FFFFFF');
-  } else {
-    updateColorDisplay(currentColor, 'Brush');
   }
-}
-
-// --- 鐎光剝鐓￠崓蹇曠 ---
-function inspectPixel(gx, gy) {
-  if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return;
-  const hex = pixelData[gy][gx];
-  currentColor = hex;
-  updateColorDisplay(hex, 'Brush');
-  setTool('brush');
-}
-
-// --- 点击色卡取色 ---
-function onSwatchClick(e) {
-  e.stopPropagation();
-  // 从色块DOM直接读取实际显示的颜色(避免currentColor未同步)
-  var hex = document.getElementById('colorSwatch').style.background;
-  // 处理浏览器可能转换的rgb()格式
-  if (hex.slice(0,3) === 'rgb') {
-    var m = hex.match(/[\d.]+/g);
-    if (m && m.length >= 3) {
-      hex = '#' + ((1 << 24) + (parseInt(m[0]) << 16) + (parseInt(m[1]) << 8) + parseInt(m[2])).toString(16).slice(1).toUpperCase();
-    }
-  }
-  if (!hex || hex === '#FFFFFF' && currentTool === 'eraser') return;
-  var rect = document.getElementById('colorSwatch').getBoundingClientRect();
-  showColorPickPopup(hex, rect);
 }
 
 // --- 导航缩略图：视口框与画布定位 ---
@@ -179,101 +128,8 @@ function onNavigatorKeyDown(e) {
   updateNavigatorViewport();
 }
 
-function showColorPickPopup(hex, navRect) {
-  var r = parseInt(hex.slice(1,3), 16);
-  var g = parseInt(hex.slice(3,5), 16);
-  var b = parseInt(hex.slice(5,7), 16);
-
-  // 查找精确匹配的色号
-  var entry = findPaletteEntry(hex);
-  var code = entry ? paletteCode(entry) : '';
-
-  // 更新顶部: 色块 + RGB + 色号
-  document.getElementById('pickSwatch').style.background = hex;
-  var infoHtml = 'RGB(' + r + ', ' + g + ', ' + b + ') ' + hex;
-  if (code) {
-    infoHtml += ' <span class=\"pick-code\">' + code + '</span>';
-  }
-  document.getElementById('pickInfo').innerHTML = infoHtml;
-
-  // 查找5个最接近的色板颜色
-  var top5 = findTop5Closest(r, g, b);
-  var optionsEl = document.getElementById('pickOptions');
-  optionsEl.innerHTML = '';
-  top5.forEach(function(item) {
-    var opt = document.createElement('div');
-    opt.className = 'pick-option';
-    opt.style.background = item.hex;
-    opt.title = item.code + ' ' + item.hex;
-    // 色号标签
-    var codeLabel = document.createElement('span');
-    codeLabel.className = 'pick-option-code';
-    codeLabel.textContent = item.code.replace(/^80-/, '');
-    opt.appendChild(codeLabel);
-    // 点击选择该颜色
-    opt.addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      selectPickOption(item.hex);
-    });
-    optionsEl.appendChild(opt);
-  });
-
-  // 定位弹窗: 在导航器右侧
-  var popup = document.getElementById('colorPickPopup');
-  var top = navRect.top;
-  var left = navRect.right + 8;
-  // 避免超出屏幕右侧
-  if (left + 308 > window.innerWidth) {
-    left = navRect.left - 308;
-  }
-  // 避免超出屏幕底部
-  if (top + 100 > window.innerHeight) {
-    top = window.innerHeight - 110;
-  }
-  if (top < 0) top = 8;
-  popup.style.top = top + 'px';
-  popup.style.left = left + 'px';
-  popup.classList.add('show');
-}
-
-function hideColorPickPopup() {
-  document.getElementById('colorPickPopup').classList.remove('show');
-}
-
-function selectPickOption(hex) {
-  currentColor = hex;
-  // 更新吸管颜色显示
-  updateColorDisplay(hex, 'Brush');
-  // 自动切换到画笔模式
-  setTool('brush');
-  hideColorPickPopup();
-}
-
-// 查找与目标RGB最接近的5个色板颜色
-function findTop5Closest(r, g, b) {
-  var palette = OFFICIAL_COLORS;
-  if (palette.length === 0) palette = EXHIBITION_DATA;
-
-  var results = [];
-  for (var i = 0; i < palette.length; i++) {
-    var entry = palette[i];
-    var hex = paletteHex(entry);
-    var pr = parseInt(hex.slice(1,3), 16);
-    var pg = parseInt(hex.slice(3,5), 16);
-    var pb = parseInt(hex.slice(5,7), 16);
-    var d = colorDistRGB(r, g, b, pr, pg, pb);
-    results.push({ code: paletteCode(entry), hex: hex, dist: d });
-  }
-  results.sort(function(a, b) { return a.dist - b.dist; });
-  return results.slice(0, 5);
-}
-
 // 点击弹窗外部关闭
 document.addEventListener('click', function(e) {
-  var popup = document.getElementById('colorPickPopup');
-  if (popup && popup.classList.contains('show') && !popup.contains(e.target) && e.target !== navCanvas && e.target !== document.getElementById('colorSwatch')) {
-    hideColorPickPopup();
-  }
   var exportDD = document.getElementById('exportDropdown');
   if (exportDD && exportDD.classList.contains('show') && !exportDD.contains(e.target)) {
     hideExportDropdown();
@@ -291,6 +147,104 @@ function colorDistRGB(r1, g1, b1, r2, g2, b2) {
   return 2*dr*dr + 4*dg*dg + 3*db*db;
 }
 
+function findClosestPaletteColor(sourceHex) {
+  var colors = getCurrentPaletteColors();
+  if (!colors.length) return '#FFFFFF';
+
+  var source = String(sourceHex || '').toUpperCase();
+  if (!/^#[0-9A-F]{6}$/.test(source)) return colors[0].toUpperCase();
+  var r = parseInt(source.slice(1, 3), 16);
+  var g = parseInt(source.slice(3, 5), 16);
+  var b = parseInt(source.slice(5, 7), 16);
+  var closest = colors[0].toUpperCase();
+  var closestDistance = Infinity;
+
+  colors.forEach(function(color) {
+    var hex = color.toUpperCase();
+    var distance = colorDistRGB(
+      r,
+      g,
+      b,
+      parseInt(hex.slice(1, 3), 16),
+      parseInt(hex.slice(3, 5), 16),
+      parseInt(hex.slice(5, 7), 16)
+    );
+    if (distance < closestDistance) {
+      closest = hex;
+      closestDistance = distance;
+    }
+  });
+  return closest;
+}
+
+function setEyedropperActive(active) {
+  eyedropperActive = Boolean(active);
+  var button = document.getElementById('eyedropperBtn');
+  if (button) {
+    button.classList.toggle('active', eyedropperActive);
+    button.setAttribute('aria-pressed', String(eyedropperActive));
+  }
+  if (canvasContainer) {
+    canvasContainer.classList.toggle('eyedropper-active', eyedropperActive);
+  }
+}
+
+function toggleEyedropper() {
+  setEyedropperActive(!eyedropperActive);
+  showToast(eyedropperActive ? '吸管已启用：请选择画布格子' : '已取消吸管');
+}
+
+function focusPanelColor(selector, scrollId, color) {
+  requestAnimationFrame(function() {
+    var target = document.querySelector(selector + '[data-color="' + color + '"]');
+    var scroller = document.getElementById(scrollId);
+    if (!target || !scroller) return;
+    requestAnimationFrame(function() {
+      target.focus({ preventScroll: true });
+      var targetRect = target.getBoundingClientRect();
+      var scrollerRect = scroller.getBoundingClientRect();
+      var centeredScrollTop = scroller.scrollTop +
+        targetRect.top + targetRect.height / 2 -
+        (scrollerRect.top + scrollerRect.height / 2);
+      var maximumScrollTop = Math.max(
+        0,
+        scroller.scrollHeight - scroller.clientHeight
+      );
+      scroller.scrollTop = Math.max(
+        0,
+        Math.min(centeredScrollTop, maximumScrollTop)
+      );
+    });
+  });
+}
+
+function sampleCanvasColor(gx, gy) {
+  if (!eyedropperActive) return false;
+  if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return false;
+
+  var sampledColor = String(pixelData[gy][gx]).toUpperCase();
+  var matchedColor = findClosestPaletteColor(sampledColor);
+
+  if (isStatisticsMode()) {
+    statisticsHighlightColor = matchedColor;
+    currentColor = matchedColor;
+    renderStatisticsPanel();
+    renderStatisticsHighlightOverlay();
+    focusPanelColor('.statistics-color', 'statisticsColorScroll', matchedColor);
+  } else {
+    selectColor(matchedColor);
+    focusPanelColor('.color-swatch', 'paletteColorScroll', matchedColor);
+  }
+
+  setEyedropperActive(false);
+  showToast(
+    sampledColor === matchedColor
+      ? '已选取 ' + matchedColor
+      : '已匹配最近颜色：' + sampledColor + ' → ' + matchedColor
+  );
+  return true;
+}
+
 function isStatisticsMode() {
   return palettePanelMode === 'statistics';
 }
@@ -304,10 +258,8 @@ function getPaletteUsageEntries() {
     }
   }
 
-  var known = {};
-  var entries = EXHIBITION_DATA.map(function(entry, index) {
+  return EXHIBITION_DATA.map(function(entry, index) {
     var hex = paletteHex(entry).toUpperCase();
-    known[hex] = true;
     return {
       hex: hex,
       count: counts[hex] || 0,
@@ -315,18 +267,6 @@ function getPaletteUsageEntries() {
       paletteIndex: index
     };
   });
-
-  Object.keys(counts).sort().forEach(function(hex, legacyIndex) {
-    if (!known[hex]) {
-      entries.push({
-        hex: hex,
-        count: counts[hex],
-        paletteEntry: null,
-        paletteIndex: EXHIBITION_DATA.length + legacyIndex
-      });
-    }
-  });
-  return entries;
 }
 
 function sortStatisticsEntries(entries) {
@@ -336,9 +276,7 @@ function sortStatisticsEntries(entries) {
     });
   }
 
-  return entries.filter(function(entry) {
-    return entry.count > 0;
-  }).sort(function(a, b) {
+  return entries.slice().sort(function(a, b) {
     var countDifference = statisticsSortMode === 'count-asc'
       ? a.count - b.count
       : b.count - a.count;
@@ -424,20 +362,21 @@ function setStatisticsSortMode(mode) {
   statisticsSortMode = mode;
   document.getElementById('statisticsSort').value = mode;
 
-  if (mode !== 'palette-order' && statisticsHighlightColor) {
-    var selectedEntry = getPaletteUsageEntries().find(function(entry) {
-      return entry.hex === statisticsHighlightColor;
-    });
-    if (!selectedEntry || selectedEntry.count === 0) statisticsHighlightColor = null;
-  }
-
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();
+  if (statisticsHighlightColor) {
+    focusPanelColor(
+      '.statistics-color',
+      'statisticsColorScroll',
+      statisticsHighlightColor
+    );
+  }
 }
 
 function selectStatisticsColor(color) {
   if (!isStatisticsMode()) return;
   statisticsHighlightColor = statisticsHighlightColor === color ? null : color;
+  currentColor = statisticsHighlightColor;
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();
 }
@@ -478,6 +417,14 @@ function renderStatisticsHighlightOverlay() {
 
 function setPalettePanelMode(mode) {
   if (mode !== 'palette' && mode !== 'statistics') return;
+  var wasStatistics = isStatisticsMode();
+
+  if (mode === 'statistics' && !wasStatistics) {
+    statisticsHighlightColor = currentColor;
+  } else if (mode === 'palette' && wasStatistics) {
+    currentColor = statisticsHighlightColor;
+  }
+
   palettePanelMode = mode;
 
   var paletteTab = document.getElementById('paletteTab');
@@ -501,10 +448,19 @@ function setPalettePanelMode(mode) {
     isDrawing = false;
     renderStatisticsPanel();
     renderStatisticsHighlightOverlay();
+    if (statisticsHighlightColor) {
+      focusPanelColor(
+        '.statistics-color',
+        'statisticsColorScroll',
+        statisticsHighlightColor
+      );
+    }
   } else {
-    statisticsHighlightColor = null;
     renderColorGrid();
     renderOverlay();
+    if (currentColor) {
+      focusPanelColor('.color-swatch', 'paletteColorScroll', currentColor);
+    }
   }
 }
 
@@ -580,6 +536,12 @@ function onKeyDown(e) {
     if (authorModal && !authorModal.hidden) {
       e.preventDefault();
       closeAuthorModal();
+      return;
+    }
+    if (eyedropperActive) {
+      e.preventDefault();
+      setEyedropperActive(false);
+      showToast('已取消吸管');
       return;
     }
   }

@@ -101,7 +101,8 @@ def test_editor_is_served_from_same_origin(client: TestClient) -> None:
 
     script_response = client.get("/static/js/import.js")
     assert script_response.status_code == 200
-    assert "/api/v1/convert" in script_response.text
+    assert "/api/v1/convert" not in script_response.text
+    assert "/api/v1/palettes/" in script_response.text
 
 
 def test_palette_list_and_detail(client: TestClient) -> None:

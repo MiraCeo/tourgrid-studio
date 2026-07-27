@@ -50,20 +50,6 @@ body {
   background: linear-gradient(180deg, #00B9C1 0%, #C8E8EC 35%, #E8F4F6 70%, #E8F4F6 100%);
 }
 
-/* 瀹革缚绗傜憴鎺戞禈閻楀洤灏?*/
-.top-image-area {
-  position: fixed;
-  top: 16px;
-  left: 24px;
-  z-index: 2;
-}
-.top-image-area img {
-  height: 90px;
-  width: auto;
-  display: block;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
-}
-
 /* ============================================================
    Z-INDEX 2: 鎼存洟鍎撮柅姘埉濡亜绠?
    ============================================================ */
@@ -665,6 +651,20 @@ body {
   cursor: not-allowed;
   background: transparent;
 }
+.tool-icon-btn.active {
+  background: rgba(114,245,242,0.13);
+  color: #72F5F2;
+  box-shadow: inset 0 -2px 0 #72F5F2;
+}
+.eyedropper-icon {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 .palette-tabs {
   display: flex;
@@ -793,6 +793,7 @@ body {
   grid-template-columns: repeat(4, 1fr);
   gap: 7px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* 颜色网格 */
@@ -802,6 +803,7 @@ body {
   gap: 7px;
   width: 100%;
   max-width: none;
+  box-sizing: border-box;
 }
 
 .color-swatch {
@@ -865,6 +867,10 @@ body {
 
 .canvas-container.statistics-readonly #pixelCanvas {
   cursor: default;
+}
+.canvas-container.eyedropper-active #pixelCanvas,
+.canvas-container.statistics-readonly.eyedropper-active #pixelCanvas {
+  cursor: crosshair;
 }
 
 /* ============================================================
@@ -1224,15 +1230,6 @@ body {
   cursor: not-allowed;
   transform: none;
 }
-.conversion-mode-select {
-  min-width: 180px;
-  padding: 5px 8px;
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  background: #fff;
-  color: #333;
-  font-size: 11px;
-}
 .conversion-note {
   min-height: 16px;
   color: #666;
@@ -1270,14 +1267,6 @@ body {
 }
 .conversion-status.error .conversion-spinner {
   display: none;
-}
-.conversion-cancel-btn {
-  padding: 3px 9px;
-  border: 1px solid #7A979D;
-  border-radius: 10px;
-  background: #fff;
-  color: #35545A;
-  font-size: 10px;
 }
 @keyframes conversionSpin {
   to { transform: rotate(360deg); }
@@ -1330,94 +1319,6 @@ body {
 }
 .toast.show {
   opacity: 1;
-}
-
-/* 吸管取色弹窗 */
-.color-pick-popup {
-  position: fixed;
-  z-index: 500;
-  width: 300px;
-  background: #2C2C30;
-  border: 1px solid #555;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  display: none;
-  overflow: hidden;
-}
-.color-pick-popup.show {
-  display: block;
-}
-.pick-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px 8px;
-}
-.pick-swatch {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.3);
-  flex-shrink: 0;
-}
-.pick-info {
-  font-size: 11px;
-  color: #ccc;
-  line-height: 1.5;
-}
-.pick-info .pick-code {
-  color: #FFD020;
-  font-weight: 700;
-  font-size: 12px;
-}
-.pick-divider {
-  height: 2px;
-  background: #555;
-  margin: 0;
-}
-.pick-bottom {
-  padding: 8px 12px 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.pick-bottom-label {
-  font-size: 10px;
-  color: #999;
-  flex-shrink: 0;
-}
-.pick-options {
-  display: flex;
-  gap: 5px;
-  flex: 1;
-}
-.pick-option {
-  width: 100%;
-  aspect-ratio: 1;
-  border: 2px solid rgba(255,255,255,0.25);
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.12s;
-  position: relative;
-  max-width: 36px;
-}
-.pick-option:hover {
-  border-color: #fff;
-  transform: scale(1.15);
-  z-index: 2;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-}
-.pick-option-code {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 7px;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-  pointer-events: none;
 }
 
 /* 导出下拉列表 */
@@ -1487,7 +1388,7 @@ body {
   }
 
   /* 隐藏装饰元素 */
-  .top-image-area, .bottom-banner, .footnote { display: none !important; }
+  .bottom-banner, .footnote { display: none !important; }
 
   /* 横屏移动端同样使用完整可视区域 */
   .editor-modal {

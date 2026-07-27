@@ -7,27 +7,7 @@ let isCropping = false;
 
 let importedPixelData = null;
 let importedPreviewImage = null;
-let activeConversionController = null;
 let conversionInProgress = false;
-let conversionPhaseTimer = null;
-
-function getSelectedConversionOptions() {
-  return {
-    width: cropGridSize,
-    height: cropGridSize,
-    paletteId: DEFAULT_PALETTE_ID,
-    dither: document.getElementById('cropDither').value
-  };
-}
-
-function updateConversionModeUI() {
-  var mode = document.getElementById('conversionMode').value;
-  var note = document.getElementById('conversionNote');
-  note.textContent = mode === 'server'
-    ? '备用服务器：' + TourgridConversion.describeSettings(getSelectedConversionOptions()) +
-      '。裁切图会上传，但不会长期保存。'
-    : '本地首选：图片不上传，结果严格限制为 natural-64-v1 的 64 种颜色。';
-}
 
 async function loadExhibitionPalette() {
   try {
@@ -68,31 +48,25 @@ async function loadExhibitionPalette() {
 function setConversionBusy(busy) {
   conversionInProgress = busy;
   document.getElementById('confirmCropBtn').disabled = busy;
-  document.getElementById('conversionMode').disabled = busy;
   document.getElementById('cropDither').disabled = busy;
   document.querySelectorAll('.grid-size-btn').forEach(function(button) {
     button.disabled = busy;
   });
 }
 
-function setConversionStatus(message, isError, showCancel, showRetry) {
+function setConversionStatus(message, isError, showRetry) {
   var box = document.getElementById('conversionStatus');
   box.classList.toggle('show', Boolean(message));
   box.classList.toggle('error', Boolean(isError));
   document.getElementById('conversionStatusText').textContent = message || '';
   box.querySelector('.conversion-spinner').style.display = message && !isError ? '' : 'none';
-  document.getElementById('conversionCancelBtn').style.display = showCancel ? '' : 'none';
   document.getElementById('conversionRetryBtn').style.display = showRetry ? 'inline-flex' : 'none';
-}
-
-function cancelConversion() {
-  if (activeConversionController) activeConversionController.abort();
 }
 
 function startImport(e) {
   var file = e.target.files[0];
   if (!file) return;
-  setConversionStatus('', false, false, false);
+  setConversionStatus('', false, false);
   var reader = new FileReader();
   reader.onload = function(ev) {
     cropImg = new Image();
@@ -260,7 +234,6 @@ function setCropGridSize(size, btn) {
   // 更新按钮激活状态
   document.querySelectorAll('.grid-size-btn').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
-  updateConversionModeUI();
 }
 
 function onCropWheel(e) {
@@ -271,63 +244,6 @@ function onCropWheel(e) {
   var newZoom = Math.max(10, Math.min(500, cropZoom + delta));
   document.getElementById('cropZoomSlider').value = newZoom;
   updateCropZoom(newZoom);
-}
-
-function getCropGeometry() {
-  var vpW = document.getElementById('cropViewport').clientWidth;
-  var scale = cropZoom / 100;
-  return {
-    viewportWidth: vpW,
-    scale: scale,
-    srcX: -cropImgX / scale,
-    srcY: -cropImgY / scale,
-    srcW: vpW / scale,
-    srcH: vpW / scale
-  };
-}
-
-function canvasToBlob(canvas) {
-  return new Promise(function(resolve, reject) {
-    canvas.toBlob(function(blob) {
-      if (blob) resolve(blob);
-      else reject(new Error('无法生成裁切图片。'));
-    }, 'image/png');
-  });
-}
-
-async function createCroppedImageBlob() {
-  var crop = getCropGeometry();
-  var outputSize = Math.min(8192, Math.max(1, Math.round(crop.srcW)));
-  var ratio = outputSize / crop.srcW;
-  var canvas = document.createElement('canvas');
-  canvas.width = outputSize;
-  canvas.height = outputSize;
-  var ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, outputSize, outputSize);
-  ctx.drawImage(
-    cropImg,
-    -crop.srcX * ratio,
-    -crop.srcY * ratio,
-    cropImg.width * ratio,
-    cropImg.height * ratio
-  );
-  return canvasToBlob(canvas);
-}
-
-function setImportedPreview(blob) {
-  var objectUrl = URL.createObjectURL(blob);
-  importedPreviewImage = new Image();
-  importedPreviewImage.onload = function() {
-    URL.revokeObjectURL(objectUrl);
-    renderNavigator();
-    renderOverlay();
-  };
-  importedPreviewImage.src = objectUrl;
-}
-
-function validateHexPixels(data) {
-  return TourgridConversion.validateHexPixels(data, cropGridSize);
 }
 
 function finishImportedPixels(usedColors, sourceLabel) {
@@ -350,94 +266,21 @@ function finishImportedPixels(usedColors, sourceLabel) {
   showToast(sourceLabel + '转换完成：' + GRID_SIZE + '×' + GRID_SIZE + '，使用 ' + usedColors + ' 种颜色');
 }
 
-async function confirmCropServer() {
-  var cropBlob = await createCroppedImageBlob();
-  setImportedPreview(cropBlob);
-
-  var form = new FormData();
-  form.append('image', cropBlob, 'crop.png');
-  form.append('width', String(cropGridSize));
-  form.append('height', String(cropGridSize));
-  form.append('palette_id', DEFAULT_PALETTE_ID);
-  form.append('dither', document.getElementById('cropDither').value);
-  form.append('sobel', '3');
-  form.append('depth', '1');
-  form.append('fit', 'stretch');
-  form.append('mapping_mode', 'direct');
-  form.append('svd', 'true');
-  form.append('converter_version', CONVERTER_VERSION);
-
-  activeConversionController = new AbortController();
-  setConversionStatus('正在上传裁切图片…', false, true, false);
-  conversionPhaseTimer = setTimeout(function() {
-    if (conversionInProgress) {
-      setConversionStatus('图片已提交，服务器正在转换…', false, true, false);
-    }
-  }, 350);
-  var response = await fetch(API_BASE_URL + '/api/v1/convert', {
-    method: 'POST',
-    body: form,
-    signal: activeConversionController.signal
-  });
-  clearTimeout(conversionPhaseTimer);
-  conversionPhaseTimer = null;
-  var payload = null;
-  try { payload = await response.json(); } catch (error) {}
-  if (!response.ok) {
-    throw new Error(TourgridConversion.errorMessage(response.status, payload));
-  }
-
-  var convertedPixels = validateHexPixels(payload);
-  pushUndo();
-  GRID_SIZE = payload.width;
-  importedPixelData = convertedPixels.map(function(row) { return row.slice(); });
-  pixelData = convertedPixels.map(function(row) { return row.slice(); });
-  currentPaletteId = 'exhibition';
-  OFFICIAL_COLORS = EXHIBITION_DATA;
-  paletteMode = EXHIBITION_DATA.length ? 'official' : 'canvas';
-  documentMetadata = {
-    sourceMode: 'server',
-    paletteId: payload.paletteId,
-    editorPaletteId: 'exhibition',
-    paletteVersion: payload.paletteVersion,
-    converterVersion: payload.converterVersion,
-    importedAt: new Date().toISOString()
-  };
-  buildHexCodeMap();
-  finishImportedPixels(payload.usedColors, '服务器');
-}
-
 async function confirmCrop() {
   if (!cropImg || conversionInProgress) return;
-  var selectedMode = document.getElementById('conversionMode').value;
   setConversionBusy(true);
-  setConversionStatus('正在准备裁切图片…', false, true, false);
+  setConversionStatus('正在准备本地转换…', false, false);
   try {
-    if (selectedMode === 'local') {
-      await new Promise(function(resolve) { setTimeout(resolve, 0); });
-      confirmCropLocal();
-    } else {
-      await confirmCropServer();
-    }
-    setConversionStatus('', false, false, false);
+    await new Promise(function(resolve) { setTimeout(resolve, 0); });
+    confirmCropLocal();
+    setConversionStatus('', false, false);
   } catch (error) {
-    clearTimeout(conversionPhaseTimer);
-    conversionPhaseTimer = null;
-    if (error && error.name === 'AbortError') {
-      setConversionStatus('转换已取消，可调整设置后重试。', true, false, true);
-    } else {
-      setConversionStatus(
-        (error && error.message ? error.message : '转换失败。') +
-          (selectedMode === 'local'
-            ? ' 可切换到“服务器 Pyxelate（备用）”重试。'
-            : ' 可切换到“浏览器本地转换”继续。'),
-        true,
-        false,
-        true
-      );
-    }
+    setConversionStatus(
+      error && error.message ? error.message : '本地转换失败，请重试。',
+      true,
+      true
+    );
   } finally {
-    activeConversionController = null;
     setConversionBusy(false);
   }
 }
@@ -695,9 +538,6 @@ function confirmCropLocal() {
 }
 
 function cancelCrop() {
-  if (conversionInProgress) cancelConversion();
-  clearTimeout(conversionPhaseTimer);
-  conversionPhaseTimer = null;
   document.getElementById('cropOverlay').classList.remove('show');
   cropImg = null;
 }

@@ -39,6 +39,22 @@ def test_api_is_not_published_directly_and_proxy_routes_same_origin() -> None:
     assert "script-src 'self' 'unsafe-inline'" in caddyfile
 
 
+def test_frontend_image_includes_static_assets() -> None:
+    dockerfile = (ROOT / "docker/frontend.Dockerfile").read_text(encoding="utf-8")
+
+    assert "COPY frontend/assets /srv/static/assets" in dockerfile
+
+
+def test_rate_limiter_client_cap_is_configured_for_deployment() -> None:
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    production = (ROOT / "deploy/production.env.example").read_text(encoding="utf-8")
+    staging = (ROOT / "deploy/staging.env.example").read_text(encoding="utf-8")
+
+    assert "TOURGRID_RATE_LIMIT_MAX_CLIENTS" in compose
+    assert "TOURGRID_RATE_LIMIT_MAX_CLIENTS=10000" in production
+    assert "TOURGRID_RATE_LIMIT_MAX_CLIENTS=10000" in staging
+
+
 def test_production_image_is_non_root_and_has_healthcheck() -> None:
     dockerfile = (ROOT / "docker/api.Dockerfile").read_text(encoding="utf-8")
 

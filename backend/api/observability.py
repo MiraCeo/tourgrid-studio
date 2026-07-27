@@ -4,7 +4,7 @@ import json
 import logging
 import re
 import time
-from collections import defaultdict, deque
+from collections import OrderedDict, deque
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any
@@ -29,19 +29,41 @@ class RateLimitResult:
 
 
 class SlidingWindowRateLimiter:
-    def __init__(self, limit: int, window_seconds: float) -> None:
+    def __init__(
+        self,
+        limit: int,
+        window_seconds: float,
+        max_clients: int = 10_000,
+    ) -> None:
         self.limit = limit
         self.window_seconds = window_seconds
-        self._requests: dict[str, deque[float]] = defaultdict(deque)
+        self.max_clients = max_clients
+        self._requests: OrderedDict[str, deque[float]] = OrderedDict()
+        self._next_cleanup_at = 0.0
         self._lock = Lock()
 
     def check(self, key: str, now: float | None = None) -> RateLimitResult:
         current = time.monotonic() if now is None else now
         cutoff = current - self.window_seconds
         with self._lock:
-            entries = self._requests[key]
-            while entries and entries[0] <= cutoff:
-                entries.popleft()
+            if current >= self._next_cleanup_at:
+                self._remove_expired_clients(cutoff)
+                self._next_cleanup_at = current + min(self.window_seconds, 60.0)
+
+            entries = self._requests.get(key)
+            if entries is not None:
+                self._remove_expired_entries(entries, cutoff)
+                if not entries:
+                    del self._requests[key]
+                    entries = None
+
+            if entries is None:
+                if len(self._requests) >= self.max_clients:
+                    self._evict_oldest_client()
+                entries = deque()
+                self._requests[key] = entries
+            else:
+                self._requests.move_to_end(key)
 
             if len(entries) >= self.limit:
                 retry_after = max(1, int(entries[0] + self.window_seconds - current + 0.999))
@@ -50,6 +72,27 @@ class SlidingWindowRateLimiter:
             entries.append(current)
             remaining = max(0, self.limit - len(entries))
             return RateLimitResult(True, remaining, 0)
+
+    @property
+    def tracked_clients(self) -> int:
+        with self._lock:
+            return len(self._requests)
+
+    @staticmethod
+    def _remove_expired_entries(entries: deque[float], cutoff: float) -> None:
+        while entries and entries[0] <= cutoff:
+            entries.popleft()
+
+    def _remove_expired_clients(self, cutoff: float) -> None:
+        for key, entries in list(self._requests.items()):
+            self._remove_expired_entries(entries, cutoff)
+            if not entries:
+                del self._requests[key]
+
+    def _evict_oldest_client(self) -> None:
+        if not self._requests:
+            return
+        self._requests.popitem(last=False)
 
 
 def configure_error_monitoring(settings: ApiSettings) -> Any | None:
@@ -83,6 +126,7 @@ def install_operational_middleware(
     limiter = SlidingWindowRateLimiter(
         settings.rate_limit_requests,
         settings.rate_limit_window_seconds,
+        settings.rate_limit_max_clients,
     )
     application.state.rate_limiter = limiter
 

@@ -44,7 +44,6 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     assert '<link rel="stylesheet" href="/static/css/editor.css">' in html
     expected_scripts = [
         "storage.js",
-        "conversion-api.js",
         "natural-64-v1.js",
         "state.js",
         "editor.js",
@@ -60,29 +59,35 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     assert not (PROJECT_ROOT / "像素画编辑器.html").exists()
 
 
-def test_local_fixed_palette_is_the_default_import_path() -> None:
+def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     source = read_frontend()
+    image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
 
-    assert '<option value="local" selected>' in source
-    assert '<option value="server">服务器 Pyxelate（备用）</option>' in source
+    assert 'id="conversionMode"' not in source
+    assert '<option value="server">' not in source
+    assert 'id="conversionCancelBtn"' not in source
     assert '<option value="none" selected>' in source
     assert "var palette = EXHIBITION_DATA.map" in source
     assert "palette.length !== 64" in source
     assert "browser-fixed-palette-v1" in source
     assert "paletteId: DEFAULT_PALETTE_ID" in source
     assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
-    assert "K-means" not in (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
+    assert "confirmCropLocal()" in image_import
+    assert "confirmCropServer" not in image_import
+    assert "new FormData()" not in image_import
+    assert "new AbortController()" not in image_import
+    assert "/api/v1/convert" not in image_import
+    assert "TourgridConversion" not in image_import
+    assert not (JAVASCRIPT_ROOT / "conversion-api.js").exists()
+    assert "K-means" not in image_import
 
 
-def test_server_converter_remains_an_explicit_fallback() -> None:
-    source = read_frontend()
+def test_first_run_canvas_is_blank_white_instead_of_a_demo_pattern() -> None:
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
 
-    assert "new FormData()" in source
-    assert "new AbortController()" in source
-    assert "await confirmCropServer()" in source
-    assert "TourgridConversion.validateHexPixels" in source
-    assert "data.hexPixels" in source
-    assert "if (!cropImg || conversionInProgress) return" in source
+    assert "Array.from({ length: GRID_SIZE }, () => '#FFFFFF')" in editor
+    assert "loadDemoPattern" not in editor
+    assert "首次使用时保留全白画布" in editor
 
 
 def test_local_converter_keeps_optional_dithering() -> None:
@@ -101,12 +106,16 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
     assert 'class="editorial-area-label">Editorial Area</div>' in html
-    assert html.count('class="tool-icon-btn"') == 2
+    assert html.count('class="tool-icon-btn"') == 3
     assert 'title="撤销"' in html
     assert 'title="重做"' in html
+    assert 'id="eyedropperBtn"' in html
+    assert 'aria-label="吸管取色"' in html
+    assert 'aria-pressed="false"' in html
     assert 'id="brushTool"' not in html
     assert 'id="eraserTool"' not in html
     assert 'id="inspectTool"' not in html
+    assert 'id="colorPickPopup"' not in html
     assert 'id="palettePicker"' not in html
     assert 'id="colorDisplay"' not in html
     assert "<span>颜料</span>" in html
@@ -138,10 +147,31 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "sortStatisticsEntries" in app
     assert "setStatisticsSortMode" in app
     assert "statisticsSortMode === 'palette-order'" in app
-    assert "entry.count > 0" in app
+    assert "entry.count > 0" not in app
+    assert "countDifference || a.paletteIndex - b.paletteIndex" in app
     assert "setPalettePanelMode" in app
     assert "selectStatisticsColor" in app
+    assert "function findClosestPaletteColor(sourceHex)" in app
+    assert "function toggleEyedropper()" in app
+    assert "function sampleCanvasColor(gx, gy)" in app
+    assert "focusPanelColor('.color-swatch', 'paletteColorScroll', matchedColor)" in app
+    assert "focusPanelColor('.statistics-color', 'statisticsColorScroll', matchedColor)" in app
+    assert "statisticsHighlightColor = matchedColor" in app
+    assert "currentColor = matchedColor" in app
+    assert "setEyedropperActive(false)" in app
+    assert "statisticsHighlightColor = currentColor" in app
+    assert "currentColor = statisticsHighlightColor;" in app
+    assert "grid.style.paddingTop" not in app
+    assert "grid.style.paddingBottom" not in app
+    assert "scroller.scrollHeight - scroller.clientHeight" in app
+    assert "Math.min(centeredScrollTop, maximumScrollTop)" in app
+    assert "targetRect.top + targetRect.height / 2" in app
+    assert "scrollerRect.top + scrollerRect.height / 2" in app
     assert "swatch-code" not in css
+    assert ".tool-icon-btn.active {" in css
+    assert ".eyedropper-icon {" in css
+    assert ".color-pick-popup" not in css
+    assert "box-sizing: border-box" in css
     assert ".right-panel {" in css
     assert "overflow: hidden" in css
     assert ".palette-color-scroll," in css
@@ -151,6 +181,11 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
     overlay = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
     assert "const color = currentColor;" in editor
+    assert "if (eyedropperActive)" in editor
+    assert "sampleCanvasColor(samplePos.x, samplePos.y)" in editor
+    assert "if (!currentColor)" in editor
+    assert "请先从颜料中选择一种颜色" in editor
+    assert "let currentColor = '#222222'" in state
     assert "mainCtx.fillText" not in editor
     assert "if (isStatisticsMode()) return;" in editor
     assert "统计模式下画布为只读" in editor
@@ -180,13 +215,14 @@ assert.deepEqual(
     )
 
 
-def test_import_ui_supports_retry_status_and_touch_crop() -> None:
+def test_import_ui_supports_local_retry_status_and_touch_crop() -> None:
     source = read_frontend()
 
     assert 'id="conversionRetryBtn"' in source
     assert "showRetry ? 'inline-flex' : 'none'" in source
-    assert "正在上传裁切图片" in source
-    assert "服务器正在转换" in source
+    assert "正在准备本地转换" in source
+    assert "正在上传裁切图片" not in source
+    assert "服务器正在转换" not in source
     assert "onCropTouchStart" in source
     assert "onCropTouchMove" in source
     assert "touch-action: none" in source
@@ -243,39 +279,12 @@ assert.match(serialized.savedAt, /^\d{4}-\d{2}-\d{2}T/);
     run_node(script, JAVASCRIPT_ROOT / "storage.js")
 
 
-def test_conversion_response_validation_and_error_mapping() -> None:
-    script = r"""
-const assert = require('node:assert/strict');
-const conversion = require(process.argv[1]);
-const valid = conversion.validateHexPixels({
-  width: 2,
-  height: 2,
-  hexPixels: [['#abcdef', null], ['#000000', '#FFFFFF']]
-}, 2);
-assert.deepEqual(valid, [['#ABCDEF', '#FFFFFF'], ['#000000', '#FFFFFF']]);
-assert.throws(() => conversion.validateHexPixels({
-  width: 3,
-  height: 3,
-  hexPixels: []
-}, 2), /尺寸/);
-assert.throws(() => conversion.validateHexPixels({
-  width: 1,
-  height: 1,
-  hexPixels: [['invalid']]
-}, 1), /无效颜色/);
-assert.match(conversion.errorMessage(413, null), /过大/);
-assert.equal(
-  conversion.errorMessage(422, {error: {message: 'server detail'}}),
-  'server detail'
-);
-assert.match(conversion.describeSettings({
-  width: 24,
-  height: 24,
-  paletteId: 'natural-64-v1',
-  dither: 'none'
-}), /24×24.*natural-64-v1.*无抖动.*direct/);
-"""
-    run_node(script, JAVASCRIPT_ROOT / "conversion-api.js")
+def test_removed_decorative_image_has_no_stale_markup_or_styles() -> None:
+    source = read_frontend()
+
+    assert "sucai/wenzi.png" not in source
+    assert 'class="top-image-area"' not in source
+    assert ".top-image-area" not in source
 
 
 def test_center_workspace_has_fixed_scrollbar_free_canvas_viewport() -> None:
