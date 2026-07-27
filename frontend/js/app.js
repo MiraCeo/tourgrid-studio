@@ -253,6 +253,7 @@ function sampleCanvasColor(gx, gy) {
   var matchedColor = findClosestPaletteColor(sampledColor);
 
   if (isStatisticsMode()) {
+    replicationSelectionChanged = true;
     statisticsHighlightColor = matchedColor;
     currentColor = matchedColor;
     renderStatisticsPanel();
@@ -354,13 +355,17 @@ function restoreReplicationProgress() {
   );
 }
 
-function invalidateReplicationProgress() {
-  if (replicationCompletedColors.size === 0) return;
+function invalidateReplicationProgress(notify) {
+  if (replicationCompletedColors.size === 0) return false;
   var fingerprint = replicationWorkFingerprint();
   var store = readReplicationProgressStore();
   if (fingerprint) delete store.works[fingerprint];
   writeReplicationProgressStore(store);
   replicationCompletedColors.clear();
+  if (notify) {
+    showToast('画布内容已改变，当前作品的复刻进度已重置');
+  }
+  return true;
 }
 
 function getPaletteUsageEntries() {
@@ -448,6 +453,7 @@ function renderStatisticsPanel() {
   var previewControl = document.getElementById('replicationPreviewControl');
   var targetViewButton = document.getElementById('replicationTargetViewBtn');
   var completedViewButton = document.getElementById('replicationCompletedViewBtn');
+  var resetButton = document.getElementById('replicationResetBtn');
   var entries = sortStatisticsEntries(getPaletteUsageEntries());
   grid.innerHTML = '';
 
@@ -499,6 +505,7 @@ function renderStatisticsPanel() {
     'aria-pressed',
     String(replicationPreviewMode === 'completed')
   );
+  resetButton.disabled = replicationCompletedColors.size === 0;
   if (selectedEntry) {
     var selectedCompleted = replicationCompletedColors.has(selectedEntry.hex);
     completeCheckbox.checked = selectedCompleted;
@@ -521,10 +528,19 @@ function renderStatisticsPanel() {
         replicationCompletedColors.has(entry.hex) ? entry.count : 0
       );
     }, 0);
+    var usedColorCount = entries.filter(function(entry) {
+      return entry.count > 0;
+    }).length;
+    var completedColorCount = entries.filter(function(entry) {
+      return entry.count > 0 &&
+        replicationCompletedColors.has(entry.hex);
+    }).length;
+    var progressText = completedColorCount + '/' + usedColorCount +
+      ' 种颜色 · ' + completedCellCount + '/' +
+      (GRID_SIZE * GRID_SIZE) + ' 格';
     hint.textContent = replicationPreviewMode === 'completed'
-      ? '已拼图案 · ' + completedCellCount + ' / ' +
-        (GRID_SIZE * GRID_SIZE) + ' 格'
-      : '目标图案 · 选择颜色可开始逐色复刻';
+      ? '已拼图案 · ' + progressText
+      : '目标图案 · 已完成 ' + progressText;
   }
 }
 
@@ -546,6 +562,7 @@ function setStatisticsSortMode(mode) {
 
 function selectStatisticsColor(color) {
   if (!isStatisticsMode()) return;
+  replicationSelectionChanged = true;
   statisticsHighlightColor = statisticsHighlightColor === color ? null : color;
   currentColor = statisticsHighlightColor;
   renderStatisticsPanel();
@@ -567,6 +584,20 @@ function setReplicationColorCompleted(completed) {
   saveReplicationProgress();
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();
+}
+
+function clearCurrentReplicationProgress() {
+  if (replicationCompletedColors.size === 0) {
+    showToast('当前作品还没有复刻进度');
+    return;
+  }
+  if (!confirm('清空当前作品的全部复刻进度？此操作不会修改画布。')) {
+    return;
+  }
+  invalidateReplicationProgress(false);
+  renderStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+  showToast('已清空当前作品的复刻进度');
 }
 
 function setReplicationPreviewMode(mode) {
@@ -614,6 +645,22 @@ function renderStatisticsHighlightOverlay() {
       var left = x * cellSize;
       var top = y * cellSize;
       overlayCtx.clearRect(left, top, cellSize, cellSize);
+      if (
+        completedPreview &&
+        completed &&
+        pixelColor === '#FFFFFF'
+      ) {
+        overlayCtx.save();
+        overlayCtx.strokeStyle = 'rgba(142, 149, 154, 0.6)';
+        overlayCtx.lineWidth = Math.max(1, Math.min(1.5, cellSize * 0.08));
+        overlayCtx.strokeRect(
+          left + overlayCtx.lineWidth / 2,
+          top + overlayCtx.lineWidth / 2,
+          cellSize - overlayCtx.lineWidth,
+          cellSize - overlayCtx.lineWidth
+        );
+        overlayCtx.restore();
+      }
       if (selected && !completed) {
         overlayCtx.strokeRect(
           left + overlayCtx.lineWidth / 2,
@@ -632,9 +679,15 @@ function setPalettePanelMode(mode) {
   var wasStatistics = isStatisticsMode();
 
   if (mode === 'statistics' && !wasStatistics) {
-    statisticsHighlightColor = currentColor;
+    paletteColorBeforeReplication = currentColor;
+    replicationSelectionChanged = false;
+    statisticsHighlightColor = null;
   } else if (mode === 'palette' && wasStatistics) {
-    currentColor = statisticsHighlightColor;
+    currentColor = replicationSelectionChanged
+      ? statisticsHighlightColor
+      : paletteColorBeforeReplication;
+    paletteColorBeforeReplication = null;
+    replicationSelectionChanged = false;
   }
 
   palettePanelMode = mode;

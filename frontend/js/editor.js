@@ -284,7 +284,7 @@ function paintPixel(gx, gy) {
   if (!color) return;
   if (pixelData[gy][gx] === color) return;
 
-  invalidateReplicationProgress();
+  invalidateReplicationProgress(true);
   pixelData[gy][gx] = color;
   markSharedWorkAsEdited();
   lastPaintedX = gx;
@@ -638,7 +638,7 @@ function makeEditorSnapshot() {
 }
 
 async function restoreEditorSnapshot(snapshot) {
-  invalidateReplicationProgress();
+  invalidateReplicationProgress(true);
   statisticsHighlightColor = null;
   await restoreReferenceFromHistory(snapshot.reference);
   pixelData = snapshot.pixels.map(function(row) { return row.slice(); });
@@ -794,7 +794,7 @@ function clearCanvas() {
   documentMetadata = TourgridStorage.defaultMetadata();
   updateTopWorkIdentity();
   clearReferenceImage(false);
-  invalidateReplicationProgress();
+  invalidateReplicationProgress(false);
   statisticsHighlightColor = null;
   pixelData = Array.from({ length: GRID_SIZE }, () =>
     Array.from({ length: GRID_SIZE }, () => '#FFFFFF')

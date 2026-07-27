@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260727-14"
+    asset_version = "20260727-15"
 
     assert (
         f'<link rel="stylesheet" '
@@ -149,6 +149,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert 'id="replicationPreviewControl"' in html
     assert 'id="replicationTargetViewBtn"' in html
     assert 'id="replicationCompletedViewBtn"' in html
+    assert 'id="replicationResetBtn"' in html
     assert "目标图案" in html
     assert "已拼图案" in html
     assert '<option value="count-desc" selected>' in html
@@ -168,20 +169,23 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "sortStatisticsEntries" in app
     assert "setStatisticsSortMode" in app
     assert "statisticsSortMode === 'palette-order'" in app
-    assert "entry.count > 0" not in app
+    assert "entries = entries.filter" not in app
     assert "countDifference || a.paletteIndex - b.paletteIndex" in app
     assert "setPalettePanelMode" in app
     assert "selectStatisticsColor" in app
     assert "function setReplicationColorCompleted(completed)" in app
     assert "function setReplicationPreviewMode(mode)" in app
+    assert "function clearCurrentReplicationProgress()" in app
     assert "function saveReplicationProgress()" in app
     assert "function restoreReplicationProgress()" in app
-    assert "function invalidateReplicationProgress()" in app
+    assert "function invalidateReplicationProgress(notify)" in app
     assert "replicationCompletedColors.has(pixelColor)" in app
     assert "if (selected && !completed)" in app
     assert "replicationPreviewMode === 'completed'" in app
     assert "completedPreview" in app
     assert "rgb(232, 236, 239)" in app
+    assert "rgba(142, 149, 154, 0.6)" in app
+    assert "画布内容已改变，当前作品的复刻进度已重置" in app
     assert "function findClosestPaletteColor(sourceHex)" in app
     assert "function toggleEyedropper()" in app
     assert "function toggleMoveCanvas()" in app
@@ -194,8 +198,9 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "statisticsHighlightColor = matchedColor" in app
     assert "currentColor = matchedColor" in app
     assert "setEyedropperActive(false)" in app
-    assert "statisticsHighlightColor = currentColor" in app
-    assert "currentColor = statisticsHighlightColor;" in app
+    assert "statisticsHighlightColor = null" in app
+    assert "paletteColorBeforeReplication = currentColor" in app
+    assert "replicationSelectionChanged" in app
     assert "grid.style.paddingTop" not in app
     assert "grid.style.paddingBottom" not in app
     assert "scroller.scrollHeight - scroller.clientHeight" in app
@@ -218,6 +223,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "border-color: #72F5F2" in css
     assert ".replication-complete-control {" in css
     assert ".replication-preview-control {" in css
+    assert ".replication-reset-btn {" in css
     assert ".statistics-color.completed::before" in css
     editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
     overlay = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")

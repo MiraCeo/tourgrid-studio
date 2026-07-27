@@ -128,6 +128,8 @@ let statisticsHighlightColor = null;
 let statisticsSortMode = 'count-desc';
 let replicationCompletedColors = new Set();
 let replicationPreviewMode = 'target';
+let paletteColorBeforeReplication = null;
+let replicationSelectionChanged = false;
 let canvasGuidesVisible = true;
 
 // 巡展像素官方色板(待填入)

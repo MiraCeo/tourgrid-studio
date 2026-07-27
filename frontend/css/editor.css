@@ -1001,9 +1001,14 @@ body {
 }
 .replication-preview-control {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.replication-preview-segments {
+  display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 3px;
-  margin: 0 0 10px;
   padding: 3px;
   border: 1px solid #4c4c51;
   border-radius: 4px;
@@ -1012,7 +1017,7 @@ body {
 .replication-preview-control[hidden] {
   display: none;
 }
-.replication-preview-control button {
+.replication-preview-segments button {
   min-width: 0;
   padding: 6px 8px;
   border: none;
@@ -1023,16 +1028,47 @@ body {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.replication-preview-control button:hover {
+.replication-preview-segments button:hover {
   color: #e7e7e9;
 }
-.replication-preview-control button.active {
+.replication-preview-segments button.active {
   background: #238d91;
   color: #fff;
 }
-.replication-preview-control button:focus-visible {
+.replication-preview-segments button:focus-visible {
   outline: 2px solid #72F5F2;
   outline-offset: 1px;
+}
+.replication-reset-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #4c4c51;
+  border-radius: 4px;
+  background: #242427;
+  color: #8c8c91;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.replication-reset-btn:hover:not(:disabled) {
+  border-color: #c85a5a;
+  background: #352528;
+  color: #f08a8a;
+}
+.replication-reset-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.replication-reset-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .statistics-sort-control {
   display: flex;

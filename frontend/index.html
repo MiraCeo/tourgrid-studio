@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-14">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-15">
 </head>
 <body>
 
@@ -259,15 +259,29 @@
           <span id="replicationCompleteLabel">该颜色已在游戏内完成</span>
         </label>
         <div class="replication-preview-control" id="replicationPreviewControl">
-          <button type="button" class="active" id="replicationTargetViewBtn"
-                  aria-pressed="true"
-                  onclick="setReplicationPreviewMode('target')">
-            目标图案
-          </button>
-          <button type="button" id="replicationCompletedViewBtn"
-                  aria-pressed="false"
-                  onclick="setReplicationPreviewMode('completed')">
-            已拼图案
+          <div class="replication-preview-segments">
+            <button type="button" class="active" id="replicationTargetViewBtn"
+                    aria-pressed="true"
+                    onclick="setReplicationPreviewMode('target')">
+              目标图案
+            </button>
+            <button type="button" id="replicationCompletedViewBtn"
+                    aria-pressed="false"
+                    onclick="setReplicationPreviewMode('completed')">
+              已拼图案
+            </button>
+          </div>
+          <button type="button" class="replication-reset-btn"
+                  id="replicationResetBtn"
+                  aria-label="清空当前作品复刻进度"
+                  title="清空当前作品复刻进度"
+                  onclick="clearCurrentReplicationProgress()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16"></path>
+              <path d="m9 7 .6-2h4.8l.6 2"></path>
+              <path d="m6.5 7 .8 13h9.4l.8-13"></path>
+              <path d="M10 10v7M14 10v7"></path>
+            </svg>
           </button>
         </div>
         <label class="statistics-sort-control" for="statisticsSort">
@@ -483,16 +497,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260727-14"></script>
-<script src="/static/js/reference-storage.js?v=20260727-14"></script>
-<script src="/static/js/work-codec.js?v=20260727-14"></script>
-<script src="/static/js/natural-64-v1.js?v=20260727-14"></script>
-<script src="/static/js/state.js?v=20260727-14"></script>
-<script src="/static/js/editor.js?v=20260727-14"></script>
-<script src="/static/js/export.js?v=20260727-14"></script>
-<script src="/static/js/import.js?v=20260727-14"></script>
-<script src="/static/js/works.js?v=20260727-14"></script>
-<script src="/static/js/app.js?v=20260727-14"></script>
+<script src="/static/js/storage.js?v=20260727-15"></script>
+<script src="/static/js/reference-storage.js?v=20260727-15"></script>
+<script src="/static/js/work-codec.js?v=20260727-15"></script>
+<script src="/static/js/natural-64-v1.js?v=20260727-15"></script>
+<script src="/static/js/state.js?v=20260727-15"></script>
+<script src="/static/js/editor.js?v=20260727-15"></script>
+<script src="/static/js/export.js?v=20260727-15"></script>
+<script src="/static/js/import.js?v=20260727-15"></script>
+<script src="/static/js/works.js?v=20260727-15"></script>
+<script src="/static/js/app.js?v=20260727-15"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

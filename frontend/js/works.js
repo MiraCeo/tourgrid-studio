@@ -170,7 +170,7 @@ async function loadSharedWorkByCode(code, options) {
   );
   pushUndo();
   clearReferenceImage(false);
-  invalidateReplicationProgress();
+  replicationCompletedColors.clear();
   statisticsHighlightColor = null;
   pixelData = restoredPixels;
   restoreReplicationProgress();

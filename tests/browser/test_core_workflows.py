@@ -151,9 +151,6 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     assert editor_state(editor_page)["replicationCompletedColors"] == [BLACK]
 
     editor_page.locator("#statisticsTab").click()
-    editor_page.locator(
-        f'.statistics-color[data-color="{BLACK}"]'
-    ).click()
     expect(editor_page.locator("#replicationCompleteControl")).to_be_hidden()
     expect(editor_page.locator("#replicationPreviewControl")).to_be_visible()
     editor_page.locator("#replicationCompletedViewBtn").click()
@@ -177,10 +174,33 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     assert completed_preview_alpha["completed"] == 0
     assert completed_preview_alpha["pending"] == 255
 
+    editor_page.once("dialog", lambda dialog: dialog.accept())
+    editor_page.locator("#replicationResetBtn").click()
+    assert editor_state(editor_page)["replicationCompletedColors"] == []
+
+    editor_page.locator(
+        f'.statistics-color[data-color="{BLACK}"]'
+    ).click()
+    editor_page.locator("#replicationCompleteControl").click()
+    assert editor_state(editor_page)["replicationCompletedColors"] == [BLACK]
+
     editor_page.locator("#paletteTab").click()
     select_color(editor_page, BLACK)
     paint_cells(editor_page, [(4, 1)])
     assert editor_state(editor_page)["replicationCompletedColors"] == []
+
+
+def test_replication_opens_without_selection_and_preserves_palette_choice(
+    editor_page: Page,
+) -> None:
+    select_color(editor_page, RED)
+    editor_page.locator("#statisticsTab").click()
+    state = editor_state(editor_page)
+    assert state["statisticsHighlightColor"] is None
+    expect(editor_page.locator("#replicationPreviewControl")).to_be_visible()
+
+    editor_page.locator("#paletteTab").click()
+    assert editor_state(editor_page)["currentColor"] == RED
 
 
 def test_move_canvas_tool_pans_without_editing_and_is_mutually_exclusive(
