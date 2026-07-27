@@ -382,7 +382,11 @@ function selectStatisticsColor(color) {
 }
 
 function renderStatisticsHighlightOverlay() {
-  if (!isStatisticsMode() || !statisticsHighlightColor) {
+  if (
+    !canvasGuidesVisible ||
+    !isStatisticsMode() ||
+    !statisticsHighlightColor
+  ) {
     overlayCanvas.style.display = 'none';
     return;
   }
@@ -526,6 +530,12 @@ function closeAuthorModalFromBackdrop(e) {
 
 function onKeyDown(e) {
   if (e.key === 'Escape') {
+    var workShareModal = document.getElementById('workShareModal');
+    if (workShareModal && !workShareModal.hidden) {
+      e.preventDefault();
+      closeWorkShareModal();
+      return;
+    }
     var announcementModal = document.getElementById('announcementModal');
     if (announcementModal && !announcementModal.hidden) {
       e.preventDefault();
@@ -617,6 +627,7 @@ function installTourgridTestApi() {
         referenceLoaded: Boolean(importedPreviewImage),
         overlayVisible: overlayVisible,
         overlayOpacity: overlayOpacity,
+        canvasGuidesVisible: canvasGuidesVisible,
         conversionInProgress: conversionInProgress,
         historyOperationInProgress: historyOperationInProgress
       };
@@ -634,6 +645,7 @@ function installTourgridTestApi() {
 document.addEventListener('DOMContentLoaded', function() {
   init();
   installTourgridTestApi();
+  loadSharedWorkFromQuery();
 });
 
 // --- 移动端横竖屏检测（比CSS orientation更可靠）---

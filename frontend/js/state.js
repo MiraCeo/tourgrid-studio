@@ -54,7 +54,8 @@ function updateConversionResultSummary() {
   var sourceLabels = {
     canvas: '当前画布',
     server: '服务器转换',
-    local: '浏览器本地转换'
+    local: '浏览器本地转换',
+    shared: '分享作品'
   };
   var parts = [sourceLabels[documentMetadata.sourceMode] || '当前画布'];
   if (documentMetadata.paletteId) parts.push(documentMetadata.paletteId);
@@ -79,6 +80,7 @@ let paletteMode = 'official';
 let palettePanelMode = 'palette';
 let statisticsHighlightColor = null;
 let statisticsSortMode = 'count-desc';
+let canvasGuidesVisible = true;
 
 // 巡展像素官方色板(待填入)
 const EXHIBITION_DATA = TOURGRID_NATURAL_64_V1.colors.map(function(color) {
@@ -137,6 +139,7 @@ let lastPaintedY = -1;
 // --- 本地存储：自动保存/加载像素数据 ---
 var STORAGE_KEY = 'pixel_editor_save';
 var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';
+var CANVAS_GUIDES_STORAGE_KEY = 'tourgrid_canvas_guides_visible';
 
 function serializeCurrentDocument() {
   return TourgridStorage.serialize({

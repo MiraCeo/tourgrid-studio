@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 
 import pytest
@@ -39,6 +40,34 @@ def test_initial_editor_is_blank_and_uses_the_fixed_palette(
     assert len(set(state["palette"])) == 64
     assert state["reference"]["assetId"] is None
     assert editor_page.locator("#overlayControls").is_hidden()
+
+
+def test_canvas_guides_toggle_hides_visual_aids_and_persists(
+    editor_page: Page,
+) -> None:
+    guides_button = editor_page.locator("#canvasGuidesBtn")
+    assert editor_state(editor_page)["canvasGuidesVisible"] is True
+    expect(guides_button).to_have_attribute("title", "隐藏辅助线")
+
+    guides_button.click()
+    assert editor_state(editor_page)["canvasGuidesVisible"] is False
+    expect(guides_button).to_have_attribute("title", "显示辅助线")
+    assert "active" in (guides_button.get_attribute("class") or "").split()
+
+    editor_page.locator("#statisticsTab").click()
+    editor_page.locator(
+        '.statistics-color[data-color="#FFFFFF"]'
+    ).click()
+    expect(editor_page.locator("#overlayCanvas")).to_be_hidden()
+
+    editor_page.reload(wait_until="domcontentloaded")
+    editor_page.wait_for_function(
+        "() => window.__TOURGRID_TEST__?.isReady === true"
+    )
+    assert editor_state(editor_page)["canvasGuidesVisible"] is False
+
+    editor_page.locator("#canvasGuidesBtn").click()
+    assert editor_state(editor_page)["canvasGuidesVisible"] is True
 
 
 def test_continuous_stroke_is_one_undo_step_and_can_be_redone(
@@ -249,3 +278,77 @@ def test_raw_png_export_is_24_by_24_and_palette_limited(
             for pixel in exported.convert("RGB").get_flattened_data()
         }
     assert colors.issubset(set(editor_state(editor_page)["palette"]))
+
+
+def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
+    code = "7Kp3mXqB4NzR"
+    all_black_payload = base64.b64encode(bytes(432)).decode("ascii")
+    published_payload: dict[str, object] = {}
+
+    def handle_publish(route) -> None:
+        published_payload.update(route.request.post_data_json)
+        route.fulfill(
+            status=201,
+            content_type="application/json",
+            body=(
+                '{"code":"' + code + '","schemaVersion":1,'
+                '"paletteId":"natural-64-v1","paletteVersion":1,'
+                '"pixels":"' + published_payload["pixels"] + '",'
+                '"authorName":"博士","title":"很糊的画","viewCount":0,'
+                '"createdAt":"2026-07-27T00:00:00Z"}'
+            ),
+        )
+
+    def handle_load(route) -> None:
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=(
+                '{"code":"' + code + '","schemaVersion":1,'
+                '"paletteId":"natural-64-v1","paletteVersion":1,'
+                '"pixels":"' + all_black_payload + '",'
+                '"authorName":"博士","title":"很糊的画","viewCount":1,'
+                '"createdAt":"2026-07-27T00:00:00Z"}'
+            ),
+        )
+
+    editor_page.route("**/api/v1/works", handle_publish)
+    editor_page.route(f"**/api/v1/works/{code}", handle_load)
+
+    select_color(editor_page, BLACK)
+    paint_cells(editor_page, [(1, 1)])
+    before_load = pixel_signature(editor_state(editor_page))
+
+    editor_page.locator(".btn-primary").click()
+    editor_page.get_by_role("button", name="保存并分享作品").click()
+    expect(editor_page.locator("#workTitleInput")).to_have_value("很糊的画")
+    expect(editor_page.locator("#workAuthorInput")).to_have_value("博士")
+    editor_page.locator("#publishWorkButton").click()
+    expect(editor_page.locator("#publishedWorkCode")).to_have_text(code)
+    editor_page.context.grant_permissions(
+        ["clipboard-read", "clipboard-write"],
+        origin=editor_page.evaluate("location.origin"),
+    )
+    editor_page.locator("#publishedWorkCode").click()
+    assert editor_page.evaluate("navigator.clipboard.readText()") == code
+
+    assert published_payload["schemaVersion"] == 1
+    assert published_payload["paletteId"] == "natural-64-v1"
+    assert published_payload["title"] == "很糊的画"
+    assert published_payload["authorName"] == "博士"
+    encoded = str(published_payload["pixels"])
+    assert len(encoded) == 576
+    assert len(base64.b64decode(encoded)) == 432
+
+    editor_page.locator("#workCodeInput").fill(code)
+    editor_page.locator("#loadWorkButton").click()
+    expect(editor_page.locator("#toast")).to_contain_text(
+        "已读取《很糊的画》 · 作者：博士"
+    )
+    expect(editor_page.locator("#workShareModal")).to_be_hidden()
+    loaded = editor_state(editor_page)
+    assert all(color == BLACK for row in loaded["pixels"] for color in row)
+
+    editor_page.locator("#undoBtn").click()
+    wait_for_history(editor_page)
+    assert pixel_signature(editor_state(editor_page)) == before_load

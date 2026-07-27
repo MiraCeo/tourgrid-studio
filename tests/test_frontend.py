@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260727-3"
+    asset_version = "20260727-6"
 
     assert (
         f'<link rel="stylesheet" '
@@ -49,11 +49,13 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     expected_scripts = [
         "storage.js",
         "reference-storage.js",
+        "work-codec.js",
         "natural-64-v1.js",
         "state.js",
         "editor.js",
         "export.js",
         "import.js",
+        "works.js",
         "app.js",
     ]
     positions = [
@@ -115,7 +117,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
     assert 'class="editorial-area-label">Editorial Area</div>' in html
-    assert html.count('class="tool-icon-btn"') == 3
+    assert html.count('class="tool-icon-btn"') == 4
     assert 'title="撤销"' in html
     assert 'title="重做"' in html
     assert 'id="eyedropperBtn"' in html
@@ -178,7 +180,8 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "scrollerRect.top + scrollerRect.height / 2" in app
     assert "swatch-code" not in css
     assert ".tool-icon-btn.active {" in css
-    assert ".eyedropper-icon {" in css
+    assert ".eyedropper-icon," in css
+    assert ".canvas-guides-icon {" in css
     assert ".color-pick-popup" not in css
     assert "box-sizing: border-box" in css
     assert ".right-panel {" in css
@@ -258,8 +261,8 @@ def test_exports_include_raw_and_nearest_neighbor_preview() -> None:
     assert "var scale = 16" in source
     assert "buildPixelExportCanvas(scale)" in source
     assert "outputCtx.imageSmoothingEnabled = false" in source
-    assert source.count('class="export-item-icon"') == 3
-    assert source.count('class="export-item-label"') == 3
+    assert source.count('class="export-item-icon"') == 5
+    assert source.count('class="export-item-label"') == 5
     assert "grid-template-columns: 24px minmax(0, 1fr)" in source
 
 
@@ -279,6 +282,73 @@ def test_blueprint_is_fixed_to_24_square_without_palette_remapping() -> None:
     assert "colorDistRGB" not in export
     assert "bestD" not in export
     assert "分板" not in export
+
+
+def test_shared_work_codec_round_trips_432_byte_payload() -> None:
+    script = r"""
+const assert = require('node:assert/strict');
+const codec = require(process.argv[1]);
+const palette = require(process.argv[2]).colors;
+const pixels = Array.from({length: 24}, (_, y) =>
+  Array.from({length: 24}, (_, x) => palette[(y * 24 + x) % 64].hex)
+);
+const encoded = codec.packPixels(pixels, palette);
+assert.equal(encoded.length, 576);
+assert.equal(Buffer.from(encoded, 'base64').length, 432);
+assert.deepEqual(codec.unpackPixels(encoded, palette), pixels);
+assert.throws(
+  () => codec.packPixels(
+    pixels.map((row, index) =>
+      index === 0 ? ['#123456', ...row.slice(1)] : row
+    ),
+    palette
+  ),
+  /色库外颜色/
+);
+"""
+    run_node(
+        script,
+        JAVASCRIPT_ROOT / "work-codec.js",
+        JAVASCRIPT_ROOT / "natural-64-v1.js",
+    )
+
+
+def test_frontend_can_publish_and_load_immutable_shared_works() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    works = (JAVASCRIPT_ROOT / "works.js").read_text(encoding="utf-8")
+    storage = (JAVASCRIPT_ROOT / "storage.js").read_text(encoding="utf-8")
+
+    assert 'id="workShareModal" hidden' in html
+    assert "保存并分享作品" in html
+    assert "读取分享码" in html
+    assert 'id="publishedWorkCode"' in html
+    assert 'id="workTitleInput"' in html
+    assert 'id="workAuthorInput"' in html
+    assert 'value="很糊的画"' in html
+    assert 'value="博士"' in html
+    assert "作品标题（默认为" not in html
+    assert "作者名称（默认为" not in html
+    assert html.count('maxlength="10"') >= 2
+    assert 'id="publishedWorkLink"' not in html
+    assert 'id="workCodeInput"' in html
+    assert "TourgridWorkCodec.packPixels" in works
+    assert "TourgridWorkCodec.unpackPixels" in works
+    assert "POST" in works
+    assert "'/api/v1/works'" in works
+    assert "'/api/v1/works/'" in works
+    assert "copyPublishedWorkCode()" in works
+    assert "copyPublishedWorkLink" not in works
+    assert "authorName: authorName" in works
+    assert "title: title" in works
+    assert "已读取《" in works
+    assert "作者：" in works
+    assert "body.title || '很糊的画'" in works
+    assert "body.authorName || '博士'" in works
+    assert "pushUndo()" in works
+    assert "clearReferenceImage(false)" in works
+    assert "sourceMode: 'shared'" in works
+    assert "loadSharedWorkFromQuery()" in works
+    assert "'shared'" in storage
 
 
 def test_storage_migrates_old_documents_and_rejects_invalid_pixels() -> None:
@@ -443,6 +513,21 @@ def test_canvas_center_axes_render_above_pixels_in_black() -> None:
     assert "drawCanvasCenterAxes(mainCtx, w, h)" in editor
     assert "drawCanvasCenterAxes(overlayCtx, canvasSize, canvasSize)" in app
     assert "drawCanvasCenterAxes(overlayCtx, w, w)" in image_import
+
+
+def test_canvas_guides_toggle_controls_grid_axes_and_statistics_highlight() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+
+    assert html.index('id="canvasGuidesBtn"') < html.index('id="undoBtn"')
+    assert 'aria-label="隐藏画布辅助线"' in html
+    assert "function toggleCanvasGuides()" in editor
+    assert "if (canvasGuidesVisible)" in editor
+    assert "if (!canvasGuidesVisible) return;" in editor
+    assert "!canvasGuidesVisible" in app
+    assert "tourgrid_canvas_guides_visible" in state
 
 
 def test_canvas_viewport_background_is_transparent() -> None:

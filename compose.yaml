@@ -1,6 +1,23 @@
 name: tourgrid-studio
 
 services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tourgrid
+      POSTGRES_USER: tourgrid
+      POSTGRES_PASSWORD: ${TOURGRID_DB_PASSWORD:-tourgrid-development}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${TOURGRID_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tourgrid -d tourgrid"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     image: tourgrid-studio-api:${TOURGRID_IMAGE_TAG:-local}
     build:
@@ -8,9 +25,13 @@ services:
       dockerfile: docker/api.Dockerfile
     restart: unless-stopped
     init: true
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       TOURGRID_ENVIRONMENT: ${TOURGRID_ENVIRONMENT:-development}
       TOURGRID_RELEASE: ${TOURGRID_RELEASE:-local}
+      TOURGRID_DATABASE_URL: postgresql://tourgrid:${TOURGRID_DB_PASSWORD:-tourgrid-development}@db:5432/tourgrid
       TOURGRID_MAX_UPLOAD_BYTES: ${TOURGRID_MAX_UPLOAD_BYTES:-10485760}
       TOURGRID_MAX_IMAGE_WIDTH: ${TOURGRID_MAX_IMAGE_WIDTH:-8192}
       TOURGRID_MAX_IMAGE_HEIGHT: ${TOURGRID_MAX_IMAGE_HEIGHT:-8192}
@@ -77,3 +98,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  postgres_data:

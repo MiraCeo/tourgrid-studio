@@ -28,6 +28,9 @@
 - GitHub Actions 自动执行完整测试、镜像构建和同源烟雾测试。
 - Chromium 真实浏览器回归覆盖初始状态、绘制、撤销重做、导入、参考图持久化和 PNG 导出。
 - 自动恢复存档与手动保存点相互独立，手动保存点可以恢复并支持再次撤销。
+- PostgreSQL 以432字节二进制色板索引保存不可变的分享作品，可附带最长10字的作品标题与作者名称。
+- 作品只按像素内容和色板/编码版本通过完整 SHA-256 去重，并返回相同的12位Base58分享码；首次保存的标题与作者不可被相同画面的后续提交覆盖。
+- 分享作品默认凭码读取，不上传原图或256×256参考图。
 
 当前默认色板 `natural-64-v1` 是临时预测色板。未来正式色板必须使用新的 ID（例如 `official-v1`），不能覆盖旧版本。
 
@@ -46,12 +49,14 @@ docker compose --env-file deploy/local.env up --detach --build --wait
 ```text
 tourgrid-studio/
 ├─ backend/                 # 转换核心、CLI 与 FastAPI
-│  └─ api/                  # 上传校验、转换调度、预览缓存
+│  └─ api/                  # API、PostgreSQL作品仓库与迁移
 ├─ frontend/
 │  ├─ index.html
 │  ├─ css/editor.css
 │  └─ js/
 │     ├─ storage.js         # 存档校验和版本迁移
+│     ├─ work-codec.js      # 24×24像素的6位打包与解包
+│     ├─ works.js           # 作品发布、分享码和凭码读取
 │     ├─ state.js           # 编辑器状态和色板数据
 │     ├─ editor.js          # Canvas 编辑、撤销和导航器
 │     ├─ export.js          # PNG 与图纸导出
@@ -95,6 +100,10 @@ python -m venv .venv
 
 推荐始终通过 FastAPI 打开编辑器，不要直接双击 `frontend/index.html`。同源运行可确保静态资源和版本化色板使用同一个服务版本。
 
+本地直接启动且未配置 `TOURGRID_DATABASE_URL` 时，编辑和导出仍可使用，但作品分享
+接口会返回 `503 work_storage_unavailable`。完整分享功能推荐通过 Docker Compose
+启动，Compose 会同时创建 PostgreSQL。
+
 ## 图片导入模式
 
 网页仅提供浏览器本地转换。该模式直接将裁切后的像素映射到内置的
@@ -130,6 +139,8 @@ python -m venv .venv
 - `GET /api/v1/palettes/{palette_id}`
 - `POST /api/v1/convert`
 - `GET /api/v1/results/{result_id}/preview.png`
+- `POST /api/v1/works`
+- `GET /api/v1/works/{code}`
 
 完整参数、限制和响应格式见 [API v1](docs/api-v1.md)。
 阶段四素材、基线更新规则和浏览器矩阵见
@@ -186,6 +197,7 @@ python -m venv .venv
 | BR-007 | 刷新持久化 | 像素、参考图、开关和透明度可恢复；清空刷新后仍为空白 |
 | BR-008 | 原始 PNG 导出 | 下载成功、尺寸24×24、像素颜色不超出固定色板 |
 | BR-009 | 手动保存点 | 恢复对应像素和参考图，并可撤销恢复操作 |
+| BR-010 | 作品保存与凭码读取 | 发布请求为432字节并携带标题/作者、显示12位分享码、读取后恢复画布且可撤销 |
 
 维护规则：
 
@@ -206,6 +218,8 @@ python -m venv .venv
 - 旧版服务器转换来源存档兼容
 - 原始 PNG 与最近邻预览导出契约
 - 所有前端 JavaScript 文件的语法
+- 432字节分享编码往返、标题/作者10字限制、相同作品去重、12位Base58短码与浏览次数原子递增
+- PostgreSQL真实保存、读取和去重集成测试（配置 `TOURGRID_TEST_DATABASE_URL` 后运行）
 
 ## 许可证与声明
 

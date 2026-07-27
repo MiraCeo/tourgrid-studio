@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-3">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-6">
 </head>
 <body>
 
@@ -147,6 +147,15 @@
     <div class="right-panel">
       <div class="editorial-area-label">Editorial Area</div>
       <div class="tool-icons">
+        <button class="tool-icon-btn" id="canvasGuidesBtn" type="button"
+                title="隐藏辅助线" aria-label="隐藏画布辅助线"
+                aria-pressed="true" onclick="toggleCanvasGuides()">
+          <svg class="canvas-guides-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12z"></path>
+            <circle cx="12" cy="12" r="2.7"></circle>
+            <path d="M4 3.8 20 20.2"></path>
+          </svg>
+        </button>
         <button class="tool-icon-btn" id="undoBtn" title="撤销" onclick="undo()">↩</button>
         <button class="tool-icon-btn" id="redoBtn" title="重做" onclick="redo()">↪</button>
         <button class="tool-icon-btn" id="eyedropperBtn" type="button"
@@ -203,6 +212,69 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="author-overlay work-share-overlay" id="workShareModal" hidden
+     onclick="closeWorkShareModalFromBackdrop(event)">
+  <section class="author-modal work-share-modal" role="dialog" aria-modal="true"
+           aria-labelledby="workShareModalTitle"
+           aria-describedby="workShareModalDescription">
+    <button class="author-close-btn" type="button" aria-label="关闭保存与分享"
+            onclick="closeWorkShareModal()">×</button>
+
+    <div class="work-share-icon" aria-hidden="true">◇</div>
+    <div class="author-kicker">PERMANENT PIXEL SHARE</div>
+    <h2 id="workShareModalTitle">保存与分享</h2>
+    <p id="workShareModalDescription">
+      服务器只保存24×24色板索引，不会上传原图或参考图。
+    </p>
+
+    <section class="work-share-section">
+      <h3>保存当前作品</h3>
+      <p>作品发布后不可覆盖、不可修改，请仔细填写信息。相同的画作会被视为同一作品，修改标题与作者并不会生成新的分享码，读取分享作品仅返回首次保存的标题与作者。</p>
+      <div class="work-metadata-grid">
+        <label>
+          <span>作品标题</span>
+          <input id="workTitleInput" type="text" maxlength="10"
+                 autocomplete="off" value="很糊的画"
+                 placeholder="最多10个字">
+        </label>
+        <label>
+          <span>作者名称</span>
+          <input id="workAuthorInput" type="text" maxlength="10"
+                 autocomplete="off" value="博士"
+                 placeholder="最多10个字">
+        </label>
+      </div>
+      <button class="work-share-action primary" id="publishWorkButton"
+              type="button" onclick="publishCurrentWork()">
+        保存并生成分享码
+      </button>
+      <div class="published-work-result" id="publishedWorkResult" hidden>
+        <button id="publishedWorkCode" type="button"
+                aria-label="复制作品分享码"
+                title="单击复制分享码"
+                onclick="copyPublishedWorkCode()"></button>
+        <span class="published-work-hint">单击分享码即可复制</span>
+      </div>
+    </section>
+
+    <section class="work-share-section">
+      <h3>读取分享作品</h3>
+      <p>输入区分大小写的12位Base58分享码。</p>
+      <div class="work-code-row">
+        <input id="workCodeInput" type="text" maxlength="12"
+               autocomplete="off" spellcheck="false"
+               aria-label="12位作品分享码"
+               onkeydown="if(event.key==='Enter')loadSharedWorkFromInput()">
+        <button class="work-share-action" id="loadWorkButton" type="button"
+                onclick="loadSharedWorkFromInput()">读取</button>
+      </div>
+    </section>
+
+    <div class="work-share-status" id="workShareStatus" role="status"
+         aria-live="polite"></div>
+  </section>
 </div>
 
 <div class="author-overlay announcement-overlay" id="announcementModal" hidden
@@ -335,17 +407,28 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260727-3"></script>
-<script src="/static/js/reference-storage.js?v=20260727-3"></script>
-<script src="/static/js/natural-64-v1.js?v=20260727-3"></script>
-<script src="/static/js/state.js?v=20260727-3"></script>
-<script src="/static/js/editor.js?v=20260727-3"></script>
-<script src="/static/js/export.js?v=20260727-3"></script>
-<script src="/static/js/import.js?v=20260727-3"></script>
-<script src="/static/js/app.js?v=20260727-3"></script>
+<script src="/static/js/storage.js?v=20260727-6"></script>
+<script src="/static/js/reference-storage.js?v=20260727-6"></script>
+<script src="/static/js/work-codec.js?v=20260727-6"></script>
+<script src="/static/js/natural-64-v1.js?v=20260727-6"></script>
+<script src="/static/js/state.js?v=20260727-6"></script>
+<script src="/static/js/editor.js?v=20260727-6"></script>
+<script src="/static/js/export.js?v=20260727-6"></script>
+<script src="/static/js/import.js?v=20260727-6"></script>
+<script src="/static/js/works.js?v=20260727-6"></script>
+<script src="/static/js/app.js?v=20260727-6"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
+  <button class="export-item" onclick="openWorkShareModal('publish')">
+    <span class="export-item-icon" aria-hidden="true">◇</span>
+    <span class="export-item-label">保存并分享作品</span>
+  </button>
+  <button class="export-item" onclick="openWorkShareModal('load')">
+    <span class="export-item-icon" aria-hidden="true">⌁</span>
+    <span class="export-item-label">读取分享码</span>
+  </button>
+  <div class="export-divider"></div>
   <button class="export-item" onclick="exportRawPixelImage()">
     <span class="export-item-icon" aria-hidden="true">🖼</span>
     <span class="export-item-label">导出原始尺寸 PNG</span>

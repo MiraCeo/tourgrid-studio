@@ -143,7 +143,10 @@ def install_operational_middleware(
         client_ip = request.client.host if request.client else "unknown"
         status_code = 500
 
-        if request.method == "POST" and request.url.path == "/api/v1/convert":
+        if request.method == "POST" and request.url.path in {
+            "/api/v1/convert",
+            "/api/v1/works",
+        }:
             rate = limiter.check(client_ip)
             if not rate.allowed:
                 response = JSONResponse(

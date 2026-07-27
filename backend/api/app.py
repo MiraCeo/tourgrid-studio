@@ -30,6 +30,8 @@ from .models import (
 from .observability import configure_error_monitoring, install_operational_middleware
 from .uploads import inspect_image, read_limited_upload
 from .worker import run_conversion_with_timeout
+from .work_store import WorkStore, create_work_store
+from .works import create_works_router
 
 
 LOGGER = logging.getLogger(__name__)
@@ -262,6 +264,7 @@ def create_app(
     settings: ApiSettings | None = None,
     *,
     converter: ConverterCallable = run_conversion_with_timeout,
+    work_store: WorkStore | None = None,
 ) -> FastAPI:
     settings = (settings or ApiSettings.from_env()).validated()
     sentry_sdk = configure_error_monitoring(settings)
@@ -269,12 +272,17 @@ def create_app(
         max_entries=settings.preview_cache_entries,
         ttl_seconds=settings.preview_ttl_seconds,
     )
+    work_store = work_store or create_work_store(settings.database_url)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         load_palette(DEFAULT_PALETTE_ID)
-        yield
-        application.state.preview_cache.clear()
+        await application.state.work_store.initialize()
+        try:
+            yield
+        finally:
+            application.state.preview_cache.clear()
+            await application.state.work_store.close()
 
     application = FastAPI(
         title="Tourgrid Studio API",
@@ -288,6 +296,7 @@ def create_app(
     application.state.conversion_slots = asyncio.Semaphore(
         settings.max_concurrent_conversions
     )
+    application.state.work_store = work_store
     install_operational_middleware(
         application,
         settings,
@@ -343,6 +352,7 @@ def create_app(
         )
 
     application.include_router(create_router())
+    application.include_router(create_works_router())
     return application
 
 

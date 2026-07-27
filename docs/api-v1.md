@@ -99,6 +99,32 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/convert `
 
 返回最近邻放大的 PNG 预览。预览只保存在当前 API 进程的有界内存缓存中，默认五分钟后过期；用户上传的原始图片不会写入磁盘。
 
+### `POST /api/v1/works`
+
+匿名保存不可变的24×24分享作品。前端按照色板固定顺序将每个像素编码为6位索引，
+每4格打包为3字节，最终得到严格432字节；请求中使用Base64传输。
+
+```json
+{
+  "schemaVersion": 1,
+  "paletteId": "natural-64-v1",
+  "paletteVersion": 1,
+  "pixels": "<长度576的Base64字符串>",
+  "title": "作品标题",
+  "authorName": "作者名称"
+}
+```
+
+`title` 与 `authorName` 均为可选字段，去除首尾空白后最长10个字符；空字符串按
+未填写处理。服务器只以“编码版本、色板ID、色板版本和像素数据”的完整SHA-256
+去重。相同画面始终返回同一个12位Base58分享码；标题与作者只在首次保存时写入，
+后续提交相同画面时不会覆盖首次署名。分享记录不可修改。
+
+### `GET /api/v1/works/{code}`
+
+凭区分大小写的12位Base58分享码读取作品。每次成功读取会原子增加浏览次数。
+作品只包含像素索引，不包含用户原图、本地参考图或导出的PNG。
+
 ## 默认安全限制
 
 - 上传文件最大 10 MiB；
@@ -131,6 +157,7 @@ TOURGRID_PREVIEW_CACHE_ENTRIES
 TOURGRID_RATE_LIMIT_REQUESTS
 TOURGRID_RATE_LIMIT_WINDOW_SECONDS
 TOURGRID_RATE_LIMIT_MAX_CLIENTS
+TOURGRID_DATABASE_URL
 ```
 
 ## 错误格式

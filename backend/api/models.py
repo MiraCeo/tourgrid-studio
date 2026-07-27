@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def to_camel(value: str) -> str:
@@ -55,6 +57,43 @@ class ConvertResponse(ApiModel):
     mapping_mode: str
     learned_colors: int | None = None
     cleanup_changes: int = 0
+
+
+class SaveWorkRequest(ApiModel):
+    schema_version: int = Field(ge=1, le=255)
+    palette_id: str = Field(
+        min_length=1,
+        max_length=64,
+        pattern=r"^[a-z0-9][a-z0-9-]*$",
+    )
+    palette_version: int = Field(ge=1, le=32767)
+    pixels: str = Field(
+        min_length=576,
+        max_length=576,
+        pattern=r"^[A-Za-z0-9+/]{576}$",
+    )
+    author_name: str | None = Field(default=None, max_length=10)
+    title: str | None = Field(default=None, max_length=10)
+
+    @field_validator("author_name", "title", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip()
+        return normalized or None
+
+
+class WorkResponse(ApiModel):
+    code: str
+    schema_version: int
+    palette_id: str
+    palette_version: int
+    pixels: str
+    author_name: str | None = None
+    title: str | None = None
+    view_count: int
+    created_at: datetime
 
 
 class ErrorDetail(ApiModel):

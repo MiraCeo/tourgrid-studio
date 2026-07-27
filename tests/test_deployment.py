@@ -27,7 +27,10 @@ def test_api_is_not_published_directly_and_proxy_routes_same_origin() -> None:
     compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
     caddyfile = (ROOT / "docker/Caddyfile").read_text(encoding="utf-8")
 
-    api_service = compose.split("\n  web:", maxsplit=1)[0]
+    api_service = compose.split("\n  api:", maxsplit=1)[1].split(
+        "\n  web:",
+        maxsplit=1,
+    )[0]
     assert "expose:" in api_service
     assert "ports:" not in api_service
     assert "/api/*" in caddyfile
@@ -37,6 +40,20 @@ def test_api_is_not_published_directly_and_proxy_routes_same_origin() -> None:
     assert "root * /srv" in caddyfile
     assert "file_server" in caddyfile
     assert "script-src 'self' 'unsafe-inline'" in caddyfile
+
+
+def test_postgres_is_persistent_and_only_bound_to_loopback() -> None:
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    production = (ROOT / "deploy/production.env.example").read_text(
+        encoding="utf-8"
+    )
+
+    assert "postgres:17-alpine" in compose
+    assert "postgres_data:/var/lib/postgresql/data" in compose
+    assert '127.0.0.1:${TOURGRID_DB_PORT:-5432}:5432' in compose
+    assert "TOURGRID_DATABASE_URL:" in compose
+    assert "condition: service_healthy" in compose
+    assert "TOURGRID_DB_PASSWORD=" in production
 
 
 def test_frontend_image_includes_static_assets() -> None:
@@ -80,3 +97,14 @@ def test_palette_examples_never_replace_the_provisional_palette() -> None:
     assert "natural-64-v1" in deployment
     assert "official-v1" in deployment
     assert "不能覆盖" in deployment
+
+
+def test_server_converter_removal_is_guarded_by_backup_checklist() -> None:
+    limitations = (ROOT / "docs/known-limitations.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "延后移除服务器图片转换子系统" in limitations
+    assert "不得只删除 `convert_image.py`" in limitations
+    assert "PostgreSQL 作品数据" in limitations
+    assert "requirements-prod.lock" in limitations

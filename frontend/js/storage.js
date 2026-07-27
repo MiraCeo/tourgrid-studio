@@ -73,7 +73,7 @@
   function normalizeMetadata(value, legacyPaletteId) {
     var metadata = Object.assign(defaultMetadata(), value || {});
     if (legacyPaletteId && !value) metadata.editorPaletteId = legacyPaletteId;
-    if (!['canvas', 'server', 'local'].includes(metadata.sourceMode)) {
+    if (!['canvas', 'server', 'local', 'shared'].includes(metadata.sourceMode)) {
       metadata.sourceMode = 'canvas';
     }
     if (typeof metadata.paletteId !== 'string' && metadata.paletteId !== null) {

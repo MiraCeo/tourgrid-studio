@@ -21,6 +21,7 @@ class ApiSettings:
     rate_limit_max_clients: int = 10_000
     environment: str = "development"
     release: str = "0.2.0"
+    database_url: str | None = None
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.0
 
@@ -85,6 +86,7 @@ class ApiSettings:
                 defaults.environment,
             ),
             release=os.getenv("TOURGRID_RELEASE", defaults.release),
+            database_url=os.getenv("TOURGRID_DATABASE_URL") or None,
             sentry_dsn=os.getenv("TOURGRID_SENTRY_DSN") or None,
             sentry_traces_sample_rate=_env_float(
                 "TOURGRID_SENTRY_TRACES_SAMPLE_RATE",

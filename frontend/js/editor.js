@@ -8,6 +8,7 @@ function init() {
   overlayCtx = overlayCanvas.getContext('2d');
   canvasContainer = document.getElementById('canvasContainer');
   centerPanel = document.getElementById('centerPanel');
+  restoreCanvasGuidesPreference();
 
   // init pixelData
   pixelData = Array.from({ length: GRID_SIZE }, () =>
@@ -115,6 +116,7 @@ function updateCanvasSize() {
 
 // --- 濞撳弶鐓嬫稉鑽ゆ暰鐢?---
 function drawCanvasCenterAxes(ctx, width, height) {
+  if (!canvasGuidesVisible) return;
   ctx.save();
   ctx.beginPath();
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.72)';
@@ -153,24 +155,62 @@ function renderCanvas() {
     }
   }
 
-  // grid style
-  mainCtx.strokeStyle = '#E8E8E8';
-  mainCtx.lineWidth = 0.5;
-  for (let x = 0; x <= GRID_SIZE; x++) {
-    mainCtx.beginPath();
-    mainCtx.moveTo(x * cellSize, 0);
-    mainCtx.lineTo(x * cellSize, h);
-    mainCtx.stroke();
-  }
-  for (let y = 0; y <= GRID_SIZE; y++) {
-    mainCtx.beginPath();
-    mainCtx.moveTo(0, y * cellSize);
-    mainCtx.lineTo(w, y * cellSize);
-    mainCtx.stroke();
+  if (canvasGuidesVisible) {
+    mainCtx.strokeStyle = '#E8E8E8';
+    mainCtx.lineWidth = 0.5;
+    for (let x = 0; x <= GRID_SIZE; x++) {
+      mainCtx.beginPath();
+      mainCtx.moveTo(x * cellSize, 0);
+      mainCtx.lineTo(x * cellSize, h);
+      mainCtx.stroke();
+    }
+    for (let y = 0; y <= GRID_SIZE; y++) {
+      mainCtx.beginPath();
+      mainCtx.moveTo(0, y * cellSize);
+      mainCtx.lineTo(w, y * cellSize);
+      mainCtx.stroke();
+    }
   }
 
   drawCanvasCenterAxes(mainCtx, w, h);
   renderOverlay();
+}
+
+function restoreCanvasGuidesPreference() {
+  try {
+    var saved = localStorage.getItem(CANVAS_GUIDES_STORAGE_KEY);
+    if (saved !== null) canvasGuidesVisible = saved !== 'false';
+  } catch (_error) {
+    canvasGuidesVisible = true;
+  }
+  syncCanvasGuidesButton();
+}
+
+function syncCanvasGuidesButton() {
+  var button = document.getElementById('canvasGuidesBtn');
+  if (!button) return;
+  button.classList.toggle('active', !canvasGuidesVisible);
+  button.setAttribute('aria-pressed', String(canvasGuidesVisible));
+  button.setAttribute(
+    'aria-label',
+    canvasGuidesVisible ? '隐藏画布辅助线' : '显示画布辅助线'
+  );
+  button.title = canvasGuidesVisible ? '隐藏辅助线' : '显示辅助线';
+}
+
+function toggleCanvasGuides() {
+  canvasGuidesVisible = !canvasGuidesVisible;
+  try {
+    localStorage.setItem(
+      CANVAS_GUIDES_STORAGE_KEY,
+      String(canvasGuidesVisible)
+    );
+  } catch (_error) {
+    // 浏览器禁用本地存储时，本次会话内仍然生效。
+  }
+  syncCanvasGuidesButton();
+  renderCanvas();
+  showToast(canvasGuidesVisible ? '已显示画布辅助线' : '已隐藏画布辅助线');
 }
 
 // --- 濞撳弶鐓嬬€佃壈鍩呴崳銊╊暕鐟?---
