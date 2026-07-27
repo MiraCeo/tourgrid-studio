@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-<link rel="stylesheet" href="/static/css/editor.css">
+<link rel="stylesheet" href="/static/css/editor.css?v=20260727-1">
 </head>
 <body>
 
@@ -55,12 +55,17 @@
 
     <div class="btn-group">
       <button class="icon-btn btn-delete" title="删除画布" onclick="clearCanvas()">🗑</button>
-      <button class="icon-btn btn-undo" title="撤销 (Ctrl+Z)" onclick="undo()">↩</button>
-      <button class="icon-btn btn-save-icon" title="导入图片" onclick="document.getElementById('importFileInput').click()">📁</button>
-      <span class="btn-save-label" onclick="document.getElementById('importFileInput').click()" style="cursor:pointer">导入</span>
+      <button class="icon-btn btn-undo" id="manualCheckpointRestoreBtn"
+              title="恢复到手动保存点" onclick="restoreManualCheckpoint()">↻</button>
+      <button class="icon-btn" id="manualCheckpointSaveBtn"
+              title="创建手动保存点 (Ctrl+S)" onclick="manualSave()"
+              style="background:#222;">💾</button>
+      <button class="btn-import" id="topImportButton" type="button"
+              title="导入图片" onclick="document.getElementById('importFileInput').click()">
+        <span class="import-icon" aria-hidden="true">📁</span>
+        <span>导入图片</span>
+      </button>
       <input type="file" id="importFileInput" accept="image/*" style="display:none" onchange="startImport(event)">
-
-      <button class="icon-btn" title="手动存档" onclick="manualSave()" style="background:#222;">💾</button>
 
       <button class="btn-primary" onclick="toggleExportDropdown(event)">
         <span class="check-icon">✓</span>
@@ -330,14 +335,14 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js"></script>
-<script src="/static/js/reference-storage.js"></script>
-<script src="/static/js/natural-64-v1.js"></script>
-<script src="/static/js/state.js"></script>
-<script src="/static/js/editor.js"></script>
-<script src="/static/js/export.js"></script>
-<script src="/static/js/import.js"></script>
-<script src="/static/js/app.js"></script>
+<script src="/static/js/storage.js?v=20260727-1"></script>
+<script src="/static/js/reference-storage.js?v=20260727-1"></script>
+<script src="/static/js/natural-64-v1.js?v=20260727-1"></script>
+<script src="/static/js/state.js?v=20260727-1"></script>
+<script src="/static/js/editor.js?v=20260727-1"></script>
+<script src="/static/js/export.js?v=20260727-1"></script>
+<script src="/static/js/import.js?v=20260727-1"></script>
+<script src="/static/js/app.js?v=20260727-1"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

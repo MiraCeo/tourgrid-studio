@@ -568,7 +568,7 @@ function onKeyDown(e) {
     setTool('eraser');
   } else if (e.ctrlKey && e.key === 's') {
     e.preventDefault();
-    exportRawPixelImage();
+    manualSave();
   }
 }
 
@@ -612,6 +612,7 @@ function installTourgridTestApi() {
         undoDepth: undoStack.length,
         redoDepth: redoStack.length,
         maxUndo: MAX_UNDO,
+        manualCheckpointExists: Boolean(loadManualCheckpoint()),
         reference: referenceSnapshotForHistory(),
         referenceLoaded: Boolean(importedPreviewImage),
         overlayVisible: overlayVisible,

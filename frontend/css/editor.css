@@ -216,16 +216,35 @@ body {
 
 .btn-delete { background: #C82828; }
 .btn-undo { background: #222; }
-.btn-save-icon {
-  background: #222;
-  margin-right: -4px;
+
+.btn-import {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: none;
+  background: linear-gradient(135deg, #D8832F 0%, #F0B65A 100%);
+  color: #24170A;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(216, 131, 47, 0.34);
+  transition: all 0.18s;
 }
-.btn-save-label {
-  font-size: 12px;
-  color: #222;
-  font-weight: 600;
-  cursor: pointer;
-  margin-right: 10px;
+.btn-import:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 4px 16px rgba(216, 131, 47, 0.48);
+  transform: translateY(-1px);
+}
+.btn-import:active {
+  transform: scale(0.96);
+}
+.btn-import .import-icon {
+  font-size: 15px;
+  line-height: 1;
 }
 
 /* 鐎瑰本鍨氶獮璺哄絺鐢啩瀵岄幐澶愭尦 */
@@ -1437,8 +1456,12 @@ body {
   .top-bar { padding: 6px 8px; gap: 5px; }
   .top-bar .btn-group { margin-left: auto; }
   .top-bar .doc-name,
-  .top-bar .warn-text,
-  .top-bar .btn-save-label { display: none; }
+  .top-bar .warn-text { display: none; }
+  .top-bar .btn-import,
+  .top-bar .btn-primary {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
 
   /* 导入弹窗适配 */
   .crop-modal {

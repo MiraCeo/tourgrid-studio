@@ -40,8 +40,12 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
+    asset_version = "20260727-1"
 
-    assert '<link rel="stylesheet" href="/static/css/editor.css">' in html
+    assert (
+        f'<link rel="stylesheet" '
+        f'href="/static/css/editor.css?v={asset_version}">'
+    ) in html
     expected_scripts = [
         "storage.js",
         "reference-storage.js",
@@ -53,7 +57,9 @@ def test_frontend_is_split_into_ordered_assets() -> None:
         "app.js",
     ]
     positions = [
-        html.index(f'<script src="/static/js/{name}"></script>')
+        html.index(
+            f'<script src="/static/js/{name}?v={asset_version}"></script>'
+        )
         for name in expected_scripts
     ]
     assert positions == sorted(positions)
@@ -340,6 +346,36 @@ def test_document_history_restores_reference_assets_and_keeps_100_steps() -> Non
     assert "root.crypto.randomUUID" in reference_storage
     assert "store.getAllKeys()" in reference_storage
     assert "pruneReferenceAssets()" in editor
+
+
+def test_manual_checkpoint_is_distinct_from_autosave_and_precedes_import() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert "pixel_editor_manual_checkpoint" in state
+    assert "function loadManualCheckpoint()" in state
+    assert "async function restoreManualCheckpoint()" in editor
+    assert "var checkpoint = loadManualCheckpoint()" in editor
+    assert "manualSave();" in app
+    assert "exportRawPixelImage();" not in app[
+        app.index("} else if (e.ctrlKey && e.key === 's')") :
+        app.index("// --- Toast ---")
+    ]
+    assert html.index('id="manualCheckpointRestoreBtn"') < html.index(
+        'id="manualCheckpointSaveBtn"'
+    )
+    assert html.index('id="manualCheckpointSaveBtn"') < html.index(
+        'id="topImportButton"'
+    )
+    assert 'class="btn-import"' in html
+    assert '<span>导入图片</span>' in html
+    assert ".btn-import {" in css
+    assert "#D8832F" in css
+    assert ".btn-save-icon" not in css
+    assert ".btn-save-label" not in css
 
 
 def test_removed_decorative_image_has_no_stale_markup_or_styles() -> None:

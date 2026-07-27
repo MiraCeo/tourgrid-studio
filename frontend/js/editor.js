@@ -488,6 +488,10 @@ function collectReferencedAssetIds() {
     }
   }
   if (referenceState.assetId) referenced.add(referenceState.assetId);
+  var checkpoint = loadManualCheckpoint();
+  if (checkpoint && checkpoint.reference && checkpoint.reference.assetId) {
+    referenced.add(checkpoint.reference.assetId);
+  }
   undoStack.forEach(addReference);
   redoStack.forEach(addReference);
   return referenced;
@@ -544,6 +548,58 @@ async function restoreEditorSnapshot(snapshot) {
     snapshot.paletteId || documentMetadata.editorPaletteId || 'exhibition'
   );
   updateCanvasSize();
+}
+
+function checkpointToEditorSnapshot(checkpoint) {
+  return {
+    gridSize: GRID_SIZE,
+    pixels: checkpoint.pixels.map(function(row) { return row.slice(); }),
+    metadata: Object.assign({}, checkpoint.metadata),
+    paletteId: checkpoint.metadata.editorPaletteId || 'exhibition',
+    reference: {
+      assetId: checkpoint.reference.assetId || null,
+      mimeType: checkpoint.reference.mimeType || null,
+      width: checkpoint.reference.width || null,
+      height: checkpoint.reference.height || null,
+      sessionOnly: false
+    }
+  };
+}
+
+async function restoreManualCheckpoint() {
+  if (historyOperationInProgress || (
+    typeof conversionInProgress !== 'undefined' && conversionInProgress
+  )) {
+    showToast('当前操作完成后才能恢复保存点');
+    return;
+  }
+  if (isStatisticsMode()) {
+    showToast('请先返回颜料面板');
+    return;
+  }
+
+  var checkpoint = loadManualCheckpoint();
+  if (!checkpoint) {
+    showToast('还没有手动保存点');
+    return;
+  }
+  if (!confirm('恢复到上次手动保存点？当前状态可以撤销。')) return;
+
+  historyOperationInProgress = true;
+  var current = makeEditorSnapshot();
+  try {
+    await restoreEditorSnapshot(checkpointToEditorSnapshot(checkpoint));
+    pushUndo(current);
+    renderCanvas();
+    renderNavigator();
+    renderColorGrid();
+    saveToStorage(true);
+    showToast('已恢复到手动保存点');
+  } catch (error) {
+    showToast(error && error.message ? error.message : '恢复保存点失败');
+  } finally {
+    historyOperationInProgress = false;
+  }
 }
 
 async function undo() {

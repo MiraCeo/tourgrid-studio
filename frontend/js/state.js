@@ -136,20 +136,25 @@ let lastPaintedY = -1;
 
 // --- 本地存储：自动保存/加载像素数据 ---
 var STORAGE_KEY = 'pixel_editor_save';
+var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';
+
+function serializeCurrentDocument() {
+  return TourgridStorage.serialize({
+    gridSize: GRID_SIZE,
+    pixels: pixelData.map(function(row) { return row.slice(); }),
+    metadata: Object.assign({}, documentMetadata, {
+      editorPaletteId: currentPaletteId
+    }),
+    reference: Object.assign({}, referenceState, {
+      visible: overlayVisible,
+      opacity: overlayOpacity
+    })
+  });
+}
 
 function saveToStorage(silent) {
   try {
-    var data = TourgridStorage.serialize({
-      gridSize: GRID_SIZE,
-      pixels: pixelData.map(function(row) { return row.slice(); }),
-      metadata: Object.assign({}, documentMetadata, {
-        editorPaletteId: currentPaletteId
-      }),
-      reference: Object.assign({}, referenceState, {
-        visible: overlayVisible,
-        opacity: overlayOpacity
-      })
-    });
+    var data = serializeCurrentDocument();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (!silent) showToast('💾 已存档 (' + GRID_SIZE + '×' + GRID_SIZE + ')');
   } catch(e) {
@@ -158,12 +163,34 @@ function saveToStorage(silent) {
 }
 
 function manualSave() {
-  saveToStorage();
+  try {
+    var data = serializeCurrentDocument();
+    localStorage.setItem(MANUAL_CHECKPOINT_KEY, JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (typeof scheduleReferenceAssetPrune === 'function') {
+      scheduleReferenceAssetPrune();
+    }
+    showToast('已创建手动保存点');
+    return true;
+  } catch(e) {
+    showToast('无法创建手动保存点');
+    return false;
+  }
 }
 
 function loadFromStorage() {
   try {
     var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return TourgridStorage.migrate(JSON.parse(raw));
+  } catch(e) {
+    return null;
+  }
+}
+
+function loadManualCheckpoint() {
+  try {
+    var raw = localStorage.getItem(MANUAL_CHECKPOINT_KEY);
     if (!raw) return null;
     return TourgridStorage.migrate(JSON.parse(raw));
   } catch(e) {

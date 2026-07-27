@@ -191,6 +191,40 @@ def test_refresh_restores_pixels_reference_and_reference_controls(
     assert blank["reference"]["assetId"] is None
 
 
+def test_manual_checkpoint_restores_document_and_can_be_undone(
+    editor_page: Page,
+) -> None:
+    first = import_image(editor_page, FIXTURES / "landscape-scene.png")
+    first_pixels = pixel_signature(first)
+    first_reference = first["reference"]["assetId"]
+
+    editor_page.locator("#manualCheckpointSaveBtn").click()
+    assert editor_state(editor_page)["manualCheckpointExists"] is True
+
+    second = import_image(editor_page, FIXTURES / "portrait-scene.png")
+    second_pixels = pixel_signature(second)
+    second_reference = second["reference"]["assetId"]
+    assert second_reference != first_reference
+
+    editor_page.once("dialog", lambda dialog: dialog.accept())
+    editor_page.locator("#manualCheckpointRestoreBtn").click()
+    editor_page.wait_for_function(
+        "(assetId) => window.__TOURGRID_TEST__.getState()"
+        ".reference.assetId === assetId",
+        arg=first_reference,
+    )
+    wait_for_history(editor_page)
+    restored = editor_state(editor_page)
+    assert pixel_signature(restored) == first_pixels
+    assert restored["referenceLoaded"] is True
+
+    editor_page.locator("#undoBtn").click()
+    wait_for_history(editor_page)
+    undone = editor_state(editor_page)
+    assert pixel_signature(undone) == second_pixels
+    assert undone["reference"]["assetId"] == second_reference
+
+
 def test_raw_png_export_is_24_by_24_and_palette_limited(
     editor_page: Page,
     tmp_path: Path,
