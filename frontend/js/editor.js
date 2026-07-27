@@ -102,7 +102,7 @@ function init() {
   } catch(e) {
     var errDiv = document.createElement('div');
     errDiv.style.cssText = 'position:fixed;top:0;left:0;z-index:99998;background:red;color:#fff;padding:15px;max-width:90%;font:14px monospace;white-space:pre-wrap;';
-    errDiv.textContent = 'INIT ERROR: ' + e.message + '\n' + (e.stack||'');
+    errDiv.textContent = '初始化失败：' + e.message + '\n' + (e.stack||'');
     document.body.appendChild(errDiv);
   }
 }
@@ -711,7 +711,7 @@ async function undo() {
     return;
   }
   if (undoStack.length === 0) {
-    showToast('Nothing to undo');
+    showToast('没有可以撤销的操作');
     return;
   }
   if (typeof conversionInProgress !== 'undefined' && conversionInProgress) {
@@ -730,7 +730,7 @@ async function undo() {
     renderNavigator();
     renderColorGrid();
     saveToStorage(true);
-    showToast('Undone');
+    showToast('已撤销');
   } catch (error) {
     showToast(error && error.message ? error.message : '撤销失败');
   } finally {
@@ -744,7 +744,7 @@ async function redo() {
     return;
   }
   if (redoStack.length === 0) {
-    showToast('Nothing to redo');
+    showToast('没有可以重做的操作');
     return;
   }
   if (typeof conversionInProgress !== 'undefined' && conversionInProgress) {
@@ -769,7 +769,7 @@ async function redo() {
     renderColorGrid();
     saveToStorage(true);
     if (historyTruncated) scheduleReferenceAssetPrune();
-    showToast('Redone');
+    showToast('已重做');
   } catch (error) {
     showToast(error && error.message ? error.message : '重做失败');
   } finally {
@@ -789,7 +789,7 @@ function clearCanvas() {
     showToast('复刻模式下画布为只读');
     return;
   }
-  if (!confirm('Clear canvas? This can be undone.')) return;
+  if (!confirm('清空当前画布？此操作可以撤销。')) return;
   pushUndo();
   documentMetadata = TourgridStorage.defaultMetadata();
   updateTopWorkIdentity();
@@ -803,7 +803,7 @@ function clearCanvas() {
   renderNavigator();
   renderColorGrid();
   saveToStorage(true);
-  showToast('Canvas cleared (Ctrl+Z to undo)');
+  showToast('画布已清空，可按 Ctrl+Z 撤销');
 }
 
 // --- 娣囨繂鐡ㄩ崶鍓у ---

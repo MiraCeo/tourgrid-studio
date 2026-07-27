@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260727-15"
+    asset_version = "20260728-16"
 
     assert (
         f'<link rel="stylesheet" '
@@ -287,6 +287,19 @@ def test_phone_and_tablet_responsive_contract() -> None:
     assert "window.addEventListener('orientationchange'" in app
 
 
+def test_primary_interface_text_keeps_readable_hierarchy() -> None:
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+
+    assert ".warn-text {\n  font-size: 13px;" in css
+    assert ".work-identity-title {" in css
+    assert "font-size: 15px;" in css
+    assert ".nav-title {" in css
+    assert ".left-control-heading {" in css
+    assert ".reference-switch {" in css
+    assert ".opacity-control {" in css
+    assert css.count("font-size: 12px;") >= 6
+
+
 def test_exports_include_raw_and_nearest_neighbor_preview() -> None:
     source = read_frontend()
 
@@ -297,8 +310,33 @@ def test_exports_include_raw_and_nearest_neighbor_preview() -> None:
     assert "buildPixelExportCanvas(scale)" in source
     assert "outputCtx.imageSmoothingEnabled = false" in source
     assert source.count('class="export-item-icon"') == 5
+    assert source.count('class="export-item-icon" aria-hidden="true">') == 5
+    assert "🖼" not in source
+    assert "🔍" not in source
+    assert "📿" not in source
+    assert "📱" not in source
     assert source.count('class="export-item-label"') == 5
     assert "grid-template-columns: 24px minmax(0, 1fr)" in source
+    assert "viewportPadding = 8" in source
+    assert "rect.top - dropdownHeight - 6" in source
+    assert "calc(100vw - 16px)" in source
+    assert "calc(100dvh - 16px)" in source
+
+
+def test_editor_icons_and_visible_operation_messages_are_consistent() -> None:
+    source = read_frontend()
+
+    assert 'class="history-icon"' in source
+    assert source.count('class="palette-tab-icon"') == 2
+    assert 'class="external-link-icon"' in source
+    assert "Nothing to undo" not in source
+    assert "Nothing to redo" not in source
+    assert "Clear canvas?" not in source
+    assert "Canvas cleared" not in source
+    assert "💾" not in source
+    assert "没有可以撤销的操作" in source
+    assert "没有可以重做的操作" in source
+    assert "画布已清空，可按 Ctrl+Z 撤销" in source
 
 
 def test_blueprint_is_fixed_to_24_square_without_palette_remapping() -> None:

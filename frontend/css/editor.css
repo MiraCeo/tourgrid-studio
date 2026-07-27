@@ -194,7 +194,7 @@ body {
 }
 
 .warn-text {
-  font-size: 11px;
+  font-size: 13px;
   color: #666;
   white-space: nowrap;
   overflow: hidden;
@@ -218,7 +218,7 @@ body {
   max-width: 100%;
   overflow: hidden;
   color: #595d62;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-overflow: ellipsis;
@@ -228,7 +228,7 @@ body {
   max-width: 100%;
   overflow: hidden;
   color: #8a8e93;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.25px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -384,7 +384,7 @@ body {
   align-items: center;
   gap: 8px;
   color: #fff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: 1px;
 }
@@ -462,7 +462,7 @@ body {
 }
 .left-control-heading {
   color: #b8b8bc;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.8px;
 }
 
@@ -486,7 +486,7 @@ body {
   border: none;
   background: transparent;
   color: #77777c;
-  font-size: 10px;
+  font-size: 12px;
 }
 .reference-switch-track {
   position: relative;
@@ -522,7 +522,7 @@ body {
   align-items: center;
   gap: 7px;
   color: #929297;
-  font-size: 9px;
+  font-size: 11px;
   transition: opacity 0.15s;
 }
 .opacity-control[hidden] {
@@ -830,7 +830,8 @@ body {
 }
 .eyedropper-icon,
 .canvas-guides-icon,
-.move-canvas-icon {
+.move-canvas-icon,
+.history-icon {
   width: 27px;
   height: 27px;
   fill: none;
@@ -848,6 +849,11 @@ body {
   width: 29px;
   height: 29px;
   stroke-width: 1.65;
+}
+.history-icon {
+  width: 29px;
+  height: 29px;
+  stroke-width: 1.9;
 }
 
 .palette-tabs {
@@ -886,16 +892,17 @@ body {
   background: #303034;
   border-bottom-color: #72F5F2;
 }
-.palette-section-icon {
+.palette-tab-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   color: #8b8b90;
-  font-size: 18px;
 }
-.statistics-tab-icon {
-  color: #8b8b90;
-  font-size: 16px;
-}
-.palette-tab.active .palette-section-icon,
-.palette-tab.active .statistics-tab-icon {
+.palette-tab.active .palette-tab-icon {
   color: #72F5F2;
 }
 
@@ -935,7 +942,7 @@ body {
 }
 .statistics-summary {
   color: #d2d2d5;
-  font-size: 11px;
+  font-size: 12px;
   text-align: center;
   margin-top: 12px;
   padding-top: 10px;
@@ -943,9 +950,9 @@ body {
   padding-bottom: 4px;
 }
 .statistics-hint {
-  color: #77777c;
-  font-size: 9px;
-  line-height: 1.45;
+  color: #9a9aa0;
+  font-size: 12px;
+  line-height: 1.5;
   text-align: center;
   margin-bottom: 10px;
 }
@@ -960,7 +967,7 @@ body {
   border-radius: 4px;
   background: #242427;
   color: #d6d6d9;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
 }
 .replication-complete-control[hidden] {
@@ -1024,7 +1031,8 @@ body {
   border-radius: 3px;
   background: transparent;
   color: #8c8c91;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
@@ -1076,7 +1084,7 @@ body {
   gap: 8px;
   margin-bottom: 10px;
   color: #8c8c91;
-  font-size: 10px;
+  font-size: 12px;
 }
 .statistics-sort-control select {
   flex: 1;
@@ -1086,7 +1094,7 @@ body {
   border-radius: 3px;
   background: #242427;
   color: #d6d6d9;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
 }
 .statistics-sort-control select:focus {
@@ -1338,9 +1346,16 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.author-link > span:last-child {
+.external-link-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
   color: #72F5F2;
-  font-size: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .author-project-note {
   margin-top: 18px;
@@ -1377,8 +1392,16 @@ body {
   border-radius: 50%;
   background: #19191c;
   color: #72F5F2;
-  font-size: 34px;
   box-shadow: 0 0 24px rgba(114,245,242,0.22);
+}
+.work-share-icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .work-share-section {
   margin-top: 18px;
@@ -1766,7 +1789,7 @@ body {
   padding: 10px 4px 4px;
   border-top: 1px solid #3f3f44;
   color: #777;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.4;
   text-align: center;
 }
@@ -1808,13 +1831,16 @@ body {
 .export-dropdown {
   position: fixed;
   z-index: 600;
-  width: 220px;
+  width: min(220px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   background: linear-gradient(135deg, #80D8F0 0%, #B0E8F8 100%);
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(128,216,240,0.35);
   display: none;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .export-dropdown.show {
   display: block;
@@ -1844,8 +1870,15 @@ body {
   place-items: center;
   width: 24px;
   height: 24px;
-  font-size: 16px;
-  line-height: 1;
+}
+.export-item-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .export-item-label {
   display: block;
@@ -1933,11 +1966,15 @@ body {
     overflow: hidden;
   }
   .left-control-heading {
-    font-size: 9px;
+    font-size: 10px;
     white-space: nowrap;
   }
   .reference-switch {
     gap: 4px;
+    font-size: 10px;
+  }
+  .opacity-control {
+    font-size: 10px;
   }
   .right-panel {
     flex: 0 0 27%;
@@ -2045,10 +2082,10 @@ body {
     padding-right: 10px;
   }
   .work-identity-title {
-    font-size: 11px;
+    font-size: 12px;
   }
   .work-identity-meta {
-    font-size: 8px;
+    font-size: 9px;
   }
 }
 
@@ -2071,8 +2108,18 @@ body {
   display: flex;
 }
 .rotate-icon {
-  font-size: 56px;
+  width: 64px;
+  height: 64px;
   animation: rotateHintBounce 1.5s ease-in-out infinite;
+}
+.rotate-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .rotate-text {
   font-size: 24px;

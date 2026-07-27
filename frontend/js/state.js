@@ -210,7 +210,7 @@ function saveToStorage(silent) {
   try {
     var data = serializeCurrentDocument();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    if (!silent) showToast('💾 已存档 (' + GRID_SIZE + '×' + GRID_SIZE + ')');
+    if (!silent) showToast('已存档（' + GRID_SIZE + '×' + GRID_SIZE + '）');
   } catch(e) {
     // localStorage满或不可用，静默忽略
   }

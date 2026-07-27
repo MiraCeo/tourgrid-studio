@@ -463,6 +463,21 @@ def test_raw_png_export_is_24_by_24_and_palette_limited(
     assert colors.issubset(set(editor_state(editor_page)["palette"]))
 
 
+def test_export_menu_stays_inside_narrow_viewports(editor_page: Page) -> None:
+    for width in (640, 768, 900):
+        editor_page.set_viewport_size({"width": width, "height": 520})
+        editor_page.locator(".btn-primary").click()
+        menu = editor_page.locator("#exportDropdown")
+        expect(menu).to_be_visible()
+        box = menu.bounding_box()
+        assert box is not None
+        assert box["x"] >= 8
+        assert box["x"] + box["width"] <= width - 8
+        assert box["y"] >= 8
+        assert box["y"] + box["height"] <= 520 - 8
+        editor_page.locator(".btn-primary").click()
+
+
 def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     code = "7Kp3mXqB4NzR"
     all_black_payload = base64.b64encode(bytes(432)).decode("ascii")

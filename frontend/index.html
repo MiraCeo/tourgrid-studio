@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-15">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-16">
 </head>
 <body>
 
@@ -204,8 +204,18 @@
             <path d="M4 3.8 20 20.2"></path>
           </svg>
         </button>
-        <button class="tool-icon-btn" id="undoBtn" title="撤销" onclick="undo()">↩</button>
-        <button class="tool-icon-btn" id="redoBtn" title="重做" onclick="redo()">↪</button>
+        <button class="tool-icon-btn" id="undoBtn" title="撤销" aria-label="撤销" onclick="undo()">
+          <svg class="history-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 7H4v-5"></path>
+            <path d="M4.7 6.3A8.5 8.5 0 1 1 3.6 15"></path>
+          </svg>
+        </button>
+        <button class="tool-icon-btn" id="redoBtn" title="重做" aria-label="重做" onclick="redo()">
+          <svg class="history-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 7h5v-5"></path>
+            <path d="M19.3 6.3A8.5 8.5 0 1 0 20.4 15"></path>
+          </svg>
+        </button>
         <button class="tool-icon-btn" id="eyedropperBtn" type="button"
                 title="吸管：从画布匹配最近的巡展颜色" aria-label="吸管取色"
                 aria-pressed="false" onclick="toggleEyedropper()">
@@ -230,12 +240,17 @@
       <div class="palette-tabs" role="tablist" aria-label="右侧面板">
         <button class="palette-tab active" id="paletteTab" role="tab" aria-selected="true"
                 onclick="setPalettePanelMode('palette')">
-          <span class="palette-section-icon">◇</span>
+          <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m12 3 8 9-8 9-8-9z"></path>
+          </svg>
           <span>颜料</span>
         </button>
         <button class="palette-tab" id="statisticsTab" role="tab" aria-selected="false"
                 onclick="setPalettePanelMode('statistics')">
-          <span class="statistics-tab-icon">▥</span>
+          <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 4h16v16H4z"></path>
+            <path d="M8 4v16M12 4v16M16 4v16"></path>
+          </svg>
           <span>复刻</span>
         </button>
       </div>
@@ -312,7 +327,11 @@
     <button class="author-close-btn" type="button" aria-label="关闭保存与分享"
             onclick="closeWorkShareModal()">×</button>
 
-    <div class="work-share-icon" aria-hidden="true">◇</div>
+    <div class="work-share-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="m12 3 8 9-8 9-8-9z"></path>
+      </svg>
+    </div>
     <div class="author-kicker">PERMANENT PIXEL SHARE</div>
     <h2 id="workShareModalTitle">保存与分享</h2>
     <p id="workShareModalDescription">
@@ -441,7 +460,10 @@
           <small>GitHub 个人主页</small>
           <strong>github.com/MiraCeo</strong>
         </span>
-        <span aria-hidden="true">↗</span>
+        <svg class="external-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 16 16 8"></path>
+          <path d="M10 8h6v6"></path>
+        </svg>
       </a>
       <a href="https://github.com/MiraCeo/tourgrid-studio" target="_blank"
          rel="noopener noreferrer" class="author-link">
@@ -449,7 +471,10 @@
           <small>项目源代码仓库</small>
           <strong>MiraCeo/tourgrid-studio</strong>
         </span>
-        <span aria-hidden="true">↗</span>
+        <svg class="external-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 16 16 8"></path>
+          <path d="M10 8h6v6"></path>
+        </svg>
       </a>
     </div>
 
@@ -497,40 +522,72 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260727-15"></script>
-<script src="/static/js/reference-storage.js?v=20260727-15"></script>
-<script src="/static/js/work-codec.js?v=20260727-15"></script>
-<script src="/static/js/natural-64-v1.js?v=20260727-15"></script>
-<script src="/static/js/state.js?v=20260727-15"></script>
-<script src="/static/js/editor.js?v=20260727-15"></script>
-<script src="/static/js/export.js?v=20260727-15"></script>
-<script src="/static/js/import.js?v=20260727-15"></script>
-<script src="/static/js/works.js?v=20260727-15"></script>
-<script src="/static/js/app.js?v=20260727-15"></script>
+<script src="/static/js/storage.js?v=20260728-16"></script>
+<script src="/static/js/reference-storage.js?v=20260728-16"></script>
+<script src="/static/js/work-codec.js?v=20260728-16"></script>
+<script src="/static/js/natural-64-v1.js?v=20260728-16"></script>
+<script src="/static/js/state.js?v=20260728-16"></script>
+<script src="/static/js/editor.js?v=20260728-16"></script>
+<script src="/static/js/export.js?v=20260728-16"></script>
+<script src="/static/js/import.js?v=20260728-16"></script>
+<script src="/static/js/works.js?v=20260728-16"></script>
+<script src="/static/js/app.js?v=20260728-16"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
   <button class="export-item" onclick="openWorkShareModal('publish')">
-    <span class="export-item-icon" aria-hidden="true">◇</span>
+    <span class="export-item-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M7 12.5v6.5h10v-6.5"></path>
+        <path d="M9 8.5 12 5l3 3.5M12 5v10"></path>
+      </svg>
+    </span>
     <span class="export-item-label">保存并分享作品</span>
   </button>
   <button class="export-item" onclick="openWorkShareModal('load')">
-    <span class="export-item-icon" aria-hidden="true">⌁</span>
+    <span class="export-item-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M9.5 14.5 14.5 9.5"></path>
+        <path d="M7.2 16.8 5.6 18.4a3.4 3.4 0 0 1-4.8-4.8l3.6-3.6a3.4 3.4 0 0 1 4.8 0"></path>
+        <path d="m16.8 7.2 1.6-1.6a3.4 3.4 0 0 1 4.8 4.8L19.6 14a3.4 3.4 0 0 1-4.8 0"></path>
+      </svg>
+    </span>
     <span class="export-item-label">读取分享码</span>
   </button>
   <div class="export-divider"></div>
   <button class="export-item" onclick="exportRawPixelImage()">
-    <span class="export-item-icon" aria-hidden="true">🖼</span>
+    <span class="export-item-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M3 4h18v16H3z"></path>
+        <circle cx="8" cy="9" r="2"></circle>
+        <path d="m4 18 5-5 3 3 3-4 5 6"></path>
+      </svg>
+    </span>
     <span class="export-item-label">导出原始尺寸 PNG</span>
   </button>
   <button class="export-item" onclick="exportPixelPreview()">
-    <span class="export-item-icon" aria-hidden="true">🔍</span>
+    <span class="export-item-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <circle cx="10.5" cy="10.5" r="6.5"></circle>
+        <path d="m15.5 15.5 5 5"></path>
+        <path d="M8 8h2v2H8zM11 11h2v2h-2z"></path>
+      </svg>
+    </span>
     <span class="export-item-label">导出最近邻放大图</span>
   </button>
   <div class="export-divider"></div>
   <div id="exportBeadSection">
     <button class="export-item" id="exportBeadBtn" onclick="exportBeadBlueprint()">
-      <span class="export-item-icon" aria-hidden="true">📿</span>
+      <span class="export-item-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 3h13l3 3v15H4z"></path>
+          <path d="M17 3v4h4"></path>
+          <circle cx="8" cy="11" r="1.5"></circle>
+          <circle cx="13" cy="11" r="1.5"></circle>
+          <circle cx="8" cy="16" r="1.5"></circle>
+          <circle cx="13" cy="16" r="1.5"></circle>
+        </svg>
+      </span>
       <span class="export-item-label">导出拼豆图纸</span>
     </button>
     <div class="export-warning" id="exportWarning" style="display:none;">当前使用的为非拼豆色卡，请返回并切换后再导出</div>
@@ -540,7 +597,14 @@
 
 <!-- 移动端竖屏提示 -->
 <div class="rotate-hint" id="rotateHint">
-  <div class="rotate-icon">📱↺</div>
+  <div class="rotate-icon" aria-hidden="true">
+    <svg viewBox="0 0 64 64">
+      <rect x="20" y="14" width="24" height="36" rx="3"></rect>
+      <path d="M28 46h8"></path>
+      <path d="M12 29a21 21 0 0 1 35-13"></path>
+      <path d="m46 9 2 8-8 1"></path>
+    </svg>
+  </div>
   <div class="rotate-text">请横屏使用</div>
   <div class="rotate-sub">旋转手机以获得最佳体验</div>
 </div>

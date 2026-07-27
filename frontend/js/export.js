@@ -72,16 +72,28 @@ function toggleExportDropdown(e) {
     : document.querySelector('.btn-primary');
   if (!button) return;
 
+  var viewportPadding = 8;
   var rect = button.getBoundingClientRect();
-  var dropdownWidth = dropdown.offsetWidth || 220;
-  var left = rect.right - dropdownWidth;
-  if (left < 4) left = 4;
-  if (left + dropdownWidth > window.innerWidth - 4) {
-    left = window.innerWidth - dropdownWidth - 4;
-  }
-  dropdown.style.top = (rect.bottom + 4) + 'px';
-  dropdown.style.left = left + 'px';
+  dropdown.style.visibility = 'hidden';
   dropdown.classList.add('show');
+
+  var dropdownWidth = dropdown.offsetWidth || Math.min(220, window.innerWidth - viewportPadding * 2);
+  var dropdownHeight = dropdown.offsetHeight;
+  var left = rect.right - dropdownWidth;
+  if (left < viewportPadding) left = viewportPadding;
+  if (left + dropdownWidth > window.innerWidth - viewportPadding) {
+    left = window.innerWidth - dropdownWidth - viewportPadding;
+  }
+
+  var top = rect.bottom + 6;
+  if (top + dropdownHeight > window.innerHeight - viewportPadding) {
+    top = rect.top - dropdownHeight - 6;
+  }
+  top = Math.max(viewportPadding, Math.min(top, window.innerHeight - dropdownHeight - viewportPadding));
+
+  dropdown.style.top = top + 'px';
+  dropdown.style.left = left + 'px';
+  dropdown.style.visibility = '';
 }
 
 function hideExportDropdown() {
