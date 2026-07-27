@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260727-8"
+    asset_version = "20260727-10"
 
     assert (
         f'<link rel="stylesheet" '
@@ -474,6 +474,57 @@ def test_manual_checkpoint_is_distinct_from_autosave_and_precedes_import() -> No
     assert "#D8832F" in css
     assert ".btn-save-icon" not in css
     assert ".btn-save-label" not in css
+
+
+def test_top_bar_uses_dynamic_shared_work_identity_and_unified_svg_icons() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    works = (JAVASCRIPT_ROOT / "works.js").read_text(encoding="utf-8")
+
+    top_bar = html.split('<div class="top-bar">', 1)[1].split(
+        '<div class="editor-body">',
+        1,
+    )[0]
+    assert 'id="topWorkTitle"' in top_bar
+    assert 'id="topWorkMeta"' in top_bar
+    assert "《巡展像素》非官方编辑器" in top_bar
+    assert "Exhibition Gallery.indd" not in top_bar
+    assert "🗑" not in top_bar
+    assert "↻" not in top_bar
+    assert "💾" not in top_bar
+    assert "📁" not in top_bar
+    assert top_bar.count("<svg") >= 8
+    assert 'class="top-action-icon"' in top_bar
+    assert 'class="import-icon"' in top_bar
+    assert 'class="check-icon"' in top_bar
+    assert ".work-identity-title {" in css
+    assert ".work-identity-meta {" in css
+    assert "function updateTopWorkIdentity()" in state
+    assert "function markSharedWorkAsEdited()" in state
+    assert "markSharedWorkAsEdited();" in editor
+    assert "sharedTitle: body.title || '很糊的画'" in works
+    assert "sharedAuthorName: body.authorName || '博士'" in works
+    assert "sharedViewCount: body.viewCount" in works
+
+
+def test_navigator_uses_compass_rose_svg_instead_of_emoji() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    navigator = html.split('<div class="nav-title">', 1)[1].split(
+        "</div>",
+        1,
+    )[0]
+
+    assert '<svg class="nav-icon"' in navigator
+    assert "🧭" not in navigator
+    assert 'class="nav-compass-cardinal"' in navigator
+    assert 'class="nav-compass-diagonal"' in navigator
+    assert 'class="nav-compass-center"' in navigator
+    assert ".nav-compass-cardinal {" in css
+    assert ".nav-compass-diagonal {" in css
+    assert ".nav-compass-center {" in css
 
 
 def test_removed_decorative_image_has_no_stale_markup_or_styles() -> None:

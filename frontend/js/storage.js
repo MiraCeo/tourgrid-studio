@@ -35,7 +35,11 @@
       editorPaletteId: 'exhibition',
       paletteVersion: null,
       converterVersion: null,
-      importedAt: null
+      importedAt: null,
+      sharedCode: null,
+      sharedTitle: null,
+      sharedAuthorName: null,
+      sharedViewCount: null
     };
   }
 
@@ -85,6 +89,17 @@
     if (!Number.isInteger(metadata.paletteVersion)) metadata.paletteVersion = null;
     if (typeof metadata.converterVersion !== 'string') metadata.converterVersion = null;
     if (typeof metadata.importedAt !== 'string') metadata.importedAt = null;
+    if (typeof metadata.sharedCode !== 'string') metadata.sharedCode = null;
+    if (typeof metadata.sharedTitle !== 'string') metadata.sharedTitle = null;
+    if (typeof metadata.sharedAuthorName !== 'string') {
+      metadata.sharedAuthorName = null;
+    }
+    if (
+      !Number.isInteger(metadata.sharedViewCount) ||
+      metadata.sharedViewCount < 0
+    ) {
+      metadata.sharedViewCount = null;
+    }
     return metadata;
   }
 

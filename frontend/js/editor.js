@@ -28,6 +28,7 @@ function init() {
     documentMetadata = TourgridStorage.defaultMetadata();
     saveToStorage(true);
   }
+  updateTopWorkIdentity();
 
   renderColorGrid();
   updateCanvasSize();
@@ -283,6 +284,7 @@ function paintPixel(gx, gy) {
   if (pixelData[gy][gx] === color) return;
 
   pixelData[gy][gx] = color;
+  markSharedWorkAsEdited();
   lastPaintedX = gx;
   lastPaintedY = gy;
 }
@@ -640,6 +642,7 @@ async function restoreEditorSnapshot(snapshot) {
     TourgridStorage.defaultMetadata(),
     snapshot.metadata || {}
   );
+  updateTopWorkIdentity();
   restorePaletteSelection(
     snapshot.paletteId || documentMetadata.editorPaletteId || 'exhibition'
   );
@@ -785,6 +788,7 @@ function clearCanvas() {
   if (!confirm('Clear canvas? This can be undone.')) return;
   pushUndo();
   documentMetadata = TourgridStorage.defaultMetadata();
+  updateTopWorkIdentity();
   clearReferenceImage(false);
   pixelData = Array.from({ length: GRID_SIZE }, () =>
     Array.from({ length: GRID_SIZE }, () => '#FFFFFF')

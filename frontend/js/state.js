@@ -70,6 +70,51 @@ function updateConversionResultSummary() {
   });
 }
 
+function updateTopWorkIdentity() {
+  var titleElement = document.getElementById('topWorkTitle');
+  var metaElement = document.getElementById('topWorkMeta');
+  if (!titleElement || !metaElement) return;
+
+  var isShared = (
+    documentMetadata.sourceMode === 'shared' &&
+    documentMetadata.sharedCode
+  );
+  if (!isShared) {
+    titleElement.textContent = '《巡展像素》非官方编辑器';
+    metaElement.textContent = '';
+    metaElement.hidden = true;
+    return;
+  }
+
+  var title = documentMetadata.sharedTitle || '很糊的画';
+  var author = documentMetadata.sharedAuthorName || '博士';
+  var views = Number.isInteger(documentMetadata.sharedViewCount)
+    ? documentMetadata.sharedViewCount
+    : 0;
+  titleElement.textContent = '《' + title + '》';
+  metaElement.textContent = (
+    '作者：' + author +
+    ' · 分享次数：' + views +
+    ' · 分享码：' + documentMetadata.sharedCode
+  );
+  metaElement.hidden = false;
+}
+
+function markSharedWorkAsEdited() {
+  if (documentMetadata.sourceMode !== 'shared') return;
+  documentMetadata = Object.assign({}, documentMetadata, {
+    sourceMode: 'canvas',
+    sharedCode: null,
+    sharedTitle: null,
+    sharedAuthorName: null,
+    sharedViewCount: null
+  });
+  if (typeof activeSharedWorkCode !== 'undefined') {
+    activeSharedWorkCode = null;
+  }
+  updateTopWorkIdentity();
+}
+
 let overlayVisible = false;   // overlay toggle state
 let overlayOpacity = 0.4;      // overlay opacity
 let referenceState = TourgridStorage.defaultReference();

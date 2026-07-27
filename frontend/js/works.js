@@ -178,9 +178,14 @@ async function loadSharedWorkByCode(code, options) {
     editorPaletteId: 'exhibition',
     paletteVersion: body.paletteVersion,
     converterVersion: null,
-    importedAt: new Date().toISOString()
+    importedAt: new Date().toISOString(),
+    sharedCode: body.code,
+    sharedTitle: body.title || '很糊的画',
+    sharedAuthorName: body.authorName || '博士',
+    sharedViewCount: body.viewCount
   };
   activeSharedWorkCode = body.code;
+  updateTopWorkIdentity();
   renderCanvas();
   renderNavigator();
   renderColorGrid();

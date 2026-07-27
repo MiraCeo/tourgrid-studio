@@ -195,13 +195,35 @@ body {
   flex-shrink: 1;
 }
 
-/* 閺傚洦銆傞崥?*/
-.doc-name {
+/* 顶部作品身份 */
+.work-identity {
   flex: 1;
+  min-width: 0;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.2;
+}
+.work-identity-title {
+  max-width: 100%;
+  overflow: hidden;
+  color: #595d62;
   font-size: 12px;
-  color: #888;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.work-identity-meta {
+  max-width: 100%;
+  overflow: hidden;
+  color: #8a8e93;
+  font-size: 9px;
+  letter-spacing: 0.25px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -215,7 +237,18 @@ body {
 }
 
 .btn-delete { background: #C82828; }
-.btn-undo { background: #222; }
+.btn-undo,
+.btn-save { background: #222; }
+
+.top-action-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 .btn-import {
   display: flex;
@@ -243,8 +276,13 @@ body {
   transform: scale(0.96);
 }
 .btn-import .import-icon {
-  font-size: 15px;
-  line-height: 1;
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* 鐎瑰本鍨氶獮璺哄絺鐢啩瀵岄幐澶愭尦 */
@@ -273,8 +311,22 @@ body {
   transform: scale(0.96);
 }
 .btn-primary .check-icon {
-  font-size: 15px;
-  font-weight: bold;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.btn-primary .dropdown-chevron {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ============================================================
@@ -316,7 +368,27 @@ body {
   letter-spacing: 1px;
 }
 .nav-icon {
-  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  overflow: visible;
+  fill: none;
+  stroke: #b8bdc0;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-compass-cardinal {
+  fill: #b8bdc0;
+  stroke: none;
+}
+.nav-compass-diagonal {
+  fill: #73797d;
+  stroke: none;
+}
+.nav-compass-center {
+  fill: #1a1a1a;
+  stroke: #c9ced1;
+  stroke-width: 1.15;
 }
 
 /* 导航预览 - 宽度对齐下方控件 */
@@ -1648,7 +1720,7 @@ body {
   /* 顶栏紧凑 */
   .top-bar { padding: 6px 8px; gap: 5px; }
   .top-bar .btn-group { margin-left: auto; }
-  .top-bar .doc-name,
+  .top-bar .work-identity,
   .top-bar .warn-text { display: none; }
   .top-bar .btn-import,
   .top-bar .btn-primary {

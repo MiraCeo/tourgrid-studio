@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-8">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-10">
 </head>
 <body>
 
@@ -51,25 +51,56 @@
     </button>
     <span class="warn-text">注意：严禁出现与国家法律法规及政策相抵触的内容</span>
 
-    <span class="doc-name">Exhibition Gallery.indd</span>
+    <div class="work-identity" id="topWorkIdentity" aria-live="polite">
+      <span class="work-identity-title" id="topWorkTitle">《巡展像素》非官方编辑器</span>
+      <span class="work-identity-meta" id="topWorkMeta" hidden></span>
+    </div>
 
     <div class="btn-group">
-      <button class="icon-btn btn-delete" title="删除画布" onclick="clearCanvas()">🗑</button>
+      <button class="icon-btn btn-delete" title="删除画布"
+              aria-label="删除画布" onclick="clearCanvas()">
+        <svg class="top-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16"></path>
+          <path d="m9 7 .6-2h4.8l.6 2"></path>
+          <path d="m6.5 7 .8 13h9.4l.8-13"></path>
+          <path d="M10 10v7M14 10v7"></path>
+        </svg>
+      </button>
       <button class="icon-btn btn-undo" id="manualCheckpointRestoreBtn"
-              title="恢复到手动保存点" onclick="restoreManualCheckpoint()">↻</button>
-      <button class="icon-btn" id="manualCheckpointSaveBtn"
+              title="恢复到手动保存点" aria-label="恢复到手动保存点"
+              onclick="restoreManualCheckpoint()">
+        <svg class="top-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 8V4l-3 3 3 3V8a8 8 0 1 1-1 7"></path>
+        </svg>
+      </button>
+      <button class="icon-btn btn-save" id="manualCheckpointSaveBtn"
               title="创建手动保存点 (Ctrl+S)" onclick="manualSave()"
-              style="background:#222;">💾</button>
+              aria-label="创建手动保存点">
+        <svg class="top-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 3h13l3 3v15H4z"></path>
+          <path d="M8 3v6h8V3"></path>
+          <path d="M8 21v-7h8v7"></path>
+        </svg>
+      </button>
       <button class="btn-import" id="topImportButton" type="button"
               title="导入图片" onclick="document.getElementById('importFileInput').click()">
-        <span class="import-icon" aria-hidden="true">📁</span>
+        <svg class="import-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h7l2 2h9v11H3z"></path>
+          <path d="M3 6v13"></path>
+        </svg>
         <span>导入图片</span>
       </button>
       <input type="file" id="importFileInput" accept="image/*" style="display:none" onchange="startImport(event)">
 
       <button class="btn-primary" onclick="toggleExportDropdown(event)">
-        <span class="check-icon">✓</span>
-        <span>完成并导出 ▾</span>
+        <svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="m8 12 2.6 2.7L16.5 9"></path>
+        </svg>
+        <span>完成并导出</span>
+        <svg class="dropdown-chevron" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="m4 6 4 4 4-4"></path>
+        </svg>
       </button>
     </div>
   </div>
@@ -80,7 +111,20 @@
     <!-- 瀹革附鐖敍姘嚤閼割亜娅?20% -->
     <div class="left-panel">
       <div class="nav-title">
-        <span class="nav-icon">🧭</span>
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path class="nav-compass-cardinal"
+                d="M12 2.8 L14.2 9.7 L12 8.7 L9.8 9.7 Z
+                   M21.2 12 L14.3 14.2 L15.3 12 L14.3 9.8 Z
+                   M12 21.2 L9.8 14.3 L12 15.3 L14.2 14.3 Z
+                   M2.8 12 L9.7 9.8 L8.7 12 L9.7 14.2 Z"></path>
+          <path class="nav-compass-diagonal"
+                d="M5.6 5.6 L10.2 8.8 L8.8 10.2 Z
+                   M18.4 5.6 L15.2 10.2 L13.8 8.8 Z
+                   M18.4 18.4 L13.8 15.2 L15.2 13.8 Z
+                   M5.6 18.4 L8.8 13.8 L10.2 15.2 Z"></path>
+          <circle class="nav-compass-center" cx="12" cy="12" r="1.55"></circle>
+        </svg>
         <span>导航器</span>
       </div>
       <div class="nav-preview-wrap" id="navPreviewWrap" tabindex="0"
@@ -417,16 +461,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260727-8"></script>
-<script src="/static/js/reference-storage.js?v=20260727-8"></script>
-<script src="/static/js/work-codec.js?v=20260727-8"></script>
-<script src="/static/js/natural-64-v1.js?v=20260727-8"></script>
-<script src="/static/js/state.js?v=20260727-8"></script>
-<script src="/static/js/editor.js?v=20260727-8"></script>
-<script src="/static/js/export.js?v=20260727-8"></script>
-<script src="/static/js/import.js?v=20260727-8"></script>
-<script src="/static/js/works.js?v=20260727-8"></script>
-<script src="/static/js/app.js?v=20260727-8"></script>
+<script src="/static/js/storage.js?v=20260727-10"></script>
+<script src="/static/js/reference-storage.js?v=20260727-10"></script>
+<script src="/static/js/work-codec.js?v=20260727-10"></script>
+<script src="/static/js/natural-64-v1.js?v=20260727-10"></script>
+<script src="/static/js/state.js?v=20260727-10"></script>
+<script src="/static/js/editor.js?v=20260727-10"></script>
+<script src="/static/js/export.js?v=20260727-10"></script>
+<script src="/static/js/import.js?v=20260727-10"></script>
+<script src="/static/js/works.js?v=20260727-10"></script>
+<script src="/static/js/app.js?v=20260727-10"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

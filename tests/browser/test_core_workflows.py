@@ -424,7 +424,25 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     expect(editor_page.locator("#workShareModal")).to_be_hidden()
     loaded = editor_state(editor_page)
     assert all(color == BLACK for row in loaded["pixels"] for color in row)
+    expect(editor_page.locator("#topWorkTitle")).to_have_text("《很糊的画》")
+    expect(editor_page.locator("#topWorkMeta")).to_contain_text("作者：博士")
+    expect(editor_page.locator("#topWorkMeta")).to_contain_text("分享次数：1")
+    expect(editor_page.locator("#topWorkMeta")).to_contain_text(code)
+
+    select_color(editor_page, RED)
+    paint_cells(editor_page, [(0, 0)])
+    expect(editor_page.locator("#topWorkTitle")).to_have_text(
+        "《巡展像素》非官方编辑器"
+    )
+    expect(editor_page.locator("#topWorkMeta")).to_be_hidden()
+
+    editor_page.locator("#undoBtn").click()
+    wait_for_history(editor_page)
+    expect(editor_page.locator("#topWorkTitle")).to_have_text("《很糊的画》")
 
     editor_page.locator("#undoBtn").click()
     wait_for_history(editor_page)
     assert pixel_signature(editor_state(editor_page)) == before_load
+    expect(editor_page.locator("#topWorkTitle")).to_have_text(
+        "《巡展像素》非官方编辑器"
+    )

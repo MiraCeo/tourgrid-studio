@@ -234,6 +234,7 @@ function onCropWheel(e) {
 }
 
 function finishImportedPixels(usedColors, sourceLabel) {
+  updateTopWorkIdentity();
   overlayVisible = false;
   document.getElementById('cropOverlay').classList.remove('show');
   document.getElementById('overlayControls').hidden = false;
