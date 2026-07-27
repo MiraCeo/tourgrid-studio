@@ -509,7 +509,80 @@ function setPalettePanelMode(mode) {
 }
 
 // --- 闁款喚娲忚箛顐ｅ祹闁?---
+var authorModalTrigger = null;
+var announcementModalTrigger = null;
+
+function openAnnouncementModal() {
+  var modal = document.getElementById('announcementModal');
+  if (!modal) return;
+  announcementModalTrigger = document.activeElement;
+  modal.hidden = false;
+  requestAnimationFrame(function() {
+    modal.classList.add('show');
+    var closeButton = modal.querySelector('.announcement-close-btn');
+    if (closeButton) closeButton.focus();
+  });
+}
+
+function closeAnnouncementModal() {
+  var modal = document.getElementById('announcementModal');
+  if (!modal || modal.hidden) return;
+  modal.classList.remove('show');
+  window.setTimeout(function() {
+    if (!modal.classList.contains('show')) modal.hidden = true;
+  }, 180);
+  if (announcementModalTrigger && typeof announcementModalTrigger.focus === 'function') {
+    announcementModalTrigger.focus();
+  }
+}
+
+function closeAnnouncementModalFromBackdrop(e) {
+  if (e.target === e.currentTarget) closeAnnouncementModal();
+}
+
+function openAuthorModal() {
+  var modal = document.getElementById('authorModal');
+  if (!modal) return;
+  authorModalTrigger = document.activeElement;
+  modal.hidden = false;
+  requestAnimationFrame(function() {
+    modal.classList.add('show');
+    var closeButton = modal.querySelector('.author-close-btn');
+    if (closeButton) closeButton.focus();
+  });
+}
+
+function closeAuthorModal() {
+  var modal = document.getElementById('authorModal');
+  if (!modal || modal.hidden) return;
+  modal.classList.remove('show');
+  window.setTimeout(function() {
+    if (!modal.classList.contains('show')) modal.hidden = true;
+  }, 180);
+  if (authorModalTrigger && typeof authorModalTrigger.focus === 'function') {
+    authorModalTrigger.focus();
+  }
+}
+
+function closeAuthorModalFromBackdrop(e) {
+  if (e.target === e.currentTarget) closeAuthorModal();
+}
+
 function onKeyDown(e) {
+  if (e.key === 'Escape') {
+    var announcementModal = document.getElementById('announcementModal');
+    if (announcementModal && !announcementModal.hidden) {
+      e.preventDefault();
+      closeAnnouncementModal();
+      return;
+    }
+    var authorModal = document.getElementById('authorModal');
+    if (authorModal && !authorModal.hidden) {
+      e.preventDefault();
+      closeAuthorModal();
+      return;
+    }
+  }
   // 缁岀儤鐗搁幐澶夌瑓閿涘牅绗夐崷銊ㄧ翻閸忋儲顢嬮崘鍜冪礆閳?閸氼垳鏁ら幏鏍ㄥ楠炲磭些
   if (e.code === 'Space' && !e.target.closest('input,textarea,button')) {
     e.preventDefault();

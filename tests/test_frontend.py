@@ -405,6 +405,55 @@ def test_left_navigator_groups_reference_and_zoom_controls() -> None:
     assert "opacityInput.disabled = !overlayVisible" in image_import
 
 
+def test_author_project_modal_uses_local_avatar_and_safe_github_links() -> None:
+    html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+    avatar = FRONTEND_ROOT / "assets" / "images" / "miraceo-avatar.jpg"
+
+    assert avatar.is_file()
+    assert avatar.stat().st_size > 0
+    assert not (PROJECT_ROOT / "input1.jpg").exists()
+    assert 'class="icon-btn btn-github"' in html
+    assert 'onclick="openAuthorModal()"' in html
+    assert 'id="authorModal" hidden' in html
+    assert '/static/assets/images/miraceo-avatar.jpg' in html
+    assert 'href="https://github.com/MiraCeo"' in html
+    assert 'href="https://github.com/MiraCeo/tourgrid-studio"' in html
+    assert html.count('target="_blank"') >= 2
+    assert html.count('rel="noopener noreferrer"') >= 2
+    assert 'title="重新导入"' not in html
+    assert ".author-overlay {" in css
+    assert ".author-avatar-frame {" in css
+    assert ".author-link {" in css
+    assert "function openAuthorModal()" in app
+    assert "function closeAuthorModal()" in app
+    assert "function closeAuthorModalFromBackdrop(e)" in app
+    assert "if (e.key === 'Escape')" in app
+
+
+def test_announcement_button_and_modal_include_project_intro_and_guide() -> None:
+    html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert 'class="icon-btn btn-announcement"' in html
+    assert 'onclick="openAnnouncementModal()"' in html
+    assert 'id="announcementModal" hidden' in html
+    assert 'aria-labelledby="announcementModalTitle"' in html
+    assert '<h2 id="announcementModalTitle">项目公告</h2>' in html
+    assert "<h3>项目介绍</h3>" in html
+    assert "<h3>使用指南</h3>" in html
+    assert "更新日志" not in html
+    assert html.count('class="announcement-section"') == 2
+    assert ".btn-announcement {" in css
+    assert ".announcement-modal {" in css
+    assert ".announcement-steps {" in css
+    assert "function openAnnouncementModal()" in app
+    assert "function closeAnnouncementModal()" in app
+    assert "function closeAnnouncementModalFromBackdrop(e)" in app
+
+
 def test_all_javascript_files_have_valid_syntax() -> None:
     node = shutil.which("node")
     if not node:
