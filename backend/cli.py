@@ -27,15 +27,13 @@ def build_parser() -> argparse.ArgumentParser:
         "-o",
         "--output",
         type=Path,
-        help="Pixel PNG path. Default: <input>_<width>x<height>.png",
+        help="Pixel PNG path. Default: <input>_24x24.png",
     )
     parser.add_argument(
         "--preview",
         type=Path,
-        help="Nearest-neighbor preview path. Default: <input>_<width>x<height>_preview.png",
+        help="Nearest-neighbor preview path. Default: <input>_24x24_preview.png",
     )
-    parser.add_argument("--width", type=int, default=24, help="Output width. Default: 24.")
-    parser.add_argument("--height", type=int, default=24, help="Output height. Default: 24.")
     parser.add_argument(
         "--palette-id",
         default=DEFAULT_PALETTE_ID,
@@ -113,8 +111,6 @@ def main(argv: list[str] | None = None) -> None:
     try:
         palette = load_palette(args.palette_id)
         options = ConversionOptions(
-            width=args.width,
-            height=args.height,
             fit=args.fit,
             dither=args.dither,
             sobel=args.sobel,

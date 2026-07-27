@@ -48,8 +48,8 @@ FastAPI 同时提供同源前端：
 | 字段 | 默认值 | 限制 |
 |---|---:|---|
 | `image` | 必填 | PNG、JPEG 或 WebP |
-| `width` | 24 | 8～128 |
-| `height` | 24 | 8～128 |
+| `width` | 24 | 仅允许 24 |
+| `height` | 24 | 仅允许 24 |
 | `palette_id` | `natural-64-v1` | 已注册色板 |
 | `dither` | `none` | `none`、`naive`、`bayer`、`floyd`、`atkinson` |
 | `sobel` | 3 | 2～9 |
@@ -122,8 +122,6 @@ TOURGRID_MAX_UPLOAD_BYTES
 TOURGRID_MAX_IMAGE_WIDTH
 TOURGRID_MAX_IMAGE_HEIGHT
 TOURGRID_MAX_IMAGE_PIXELS
-TOURGRID_MIN_OUTPUT_SIZE
-TOURGRID_MAX_OUTPUT_SIZE
 TOURGRID_PROCESSING_TIMEOUT_SECONDS
 TOURGRID_QUEUE_TIMEOUT_SECONDS
 TOURGRID_MAX_CONCURRENT_CONVERSIONS

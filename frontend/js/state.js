@@ -3,7 +3,7 @@
    ============================================================ */
 
 // --- 鐢悂鍣?---
-let GRID_SIZE = 24;
+const GRID_SIZE = 24;
 const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，300% 为 1200px
 const NAV_CELL_SIZE = 4;   // 鐎佃壈鍩呴崳銊︾槨娑擃亜鍎氱槐鐘崇壐閻ㄥ嫬鏄傜€?
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
@@ -11,8 +11,6 @@ const DEFAULT_PALETTE_ID = 'natural-64-v1';
 const DEFAULT_PALETTE_VERSION = TOURGRID_NATURAL_64_V1.version;
 let documentMetadata = TourgridStorage.defaultMetadata();
 
-// 裁切对话框格子数选择
-let cropGridSize = 24;
 // --- 閼瑰弶婢橀弫鐗堝祦閿涘牆濮╅幀浣瑰絹閸欐牜鏁剧敮鍐ц厬娴ｈ法鏁ゆ０婊嗗閿?--
 function getUsedColors() {
   const colorCount = {};
@@ -73,6 +71,7 @@ function updateConversionResultSummary() {
 
 let overlayVisible = false;   // overlay toggle state
 let overlayOpacity = 0.4;      // overlay opacity
+let referenceState = TourgridStorage.defaultReference();
 let currentColor = '#222222';
 let currentTool = 'brush';
 let eyedropperActive = false;
@@ -145,6 +144,10 @@ function saveToStorage(silent) {
       pixels: pixelData.map(function(row) { return row.slice(); }),
       metadata: Object.assign({}, documentMetadata, {
         editorPaletteId: currentPaletteId
+      }),
+      reference: Object.assign({}, referenceState, {
+        visible: overlayVisible,
+        opacity: overlayOpacity
       })
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

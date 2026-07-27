@@ -40,7 +40,8 @@ def test_conversion_option_defaults_match_approved_baseline() -> None:
 def test_cli_defaults_match_approved_baseline() -> None:
     args = build_parser().parse_args(["input.png"])
 
-    assert (args.width, args.height) == (24, 24)
+    assert not hasattr(args, "width")
+    assert not hasattr(args, "height")
     assert args.fit == "crop"
     assert args.dither == "none"
     assert args.sobel == 3
@@ -48,6 +49,11 @@ def test_cli_defaults_match_approved_baseline() -> None:
     assert args.no_svd is False
     assert args.mapping_mode == "direct"
     assert args.palette_id == "natural-64-v1"
+
+
+def test_conversion_rejects_non_24_output_size() -> None:
+    with pytest.raises(ValueError, match="fixed at 24x24"):
+        ConversionOptions(width=32, height=32).validate(64)
 
 
 def test_crop_to_aspect_centers_landscape_and_portrait_images() -> None:

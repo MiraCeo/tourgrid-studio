@@ -44,6 +44,7 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     assert '<link rel="stylesheet" href="/static/css/editor.css">' in html
     expected_scripts = [
         "storage.js",
+        "reference-storage.js",
         "natural-64-v1.js",
         "state.js",
         "editor.js",
@@ -80,6 +81,8 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert "TourgridConversion" not in image_import
     assert not (JAVASCRIPT_ROOT / "conversion-api.js").exists()
     assert "K-means" not in image_import
+    assert '<span class="crop-size-value">24×24</span>' in source
+    assert "const GRID_SIZE = 24" in source
 
 
 def test_first_run_canvas_is_blank_white_instead_of_a_demo_pattern() -> None:
@@ -255,28 +258,68 @@ def test_storage_migrates_old_documents_and_rejects_invalid_pixels() -> None:
     script = r"""
 const assert = require('node:assert/strict');
 const storage = require(process.argv[1]);
-const pixels = Array.from({length: 2}, () => ['#ffffff', '#000000']);
+const pixels = Array.from(
+  {length: 24},
+  () => Array.from({length: 24}, (_, index) => index % 2 ? '#000000' : '#ffffff')
+);
 const migrated = storage.migrate({
-  gridSize: 2,
+  gridSize: 24,
   pixels,
   paletteId: 'mard',
   savedAt: '2026-01-01T00:00:00.000Z'
 });
-assert.equal(migrated.schemaVersion, 3);
+assert.equal(migrated.schemaVersion, 4);
 assert.equal(migrated.metadata.editorPaletteId, 'mard');
 assert.equal(migrated.metadata.sourceMode, 'canvas');
 assert.equal(migrated.pixels[0][0], '#FFFFFF');
-assert.equal(storage.migrate({gridSize: 2, pixels: [['#fff']]}), null);
+assert.equal(migrated.reference.assetId, null);
+assert.equal(migrated.reference.opacity, 0.4);
+assert.equal(storage.migrate({gridSize: 2, pixels: [['#FFFFFF', '#000000'], ['#FFFFFF', '#000000']]}), null);
 const serialized = storage.serialize({
-  gridSize: 2,
+  gridSize: 24,
   pixels,
-  metadata: {sourceMode: 'server', paletteId: 'natural-64-v1'}
+  metadata: {sourceMode: 'server', paletteId: 'natural-64-v1'},
+  reference: {
+    assetId: 'active-reference',
+    mimeType: 'image/webp',
+    width: 256,
+    height: 256,
+    visible: true,
+    opacity: 0.75
+  }
 });
 assert.equal(serialized.metadata.sourceMode, 'server');
 assert.equal(serialized.metadata.paletteId, 'natural-64-v1');
+assert.equal(serialized.reference.assetId, 'active-reference');
+assert.equal(serialized.reference.visible, true);
+assert.equal(serialized.reference.opacity, 0.75);
 assert.match(serialized.savedAt, /^\d{4}-\d{2}-\d{2}T/);
 """
     run_node(script, JAVASCRIPT_ROOT / "storage.js")
+
+
+def test_reference_image_is_encoded_as_webp_and_persisted_in_indexeddb() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
+    reference_storage = (
+        JAVASCRIPT_ROOT / "reference-storage.js"
+    ).read_text(encoding="utf-8")
+
+    assert "const REFERENCE_IMAGE_SIZE = 256" in image_import
+    assert "const REFERENCE_WEBP_QUALITY = 0.88" in image_import
+    assert "canvas.toBlob(function(blob)" in image_import
+    assert "'image/webp', REFERENCE_WEBP_QUALITY" in image_import
+    assert "TourgridReferenceStorage.save(blob" in image_import
+    assert "TourgridReferenceStorage.load(referenceState.assetId)" in image_import
+    assert "TourgridReferenceStorage.remove(assetId)" in image_import
+    assert "restorePersistedReference()" in editor
+    assert "reference: Object.assign({}, referenceState" in state
+    assert "root.indexedDB.open(DATABASE_NAME, DATABASE_VERSION)" in reference_storage
+    assert "database.createObjectStore(STORE_NAME, { keyPath: 'id' })" in reference_storage
+    assert "store.put(record)" in reference_storage
+    assert 'onchange="saveToStorage(true)"' in html
 
 
 def test_removed_decorative_image_has_no_stale_markup_or_styles() -> None:

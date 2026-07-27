@@ -5,7 +5,8 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
 
-  var SCHEMA_VERSION = 3;
+  var SCHEMA_VERSION = 4;
+  var FIXED_GRID_SIZE = 24;
   var HEX_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 
   function clonePixels(pixels) {
@@ -15,8 +16,7 @@
   }
 
   function validatePixels(gridSize, pixels) {
-    return Number.isInteger(gridSize) &&
-      gridSize > 0 &&
+    return gridSize === FIXED_GRID_SIZE &&
       Array.isArray(pixels) &&
       pixels.length === gridSize &&
       pixels.every(function(row) {
@@ -37,6 +37,37 @@
       converterVersion: null,
       importedAt: null
     };
+  }
+
+  function defaultReference() {
+    return {
+      assetId: null,
+      mimeType: null,
+      width: null,
+      height: null,
+      visible: false,
+      opacity: 0.4
+    };
+  }
+
+  function normalizeReference(value) {
+    var reference = Object.assign(defaultReference(), value || {});
+    if (typeof reference.assetId !== 'string' || !reference.assetId) {
+      return defaultReference();
+    }
+    if (typeof reference.mimeType !== 'string') reference.mimeType = null;
+    if (!Number.isInteger(reference.width) || reference.width <= 0) {
+      reference.width = null;
+    }
+    if (!Number.isInteger(reference.height) || reference.height <= 0) {
+      reference.height = null;
+    }
+    reference.visible = Boolean(reference.visible);
+    if (typeof reference.opacity !== 'number' || !Number.isFinite(reference.opacity)) {
+      reference.opacity = 0.4;
+    }
+    reference.opacity = Math.max(0, Math.min(1, reference.opacity));
+    return reference;
   }
 
   function normalizeMetadata(value, legacyPaletteId) {
@@ -66,6 +97,7 @@
       gridSize: value.gridSize,
       pixels: clonePixels(value.pixels),
       metadata: normalizeMetadata(value.metadata, value.paletteId),
+      reference: normalizeReference(value.reference),
       savedAt: typeof value.savedAt === 'string' ? value.savedAt : null
     };
   }
@@ -81,7 +113,9 @@
     SCHEMA_VERSION: SCHEMA_VERSION,
     clonePixels: clonePixels,
     defaultMetadata: defaultMetadata,
+    defaultReference: defaultReference,
     migrate: migrate,
+    normalizeReference: normalizeReference,
     serialize: serialize,
     validatePixels: validatePixels
   };

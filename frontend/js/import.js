@@ -7,7 +7,10 @@ let isCropping = false;
 
 let importedPixelData = null;
 let importedPreviewImage = null;
+let importedPreviewObjectUrl = null;
 let conversionInProgress = false;
+const REFERENCE_IMAGE_SIZE = 256;
+const REFERENCE_WEBP_QUALITY = 0.88;
 
 async function loadExhibitionPalette() {
   try {
@@ -49,9 +52,6 @@ function setConversionBusy(busy) {
   conversionInProgress = busy;
   document.getElementById('confirmCropBtn').disabled = busy;
   document.getElementById('cropDither').disabled = busy;
-  document.querySelectorAll('.grid-size-btn').forEach(function(button) {
-    button.disabled = busy;
-  });
 }
 
 function setConversionStatus(message, isError, showRetry) {
@@ -74,12 +74,6 @@ function startImport(e) {
       // 閸忓牊妯夌粈鍝勮剨缁愭绱欑涵顔荤箽鐢啫鐪€瑰本鍨氶敍澶涚礉閸愬秷顓哥粻妞剧秴缂?
       document.getElementById('cropOverlay').classList.add('show');
       var vp = document.getElementById('cropViewport');
-      // 重置格数选择
-      cropGridSize = 24;
-      document.querySelectorAll('.grid-size-btn').forEach(function(b) { b.classList.remove('active'); });
-      var btn24 = document.getElementById('gridBtn24');
-      if (btn24) btn24.classList.add('active');
-
       // 缁涘绔寸敮褑顔€鐢啫鐪悽鐔告櫏
       requestAnimationFrame(function() {
         var vpW = vp.clientWidth;
@@ -229,13 +223,6 @@ function onCropTouchEnd(e) {
   }
 }
 
-function setCropGridSize(size, btn) {
-  cropGridSize = size;
-  // 更新按钮激活状态
-  document.querySelectorAll('.grid-size-btn').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
-}
-
 function onCropWheel(e) {
   if (!cropImg) return;
   e.preventDefault();
@@ -272,7 +259,7 @@ async function confirmCrop() {
   setConversionStatus('正在准备本地转换…', false, false);
   try {
     await new Promise(function(resolve) { setTimeout(resolve, 0); });
-    confirmCropLocal();
+    await confirmCropLocal();
     setConversionStatus('', false, false);
   } catch (error) {
     setConversionStatus(
@@ -285,11 +272,9 @@ async function confirmCrop() {
   }
 }
 
-function confirmCropLocal() {
+async function confirmCropLocal() {
   if (!cropImg) return;
   pushUndo();
-  // 应用选择的格子数
-  GRID_SIZE = cropGridSize;
   var vp = document.getElementById('cropViewport');
   var vpW = vp.clientWidth;
   var scale = cropZoom / 100;
@@ -496,7 +481,7 @@ function confirmCropLocal() {
   }
 
   // === Step 5: 预览图 ===
-  var PREVIEW_SIZE = 256;
+  var PREVIEW_SIZE = REFERENCE_IMAGE_SIZE;
   var rawPreview = document.createElement('canvas');
   rawPreview.width = PREVIEW_SIZE;
   rawPreview.height = PREVIEW_SIZE;
@@ -510,12 +495,7 @@ function confirmCropLocal() {
   if (sw > 0 && sh > 0) {
     rawPrevCtx.drawImage(cropImg, sx, sy, sw, sh, rdx, rdy, rdw, rdh);
   }
-  importedPreviewImage = new Image();
-  importedPreviewImage.onload = function() {
-    renderNavigator();
-    renderOverlay();
-  };
-  importedPreviewImage.src = rawPreview.toDataURL();
+  var referenceWasPersisted = await installAndPersistReference(rawPreview);
 
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
   currentPaletteId = 'exhibition';
@@ -535,6 +515,107 @@ function confirmCropLocal() {
     row.forEach(function(color) { usedLocalColors.add(color); });
   });
   finishImportedPixels(usedLocalColors.size, '本地');
+  if (!referenceWasPersisted) {
+    showToast('转换完成，但参考图未能持久保存');
+  }
+}
+
+function canvasToWebpBlob(canvas) {
+  return new Promise(function(resolve, reject) {
+    canvas.toBlob(function(blob) {
+      if (!blob) {
+        reject(new Error('浏览器无法生成 WebP 参考图。'));
+        return;
+      }
+      resolve(blob);
+    }, 'image/webp', REFERENCE_WEBP_QUALITY);
+  });
+}
+
+function setImportedPreviewBlob(blob) {
+  return new Promise(function(resolve, reject) {
+    var nextObjectUrl = URL.createObjectURL(blob);
+    var image = new Image();
+    image.onload = function() {
+      if (importedPreviewObjectUrl) URL.revokeObjectURL(importedPreviewObjectUrl);
+      importedPreviewObjectUrl = nextObjectUrl;
+      importedPreviewImage = image;
+      renderNavigator();
+      renderOverlay();
+      resolve(image);
+    };
+    image.onerror = function() {
+      URL.revokeObjectURL(nextObjectUrl);
+      reject(new Error('无法读取本地参考图。'));
+    };
+    image.src = nextObjectUrl;
+  });
+}
+
+async function installAndPersistReference(canvas) {
+  var blob = await canvasToWebpBlob(canvas);
+  await setImportedPreviewBlob(blob);
+  try {
+    var record = await TourgridReferenceStorage.save(blob, {
+      width: canvas.width,
+      height: canvas.height
+    });
+    referenceState = {
+      assetId: record.id,
+      mimeType: record.mimeType,
+      width: record.width,
+      height: record.height,
+      visible: false,
+      opacity: overlayOpacity
+    };
+    return true;
+  } catch (error) {
+    referenceState = TourgridStorage.defaultReference();
+    return false;
+  }
+}
+
+async function restorePersistedReference() {
+  if (!referenceState.assetId) return;
+  try {
+    var record = await TourgridReferenceStorage.load(referenceState.assetId);
+    if (!record || !record.blob) {
+      referenceState = TourgridStorage.defaultReference();
+      overlayVisible = false;
+      document.getElementById('overlayControls').hidden = true;
+      saveToStorage(true);
+      return;
+    }
+    await setImportedPreviewBlob(record.blob);
+    document.getElementById('overlayControls').hidden = false;
+    syncOverlayControls();
+    renderOverlay();
+  } catch (error) {
+    overlayVisible = false;
+    document.getElementById('overlayControls').hidden = true;
+    syncOverlayControls();
+    showToast('参考图恢复失败，像素作品不受影响');
+  }
+}
+
+function clearReferenceImage() {
+  var assetId = referenceState.assetId;
+  if (importedPreviewObjectUrl) {
+    URL.revokeObjectURL(importedPreviewObjectUrl);
+    importedPreviewObjectUrl = null;
+  }
+  importedPreviewImage = null;
+  overlayVisible = false;
+  overlayOpacity = 0.4;
+  referenceState = TourgridStorage.defaultReference();
+  var controls = document.getElementById('overlayControls');
+  if (controls) controls.hidden = true;
+  if (overlayCanvas) overlayCanvas.style.display = 'none';
+  if (assetId) {
+    TourgridReferenceStorage.remove(assetId).catch(function() {
+      // 像素画清空不应被浏览器存储清理失败阻断。
+    });
+  }
 }
 
 function cancelCrop() {
@@ -582,6 +663,7 @@ function toggleOverlay() {
   overlayVisible = !overlayVisible;
   syncOverlayControls();
   renderOverlay();
+  saveToStorage(true);
 }
 
 function syncOverlayControls() {
@@ -589,8 +671,12 @@ function syncOverlayControls() {
   var label = document.getElementById('overlayToggleLabel');
   var opacityInput = document.getElementById('overlayOpacity');
   var opacityControl = document.getElementById('overlayOpacityControl');
+  var opacityValue = document.getElementById('overlayOpacityVal');
   if (!button || !label || !opacityInput || !opacityControl) return;
 
+  var opacityPercent = Math.round(overlayOpacity * 100);
+  opacityInput.value = opacityPercent;
+  if (opacityValue) opacityValue.textContent = opacityPercent + '%';
   button.classList.toggle('active', overlayVisible);
   button.setAttribute('aria-checked', String(overlayVisible));
   label.textContent = overlayVisible ? '开启' : '关闭';

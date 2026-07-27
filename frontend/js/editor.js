@@ -16,10 +16,12 @@ function init() {
 
   // 优先从本地存储恢复；首次使用时保留全白画布。
   var saved = loadFromStorage();
-  if (saved && saved.gridSize && saved.pixels && saved.pixels.length === saved.gridSize) {
-    GRID_SIZE = saved.gridSize;
+  if (saved && saved.gridSize === GRID_SIZE && saved.pixels && saved.pixels.length === GRID_SIZE) {
     pixelData = saved.pixels.map(function(row) { return row.slice(); });
     documentMetadata = Object.assign(TourgridStorage.defaultMetadata(), saved.metadata);
+    referenceState = TourgridStorage.normalizeReference(saved.reference);
+    overlayVisible = referenceState.visible;
+    overlayOpacity = referenceState.opacity;
     restorePaletteSelection(documentMetadata.editorPaletteId);
   } else {
     documentMetadata = TourgridStorage.defaultMetadata();
@@ -30,6 +32,10 @@ function init() {
   updateCanvasSize();
   renderCanvas();
   renderNavigator();
+  if (referenceState.assetId) {
+    document.getElementById('overlayControls').hidden = false;
+    restorePersistedReference();
+  }
 
   // 娴滃娆㈢紒鎴濈暰
   mainCanvas.addEventListener('mousedown', onMouseDown);
@@ -474,7 +480,6 @@ function makeEditorSnapshot() {
 }
 
 function restoreEditorSnapshot(snapshot) {
-  GRID_SIZE = snapshot.gridSize;
   pixelData = snapshot.pixels.map(function(row) { return row.slice(); });
   documentMetadata = Object.assign(
     TourgridStorage.defaultMetadata(),
@@ -532,6 +537,7 @@ function clearCanvas() {
   if (!confirm('Clear canvas? This can be undone.')) return;
   pushUndo();
   documentMetadata = TourgridStorage.defaultMetadata();
+  clearReferenceImage();
   pixelData = Array.from({ length: GRID_SIZE }, () =>
     Array.from({ length: GRID_SIZE }, () => '#FFFFFF')
   );

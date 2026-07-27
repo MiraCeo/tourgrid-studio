@@ -10,8 +10,6 @@ class ApiSettings:
     max_image_width: int = 8192
     max_image_height: int = 8192
     max_image_pixels: int = 25_000_000
-    min_output_size: int = 8
-    max_output_size: int = 128
     processing_timeout_seconds: float = 30.0
     queue_timeout_seconds: float = 2.0
     max_concurrent_conversions: int = 2
@@ -45,14 +43,6 @@ class ApiSettings:
             max_image_pixels=_env_int(
                 "TOURGRID_MAX_IMAGE_PIXELS",
                 defaults.max_image_pixels,
-            ),
-            min_output_size=_env_int(
-                "TOURGRID_MIN_OUTPUT_SIZE",
-                defaults.min_output_size,
-            ),
-            max_output_size=_env_int(
-                "TOURGRID_MAX_OUTPUT_SIZE",
-                defaults.max_output_size,
             ),
             processing_timeout_seconds=_env_float(
                 "TOURGRID_PROCESSING_TIMEOUT_SECONDS",
@@ -108,8 +98,6 @@ class ApiSettings:
             "max_image_width": self.max_image_width,
             "max_image_height": self.max_image_height,
             "max_image_pixels": self.max_image_pixels,
-            "min_output_size": self.min_output_size,
-            "max_output_size": self.max_output_size,
             "processing_timeout_seconds": self.processing_timeout_seconds,
             "queue_timeout_seconds": self.queue_timeout_seconds,
             "max_concurrent_conversions": self.max_concurrent_conversions,
@@ -123,8 +111,6 @@ class ApiSettings:
         for name, value in positive_values.items():
             if value <= 0:
                 raise ValueError(f"{name} must be positive")
-        if self.min_output_size > self.max_output_size:
-            raise ValueError("min_output_size cannot exceed max_output_size")
         if not self.environment.strip():
             raise ValueError("environment cannot be empty")
         if not self.release.strip():

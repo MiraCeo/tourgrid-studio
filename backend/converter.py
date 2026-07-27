@@ -35,8 +35,8 @@ class ConversionOptions:
     cleanup_delta_e: float = 14.0
 
     def validate(self, palette_size: int) -> None:
-        if self.width < 1 or self.height < 1:
-            raise ValueError("width and height must be positive")
+        if self.width != 24 or self.height != 24:
+            raise ValueError("output size is fixed at 24x24")
         if self.fit not in SUPPORTED_FIT_MODES:
             raise ValueError(f"Unsupported fit mode: {self.fit}")
         if self.dither not in SUPPORTED_DITHER_MODES:

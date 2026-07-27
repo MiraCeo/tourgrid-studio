@@ -152,17 +152,11 @@ def create_router() -> APIRouter:
                     f"server provides {CONVERTER_VERSION!r}."
                 ),
             )
-        if not (
-            settings.min_output_size <= width <= settings.max_output_size
-            and settings.min_output_size <= height <= settings.max_output_size
-        ):
+        if width != 24 or height != 24:
             raise ApiError(
                 422,
                 "invalid_output_size",
-                (
-                    f"width and height must be between {settings.min_output_size} "
-                    f"and {settings.max_output_size}."
-                ),
+                "Output size is fixed at 24x24.",
             )
 
         try:

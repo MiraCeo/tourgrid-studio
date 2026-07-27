@@ -98,7 +98,8 @@
         <label class="opacity-control" id="overlayOpacityControl" for="overlayOpacity">
           <span>透明度</span>
           <input type="range" id="overlayOpacity" min="0" max="100" value="40"
-                 oninput="updateOverlayOpacity(this.value)" disabled>
+                 oninput="updateOverlayOpacity(this.value)"
+                 onchange="saveToStorage(true)" disabled>
           <span id="overlayOpacityVal">40%</span>
         </label>
       </section>
@@ -305,10 +306,8 @@
       <span class="crop-zoom-label">缩放</span>
       <input type="range" class="crop-zoom-slider" id="cropZoomSlider" min="10" max="500" value="100" oninput="updateCropZoom(this.value)">
       <span class="crop-zoom-label" id="cropZoomVal">100%</span>
-      <span class="crop-zoom-label">格数</span>
-      <button class="grid-size-btn active" id="gridBtn24" onclick="setCropGridSize(24, this)">24</button>
-      <button class="grid-size-btn" id="gridBtn52" onclick="setCropGridSize(52, this)">52</button>
-      <button class="grid-size-btn" id="gridBtn104" onclick="setCropGridSize(104, this)">104</button>
+      <span class="crop-zoom-label">输出</span>
+      <span class="crop-size-value">24×24</span>
     </div>
     <div class="crop-controls">
       <span class="crop-zoom-label">抖动</span>
@@ -332,6 +331,7 @@
 </div>
 
 <script src="/static/js/storage.js"></script>
+<script src="/static/js/reference-storage.js"></script>
 <script src="/static/js/natural-64-v1.js"></script>
 <script src="/static/js/state.js"></script>
 <script src="/static/js/editor.js"></script>

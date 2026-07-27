@@ -172,8 +172,8 @@ def test_convert_accepts_explicit_supported_options(client: TestClient) -> None:
         "/api/v1/convert",
         files={"image": ("source.webp", image_bytes(image_format="WEBP"), "image/webp")},
         data={
-            "width": "52",
-            "height": "52",
+            "width": "24",
+            "height": "24",
             "dither": "atkinson",
             "fit": "stretch",
             "mapping_mode": "two-stage",
@@ -184,7 +184,7 @@ def test_convert_accepts_explicit_supported_options(client: TestClient) -> None:
 
     assert response.status_code == 200, response.text
     result = response.json()
-    assert (result["width"], result["height"]) == (52, 52)
+    assert (result["width"], result["height"]) == (24, 24)
     assert result["mappingMode"] == "two-stage"
 
 
@@ -252,11 +252,11 @@ def test_convert_rejects_large_decoded_dimensions(settings: ApiSettings) -> None
     assert response.json()["error"]["code"] == "image_dimensions_too_large"
 
 
-def test_convert_rejects_invalid_output_size(client: TestClient) -> None:
+def test_convert_rejects_non_24_output_size(client: TestClient) -> None:
     response = client.post(
         "/api/v1/convert",
         files={"image": ("source.png", image_bytes(), "image/png")},
-        data={"width": "129"},
+        data={"width": "32"},
     )
 
     assert response.status_code == 422
