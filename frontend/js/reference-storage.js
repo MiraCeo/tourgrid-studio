@@ -8,7 +8,15 @@
   var DATABASE_NAME = 'tourgrid-studio';
   var DATABASE_VERSION = 1;
   var STORE_NAME = 'reference-images';
-  var ACTIVE_REFERENCE_ID = 'active-reference';
+  var LEGACY_ACTIVE_REFERENCE_ID = 'active-reference';
+
+  function createAssetId() {
+    if (root.crypto && typeof root.crypto.randomUUID === 'function') {
+      return 'reference-' + root.crypto.randomUUID();
+    }
+    return 'reference-' + Date.now().toString(36) + '-' +
+      Math.random().toString(36).slice(2);
+  }
 
   function openDatabase() {
     return new Promise(function(resolve, reject) {
@@ -66,7 +74,7 @@
     }
     var details = metadata || {};
     var record = {
-      id: ACTIVE_REFERENCE_ID,
+      id: details.id || createAssetId(),
       blob: blob,
       mimeType: blob.type || 'image/webp',
       width: Number.isInteger(details.width) ? details.width : null,
@@ -80,7 +88,7 @@
   }
 
   function load(id) {
-    var assetId = id || ACTIVE_REFERENCE_ID;
+    var assetId = id || LEGACY_ACTIVE_REFERENCE_ID;
     return runTransaction('readonly', function(store) {
       return store.get(assetId);
     }).then(function(record) {
@@ -89,19 +97,28 @@
   }
 
   function remove(id) {
-    var assetId = id || ACTIVE_REFERENCE_ID;
+    var assetId = id || LEGACY_ACTIVE_REFERENCE_ID;
     return runTransaction('readwrite', function(store) {
       store.delete(assetId);
       return { result: undefined };
     });
   }
 
+  function listIds() {
+    return runTransaction('readonly', function(store) {
+      return store.getAllKeys();
+    }).then(function(ids) {
+      return Array.isArray(ids) ? ids : [];
+    });
+  }
+
   return {
-    ACTIVE_REFERENCE_ID: ACTIVE_REFERENCE_ID,
+    ACTIVE_REFERENCE_ID: LEGACY_ACTIVE_REFERENCE_ID,
     DATABASE_NAME: DATABASE_NAME,
     STORE_NAME: STORE_NAME,
     save: save,
     load: load,
-    remove: remove
+    remove: remove,
+    listIds: listIds
   };
 });

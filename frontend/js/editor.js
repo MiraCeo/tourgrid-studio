@@ -34,7 +34,9 @@ function init() {
   renderNavigator();
   if (referenceState.assetId) {
     document.getElementById('overlayControls').hidden = false;
-    restorePersistedReference();
+    restorePersistedReference().finally(scheduleReferenceAssetPrune);
+  } else {
+    scheduleReferenceAssetPrune();
   }
 
   // 娴滃娆㈢紒鎴濈暰
@@ -225,6 +227,7 @@ function paintPixel(gx, gy) {
 
 // --- 姒х姵鐖ｆ禍瀣╂ ---
 function onMouseDown(e) {
+  if (historyOperationInProgress) return;
   if (e.button !== 0) return; // 閸欘亜鎼锋惔鏂夸箯闁?
   // 缁岀儤鐗?瀹革箓鏁?閳?閹锋牗瀚块獮宕囆?
   if (spaceHeld) {
@@ -362,6 +365,7 @@ var touchPinchDist = 0;   // 双指初始距离（用于缩放判定）
 var touchPinchZoom = 0;   // 双指缩放起始zoom值
 
 function onTouchStart(e) {
+  if (historyOperationInProgress) return;
   e.preventDefault();
   if (e.touches.length === 1) {
     if (eyedropperActive) {
@@ -464,10 +468,59 @@ function onTouchEnd(e) {
 }
 
 // --- 閹俱倝鏀?闁插秴浠?---
-function pushUndo() {
-  undoStack.push(makeEditorSnapshot());
-  if (undoStack.length > MAX_UNDO) undoStack.shift();
+var referencePruneTimer = null;
+
+function referenceSnapshotForHistory() {
+  return {
+    assetId: referenceState.assetId || null,
+    mimeType: referenceState.mimeType || null,
+    width: referenceState.width || null,
+    height: referenceState.height || null,
+    sessionOnly: Boolean(referenceState.sessionOnly)
+  };
+}
+
+function collectReferencedAssetIds() {
+  var referenced = new Set();
+  function addReference(snapshot) {
+    if (snapshot && snapshot.reference && snapshot.reference.assetId) {
+      referenced.add(snapshot.reference.assetId);
+    }
+  }
+  if (referenceState.assetId) referenced.add(referenceState.assetId);
+  undoStack.forEach(addReference);
+  redoStack.forEach(addReference);
+  return referenced;
+}
+
+async function pruneReferenceAssets() {
+  if (!TourgridReferenceStorage || typeof TourgridReferenceStorage.listIds !== 'function') return;
+  var referenced = collectReferencedAssetIds();
+  var ids = await TourgridReferenceStorage.listIds();
+  await Promise.all(ids.map(function(id) {
+    if (referenced.has(id)) return Promise.resolve();
+    return TourgridReferenceStorage.remove(id);
+  }));
+}
+
+function scheduleReferenceAssetPrune() {
+  if (referencePruneTimer !== null) clearTimeout(referencePruneTimer);
+  referencePruneTimer = setTimeout(function() {
+    referencePruneTimer = null;
+    pruneReferenceAssets().catch(function() {});
+  }, 0);
+}
+
+function pushUndo(snapshot) {
+  undoStack.push(snapshot || makeEditorSnapshot());
+  var historyTruncated = false;
+  if (undoStack.length > MAX_UNDO) {
+    undoStack.shift();
+    historyTruncated = true;
+  }
+  var discardedRedo = redoStack.length > 0;
   redoStack = []; // 閺傜増鎼锋担婊勭缁屾椽鍣搁崑姘垽
+  if (historyTruncated || discardedRedo) scheduleReferenceAssetPrune();
 }
 
 function makeEditorSnapshot() {
@@ -475,11 +528,13 @@ function makeEditorSnapshot() {
     gridSize: GRID_SIZE,
     pixels: pixelData.map(function(row) { return row.slice(); }),
     metadata: Object.assign({}, documentMetadata),
-    paletteId: currentPaletteId
+    paletteId: currentPaletteId,
+    reference: referenceSnapshotForHistory()
   };
 }
 
-function restoreEditorSnapshot(snapshot) {
+async function restoreEditorSnapshot(snapshot) {
+  await restoreReferenceFromHistory(snapshot.reference);
   pixelData = snapshot.pixels.map(function(row) { return row.slice(); });
   documentMetadata = Object.assign(
     TourgridStorage.defaultMetadata(),
@@ -491,7 +546,7 @@ function restoreEditorSnapshot(snapshot) {
   updateCanvasSize();
 }
 
-function undo() {
+async function undo() {
   if (isStatisticsMode()) {
     showToast('统计模式下画布为只读');
     return;
@@ -500,16 +555,31 @@ function undo() {
     showToast('Nothing to undo');
     return;
   }
-  redoStack.push(makeEditorSnapshot());
-  restoreEditorSnapshot(undoStack.pop());
-  renderCanvas();
-  renderNavigator();
-  renderColorGrid();
-  saveToStorage(true);
-  showToast('Undone');
+  if (typeof conversionInProgress !== 'undefined' && conversionInProgress) {
+    showToast('图片转换完成后才能撤销');
+    return;
+  }
+  if (historyOperationInProgress) return;
+  historyOperationInProgress = true;
+  var target = undoStack[undoStack.length - 1];
+  var current = makeEditorSnapshot();
+  try {
+    await restoreEditorSnapshot(target);
+    undoStack.pop();
+    redoStack.push(current);
+    renderCanvas();
+    renderNavigator();
+    renderColorGrid();
+    saveToStorage(true);
+    showToast('Undone');
+  } catch (error) {
+    showToast(error && error.message ? error.message : '撤销失败');
+  } finally {
+    historyOperationInProgress = false;
+  }
 }
 
-function redo() {
+async function redo() {
   if (isStatisticsMode()) {
     showToast('统计模式下画布为只读');
     return;
@@ -518,18 +588,44 @@ function redo() {
     showToast('Nothing to redo');
     return;
   }
-  undoStack.push(makeEditorSnapshot());
-  if (undoStack.length > MAX_UNDO) undoStack.shift();
-  restoreEditorSnapshot(redoStack.pop());
-  renderCanvas();
-  renderNavigator();
-  renderColorGrid();
-  saveToStorage(true);
-  showToast('Redone');
+  if (typeof conversionInProgress !== 'undefined' && conversionInProgress) {
+    showToast('图片转换完成后才能重做');
+    return;
+  }
+  if (historyOperationInProgress) return;
+  historyOperationInProgress = true;
+  var target = redoStack[redoStack.length - 1];
+  var current = makeEditorSnapshot();
+  try {
+    await restoreEditorSnapshot(target);
+    redoStack.pop();
+    undoStack.push(current);
+    var historyTruncated = false;
+    if (undoStack.length > MAX_UNDO) {
+      undoStack.shift();
+      historyTruncated = true;
+    }
+    renderCanvas();
+    renderNavigator();
+    renderColorGrid();
+    saveToStorage(true);
+    if (historyTruncated) scheduleReferenceAssetPrune();
+    showToast('Redone');
+  } catch (error) {
+    showToast(error && error.message ? error.message : '重做失败');
+  } finally {
+    historyOperationInProgress = false;
+  }
 }
 
 // --- 濞撳懐鈹栭悽璇茬 ---
 function clearCanvas() {
+  if (historyOperationInProgress || (
+    typeof conversionInProgress !== 'undefined' && conversionInProgress
+  )) {
+    showToast('当前操作完成后才能清空画布');
+    return;
+  }
   if (isStatisticsMode()) {
     showToast('统计模式下画布为只读');
     return;
@@ -537,14 +633,14 @@ function clearCanvas() {
   if (!confirm('Clear canvas? This can be undone.')) return;
   pushUndo();
   documentMetadata = TourgridStorage.defaultMetadata();
-  clearReferenceImage();
+  clearReferenceImage(false);
   pixelData = Array.from({ length: GRID_SIZE }, () =>
     Array.from({ length: GRID_SIZE }, () => '#FFFFFF')
   );
   renderCanvas();
   renderNavigator();
   renderColorGrid();
-  clearStorage();
+  saveToStorage(true);
   showToast('Canvas cleared (Ctrl+Z to undo)');
 }
 

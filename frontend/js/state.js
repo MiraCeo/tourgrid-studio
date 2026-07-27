@@ -182,9 +182,10 @@ let panStartX = 0, panStartY = 0;
 let panScrollStartX = 0, panScrollStartY = 0;
 
 // --- 閹俱倝鏀㈤弽?---
-const MAX_UNDO = 50;
+const MAX_UNDO = 100;
 let undoStack = [];
 let redoStack = [];
+let historyOperationInProgress = false;
 
 // --- DOM瀵洜鏁?---
 let mainCanvas, mainCtx, navCanvas, navCtx;

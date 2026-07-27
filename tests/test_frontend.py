@@ -322,6 +322,26 @@ def test_reference_image_is_encoded_as_webp_and_persisted_in_indexeddb() -> None
     assert 'onchange="saveToStorage(true)"' in html
 
 
+def test_document_history_restores_reference_assets_and_keeps_100_steps() -> None:
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
+    reference_storage = (
+        JAVASCRIPT_ROOT / "reference-storage.js"
+    ).read_text(encoding="utf-8")
+
+    assert "const MAX_UNDO = 100" in state
+    assert "historyOperationInProgress" in state
+    assert "reference: referenceSnapshotForHistory()" in editor
+    assert "await restoreReferenceFromHistory(snapshot.reference)" in editor
+    assert "pushUndo(beforeImport)" in image_import
+    assert "clearReferenceImage(false)" in editor
+    assert "saveToStorage(true)" in editor
+    assert "root.crypto.randomUUID" in reference_storage
+    assert "store.getAllKeys()" in reference_storage
+    assert "pruneReferenceAssets()" in editor
+
+
 def test_removed_decorative_image_has_no_stale_markup_or_styles() -> None:
     source = read_frontend()
 

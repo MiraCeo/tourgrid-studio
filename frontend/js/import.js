@@ -254,7 +254,7 @@ function finishImportedPixels(usedColors, sourceLabel) {
 }
 
 async function confirmCrop() {
-  if (!cropImg || conversionInProgress) return;
+  if (!cropImg || conversionInProgress || historyOperationInProgress) return;
   setConversionBusy(true);
   setConversionStatus('正在准备本地转换…', false, false);
   try {
@@ -274,7 +274,7 @@ async function confirmCrop() {
 
 async function confirmCropLocal() {
   if (!cropImg) return;
-  pushUndo();
+  var beforeImport = makeEditorSnapshot();
   var vp = document.getElementById('cropViewport');
   var vpW = vp.clientWidth;
   var scale = cropZoom / 100;
@@ -495,7 +495,37 @@ async function confirmCropLocal() {
   if (sw > 0 && sh > 0) {
     rawPrevCtx.drawImage(cropImg, sx, sy, sw, sh, rdx, rdy, rdw, rdh);
   }
-  var referenceWasPersisted = await installAndPersistReference(rawPreview);
+  var preparedReference = await installAndPersistReference(rawPreview);
+  try {
+    await setImportedPreviewBlob(preparedReference.blob);
+  } catch (error) {
+    if (preparedReference.record) {
+      TourgridReferenceStorage.remove(preparedReference.record.id).catch(function() {});
+    }
+    throw error;
+  }
+
+  pushUndo(beforeImport);
+  if (preparedReference.record) {
+    referenceState = {
+      assetId: preparedReference.record.id,
+      mimeType: preparedReference.record.mimeType,
+      width: preparedReference.record.width,
+      height: preparedReference.record.height,
+      visible: false,
+      opacity: overlayOpacity
+    };
+  } else {
+    referenceState = {
+      assetId: null,
+      mimeType: preparedReference.blob.type || 'image/webp',
+      width: rawPreview.width,
+      height: rawPreview.height,
+      visible: false,
+      opacity: overlayOpacity,
+      sessionOnly: true
+    };
+  }
 
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
   currentPaletteId = 'exhibition';
@@ -515,7 +545,7 @@ async function confirmCropLocal() {
     row.forEach(function(color) { usedLocalColors.add(color); });
   });
   finishImportedPixels(usedLocalColors.size, '本地');
-  if (!referenceWasPersisted) {
+  if (!preparedReference.record) {
     showToast('转换完成，但参考图未能持久保存');
   }
 }
@@ -554,24 +584,14 @@ function setImportedPreviewBlob(blob) {
 
 async function installAndPersistReference(canvas) {
   var blob = await canvasToWebpBlob(canvas);
-  await setImportedPreviewBlob(blob);
   try {
     var record = await TourgridReferenceStorage.save(blob, {
       width: canvas.width,
       height: canvas.height
     });
-    referenceState = {
-      assetId: record.id,
-      mimeType: record.mimeType,
-      width: record.width,
-      height: record.height,
-      visible: false,
-      opacity: overlayOpacity
-    };
-    return true;
+    return { blob: blob, record: record };
   } catch (error) {
-    referenceState = TourgridStorage.defaultReference();
-    return false;
+    return { blob: blob, record: null };
   }
 }
 
@@ -598,7 +618,7 @@ async function restorePersistedReference() {
   }
 }
 
-function clearReferenceImage() {
+function clearReferenceImage(removeStoredAsset) {
   var assetId = referenceState.assetId;
   if (importedPreviewObjectUrl) {
     URL.revokeObjectURL(importedPreviewObjectUrl);
@@ -611,11 +631,54 @@ function clearReferenceImage() {
   var controls = document.getElementById('overlayControls');
   if (controls) controls.hidden = true;
   if (overlayCanvas) overlayCanvas.style.display = 'none';
-  if (assetId) {
+  if (removeStoredAsset && assetId) {
     TourgridReferenceStorage.remove(assetId).catch(function() {
       // 像素画清空不应被浏览器存储清理失败阻断。
     });
   }
+}
+
+async function restoreReferenceFromHistory(referenceSnapshot) {
+  var target = referenceSnapshot || {};
+  if (!target.assetId) {
+    if (target.sessionOnly && referenceState.sessionOnly && importedPreviewImage) {
+      document.getElementById('overlayControls').hidden = false;
+      syncOverlayControls();
+      renderOverlay();
+      return;
+    }
+    if (referenceState.assetId || importedPreviewImage) clearReferenceImage(false);
+    return;
+  }
+
+  if (target.assetId === referenceState.assetId && importedPreviewImage) {
+    document.getElementById('overlayControls').hidden = false;
+    syncOverlayControls();
+    renderOverlay();
+    return;
+  }
+
+  var record = await TourgridReferenceStorage.load(target.assetId);
+  if (!record || !record.blob) {
+    throw new Error('撤销记录中的参考图已不可用。');
+  }
+
+  var retainedVisibility = overlayVisible;
+  var retainedOpacity = overlayOpacity;
+  await setImportedPreviewBlob(record.blob);
+  referenceState = {
+    assetId: record.id,
+    mimeType: record.mimeType || target.mimeType || 'image/webp',
+    width: record.width || target.width || REFERENCE_IMAGE_SIZE,
+    height: record.height || target.height || REFERENCE_IMAGE_SIZE,
+    visible: retainedVisibility,
+    opacity: retainedOpacity
+  };
+  overlayVisible = retainedVisibility;
+  overlayOpacity = retainedOpacity;
+  document.getElementById('overlayControls').hidden = false;
+  syncOverlayControls();
+  renderOverlay();
 }
 
 function cancelCrop() {
