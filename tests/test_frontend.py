@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260727-10"
+    asset_version = "20260727-14"
 
     assert (
         f'<link rel="stylesheet" '
@@ -106,7 +106,8 @@ def test_local_converter_keeps_optional_dithering() -> None:
 
     assert "confirmCropLocal()" in source
     assert "ditherMode === 'floyd'" in source
-    assert "viewMode" not in source
+    assert "let viewMode" not in source
+    assert "id=\"viewMode\"" not in source
     assert "canvasPixelData" not in source
 
 
@@ -131,7 +132,8 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert 'id="palettePicker"' not in html
     assert 'id="colorDisplay"' not in html
     assert "<span>颜料</span>" in html
-    assert "<span>统计</span>" in html
+    assert "<span>复刻</span>" in html
+    assert "<span>统计</span>" not in html
     assert 'id="paletteTab"' in html
     assert 'id="statisticsTab"' in html
     assert 'id="statisticsGrid"' in html
@@ -142,6 +144,13 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert 'id="conversionResultSummary"' not in html
     assert html.count('class="conversion-result-summary"') == 2
     assert 'id="statisticsSort"' in html
+    assert 'id="replicationCompleteControl"' in html
+    assert 'id="replicationCompleteCheckbox"' in html
+    assert 'id="replicationPreviewControl"' in html
+    assert 'id="replicationTargetViewBtn"' in html
+    assert 'id="replicationCompletedViewBtn"' in html
+    assert "目标图案" in html
+    assert "已拼图案" in html
     assert '<option value="count-desc" selected>' in html
     assert '<option value="count-asc">' in html
     assert '<option value="palette-order">' in html
@@ -163,6 +172,16 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "countDifference || a.paletteIndex - b.paletteIndex" in app
     assert "setPalettePanelMode" in app
     assert "selectStatisticsColor" in app
+    assert "function setReplicationColorCompleted(completed)" in app
+    assert "function setReplicationPreviewMode(mode)" in app
+    assert "function saveReplicationProgress()" in app
+    assert "function restoreReplicationProgress()" in app
+    assert "function invalidateReplicationProgress()" in app
+    assert "replicationCompletedColors.has(pixelColor)" in app
+    assert "if (selected && !completed)" in app
+    assert "replicationPreviewMode === 'completed'" in app
+    assert "completedPreview" in app
+    assert "rgb(232, 236, 239)" in app
     assert "function findClosestPaletteColor(sourceHex)" in app
     assert "function toggleEyedropper()" in app
     assert "function toggleMoveCanvas()" in app
@@ -197,6 +216,9 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert ".statistics-color-scroll {" in css
     assert "overflow-y: auto" in css
     assert "border-color: #72F5F2" in css
+    assert ".replication-complete-control {" in css
+    assert ".replication-preview-control {" in css
+    assert ".statistics-color.completed::before" in css
     editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
     overlay = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
     assert "const color = currentColor;" in editor
@@ -207,9 +229,9 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "let currentColor = '#222222'" in state
     assert "mainCtx.fillText" not in editor
     assert "if (isStatisticsMode()) return;" in editor
-    assert "统计模式下画布为只读" in editor
+    assert "复刻模式下画布为只读" in editor
     assert "renderStatisticsHighlightOverlay()" in overlay
-    assert "overlayCtx.fillStyle = 'rgba(16, 18, 22, 0.72)'" in app
+    assert "'rgba(16, 18, 22, 0.72)'" in app
     assert "document.querySelectorAll('.conversion-result-summary')" in state
 
 
@@ -646,6 +668,7 @@ def test_left_navigator_groups_reference_and_zoom_controls() -> None:
     image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
 
     assert 'id="navViewportIndicator"' in html
+    assert 'class="left-controls"' in html
     assert 'id="navSourceOriginal"' not in html
     assert 'id="navSourcePixels"' not in html
     assert "缩略图显示" not in html
@@ -666,7 +689,10 @@ def test_left_navigator_groups_reference_and_zoom_controls() -> None:
     assert ".nav-viewport-indicator {" in css
     assert ".nav-source-segment {" not in css
     assert ".reference-switch.active" in css
+    assert html.index('id="overlayControls"') < html.index('id="zoomSliderWrap"')
     assert "writing-mode: vertical-lr" in css
+    assert "@media (max-width: 900px), (max-height: 700px)" in css
+    assert "writing-mode: horizontal-tb" in css
     assert ".zoom-slider::-webkit-slider-runnable-track" in css
     assert "width: 10px" in css
     assert ".zoom-slider::-webkit-slider-thumb" in css
@@ -691,6 +717,24 @@ def test_left_navigator_groups_reference_and_zoom_controls() -> None:
     assert "navCtx.drawImage(importedPreviewImage" not in editor
     assert "function syncOverlayControls()" in image_import
     assert "opacityInput.disabled = !overlayVisible" in image_import
+    assert "opacityControl.hidden = !overlayVisible" in image_import
+
+
+def test_top_bar_and_left_controls_have_stable_narrow_layout() -> None:
+    html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+
+    assert 'class="top-leading-actions"' in html
+    assert "@media (max-width: 1180px)" in css
+    assert "@media (max-width: 900px)" in css
+    assert "@media (max-width: 680px)" in css
+    assert '"leading identity"' in css
+    assert '"actions actions"' in css
+    assert "grid-area: actions" in css
+    assert ".left-controls {" in css
+    assert "overflow-x: hidden" in css
+    assert "overscroll-behavior: contain" in css
+    assert ".opacity-control[hidden]" in css
 
 
 def test_author_project_modal_uses_local_avatar_and_safe_github_links() -> None:

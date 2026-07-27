@@ -136,7 +136,7 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// --- 色板与统计面板 ---
+// --- 色板与复刻面板 ---
 function getCurrentPaletteColors() {
   return EXHIBITION_DATA.map(paletteHex);
 }
@@ -276,6 +276,93 @@ function isStatisticsMode() {
   return palettePanelMode === 'statistics';
 }
 
+function replicationWorkFingerprint() {
+  try {
+    return TourgridWorkCodec.packPixels(pixelData, EXHIBITION_DATA);
+  } catch (error) {
+    return null;
+  }
+}
+
+function readReplicationProgressStore() {
+  try {
+    var parsed = JSON.parse(
+      localStorage.getItem(REPLICATION_PROGRESS_STORAGE_KEY) || '{}'
+    );
+    if (!parsed || parsed.version !== 1 || !parsed.works) {
+      return { version: 1, works: {} };
+    }
+    return parsed;
+  } catch (error) {
+    return { version: 1, works: {} };
+  }
+}
+
+function writeReplicationProgressStore(store) {
+  try {
+    var entries = Object.keys(store.works).map(function(fingerprint) {
+      return {
+        fingerprint: fingerprint,
+        updatedAt: Number(store.works[fingerprint].updatedAt) || 0
+      };
+    }).sort(function(a, b) {
+      return b.updatedAt - a.updatedAt;
+    });
+    entries.slice(40).forEach(function(entry) {
+      delete store.works[entry.fingerprint];
+    });
+    localStorage.setItem(
+      REPLICATION_PROGRESS_STORAGE_KEY,
+      JSON.stringify(store)
+    );
+  } catch (error) {
+    // 复刻进度不应阻断编辑器的正常使用。
+  }
+}
+
+function saveReplicationProgress() {
+  var fingerprint = replicationWorkFingerprint();
+  if (!fingerprint) return;
+  var store = readReplicationProgressStore();
+  if (replicationCompletedColors.size === 0) {
+    delete store.works[fingerprint];
+  } else {
+    store.works[fingerprint] = {
+      completedColors: Array.from(replicationCompletedColors),
+      updatedAt: Date.now()
+    };
+  }
+  writeReplicationProgressStore(store);
+}
+
+function restoreReplicationProgress() {
+  var fingerprint = replicationWorkFingerprint();
+  var store = readReplicationProgressStore();
+  var saved = fingerprint ? store.works[fingerprint] : null;
+  var paletteColors = new Set(
+    EXHIBITION_DATA.map(function(entry) {
+      return paletteHex(entry).toUpperCase();
+    })
+  );
+  replicationCompletedColors = new Set(
+    saved && Array.isArray(saved.completedColors)
+      ? saved.completedColors.filter(function(color) {
+          return typeof color === 'string' &&
+            paletteColors.has(color.toUpperCase());
+        }).map(function(color) { return color.toUpperCase(); })
+      : []
+  );
+}
+
+function invalidateReplicationProgress() {
+  if (replicationCompletedColors.size === 0) return;
+  var fingerprint = replicationWorkFingerprint();
+  var store = readReplicationProgressStore();
+  if (fingerprint) delete store.works[fingerprint];
+  writeReplicationProgressStore(store);
+  replicationCompletedColors.clear();
+}
+
 function getPaletteUsageEntries() {
   var counts = {};
   for (var y = 0; y < GRID_SIZE; y++) {
@@ -355,6 +442,12 @@ function selectColor(color, swatchEl) {
 function renderStatisticsPanel() {
   var grid = document.getElementById('statisticsGrid');
   var hint = document.getElementById('statisticsHint');
+  var completeControl = document.getElementById('replicationCompleteControl');
+  var completeCheckbox = document.getElementById('replicationCompleteCheckbox');
+  var completeLabel = document.getElementById('replicationCompleteLabel');
+  var previewControl = document.getElementById('replicationPreviewControl');
+  var targetViewButton = document.getElementById('replicationTargetViewBtn');
+  var completedViewButton = document.getElementById('replicationCompletedViewBtn');
   var entries = sortStatisticsEntries(getPaletteUsageEntries());
   grid.innerHTML = '';
 
@@ -365,8 +458,14 @@ function renderStatisticsPanel() {
     item.style.background = entry.hex;
     item.dataset.color = entry.hex;
     item.title = entry.hex + ' · ' + entry.count + ' 格';
-    item.setAttribute('aria-label', '颜色 ' + entry.hex + '，使用 ' + entry.count + ' 格');
+    var completed = replicationCompletedColors.has(entry.hex);
+    item.setAttribute(
+      'aria-label',
+      '颜色 ' + entry.hex + '，使用 ' + entry.count + ' 格' +
+        (completed ? '，已完成复刻' : '')
+    );
     if (entry.hex === statisticsHighlightColor) item.classList.add('active');
+    if (completed) item.classList.add('completed');
 
     var count = document.createElement('span');
     count.className = 'statistics-count';
@@ -379,9 +478,54 @@ function renderStatisticsPanel() {
   });
 
   updateColorUsageSummary();
-  hint.textContent = statisticsHighlightColor
-    ? '已高亮 ' + statisticsHighlightColor + '；再次选择可取消'
-    : '选择一种颜色，在画布中高亮对应格子';
+  var selectedEntry = entries.find(function(entry) {
+    return entry.hex === statisticsHighlightColor;
+  });
+  completeControl.hidden = !selectedEntry;
+  previewControl.hidden = Boolean(selectedEntry);
+  targetViewButton.classList.toggle(
+    'active',
+    replicationPreviewMode === 'target'
+  );
+  completedViewButton.classList.toggle(
+    'active',
+    replicationPreviewMode === 'completed'
+  );
+  targetViewButton.setAttribute(
+    'aria-pressed',
+    String(replicationPreviewMode === 'target')
+  );
+  completedViewButton.setAttribute(
+    'aria-pressed',
+    String(replicationPreviewMode === 'completed')
+  );
+  if (selectedEntry) {
+    var selectedCompleted = replicationCompletedColors.has(selectedEntry.hex);
+    completeCheckbox.checked = selectedCompleted;
+    completeCheckbox.disabled = selectedEntry.count === 0;
+    completeControl.classList.toggle('disabled', selectedEntry.count === 0);
+    completeLabel.textContent = selectedEntry.count === 0
+      ? '该颜色没有需要复刻的格子'
+      : '该颜色已在游戏内完成（' + selectedEntry.count + ' 格）';
+    hint.textContent = selectedEntry.count === 0
+      ? selectedEntry.hex + ' 在当前作品中未使用'
+      : selectedCompleted
+        ? '已完成 ' + selectedEntry.hex + '；取消勾选可重新核对'
+        : '正在复刻 ' + selectedEntry.hex + ' · ' + selectedEntry.count + ' 格';
+  } else {
+    completeCheckbox.checked = false;
+    completeCheckbox.disabled = false;
+    completeControl.classList.remove('disabled');
+    var completedCellCount = entries.reduce(function(total, entry) {
+      return total + (
+        replicationCompletedColors.has(entry.hex) ? entry.count : 0
+      );
+    }, 0);
+    hint.textContent = replicationPreviewMode === 'completed'
+      ? '已拼图案 · ' + completedCellCount + ' / ' +
+        (GRID_SIZE * GRID_SIZE) + ' 格'
+      : '目标图案 · 选择颜色可开始逐色复刻';
+  }
 }
 
 function setStatisticsSortMode(mode) {
@@ -408,11 +552,40 @@ function selectStatisticsColor(color) {
   renderStatisticsHighlightOverlay();
 }
 
+function setReplicationColorCompleted(completed) {
+  if (!isStatisticsMode() || !statisticsHighlightColor) return;
+  var selectedEntry = getPaletteUsageEntries().find(function(entry) {
+    return entry.hex === statisticsHighlightColor;
+  });
+  if (!selectedEntry || selectedEntry.count === 0) return;
+
+  if (completed) {
+    replicationCompletedColors.add(statisticsHighlightColor);
+  } else {
+    replicationCompletedColors.delete(statisticsHighlightColor);
+  }
+  saveReplicationProgress();
+  renderStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+}
+
+function setReplicationPreviewMode(mode) {
+  if (!['target', 'completed'].includes(mode)) return;
+  replicationPreviewMode = mode;
+  statisticsHighlightColor = null;
+  currentColor = null;
+  renderStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+}
+
 function renderStatisticsHighlightOverlay() {
+  var completedPreview = isStatisticsMode() &&
+    !statisticsHighlightColor &&
+    replicationPreviewMode === 'completed';
   if (
-    !canvasGuidesVisible ||
     !isStatisticsMode() ||
-    !statisticsHighlightColor
+    (!statisticsHighlightColor && !completedPreview) ||
+    (!canvasGuidesVisible && !completedPreview)
   ) {
     overlayCanvas.style.display = 'none';
     return;
@@ -424,23 +597,31 @@ function renderStatisticsHighlightOverlay() {
   overlayCanvas.height = canvasSize;
   overlayCanvas.style.display = 'block';
   overlayCtx.clearRect(0, 0, canvasSize, canvasSize);
-  overlayCtx.fillStyle = 'rgba(16, 18, 22, 0.72)';
+  overlayCtx.fillStyle = completedPreview
+    ? 'rgb(232, 236, 239)'
+    : 'rgba(16, 18, 22, 0.72)';
   overlayCtx.fillRect(0, 0, canvasSize, canvasSize);
   overlayCtx.strokeStyle = '#72F5F2';
   overlayCtx.lineWidth = Math.max(1.5, Math.min(3, cellSize * 0.12));
 
   for (var y = 0; y < GRID_SIZE; y++) {
     for (var x = 0; x < GRID_SIZE; x++) {
-      if (String(pixelData[y][x]).toUpperCase() !== statisticsHighlightColor) continue;
+      var pixelColor = String(pixelData[y][x]).toUpperCase();
+      var selected = !completedPreview &&
+        pixelColor === statisticsHighlightColor;
+      var completed = replicationCompletedColors.has(pixelColor);
+      if (!selected && !completed) continue;
       var left = x * cellSize;
       var top = y * cellSize;
       overlayCtx.clearRect(left, top, cellSize, cellSize);
-      overlayCtx.strokeRect(
-        left + overlayCtx.lineWidth / 2,
-        top + overlayCtx.lineWidth / 2,
-        cellSize - overlayCtx.lineWidth,
-        cellSize - overlayCtx.lineWidth
-      );
+      if (selected && !completed) {
+        overlayCtx.strokeRect(
+          left + overlayCtx.lineWidth / 2,
+          top + overlayCtx.lineWidth / 2,
+          cellSize - overlayCtx.lineWidth,
+          cellSize - overlayCtx.lineWidth
+        );
+      }
     }
   }
   drawCanvasCenterAxes(overlayCtx, canvasSize, canvasSize);
@@ -652,6 +833,8 @@ function installTourgridTestApi() {
         currentColor: currentColor,
         palettePanelMode: palettePanelMode,
         statisticsHighlightColor: statisticsHighlightColor,
+        replicationCompletedColors: Array.from(replicationCompletedColors),
+        replicationPreviewMode: replicationPreviewMode,
         undoDepth: undoStack.length,
         redoDepth: redoStack.length,
         maxUndo: MAX_UNDO,

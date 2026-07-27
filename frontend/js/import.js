@@ -528,7 +528,10 @@ async function confirmCropLocal() {
     };
   }
 
+  invalidateReplicationProgress();
+  statisticsHighlightColor = null;
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
+  restoreReplicationProgress();
   currentPaletteId = 'exhibition';
   OFFICIAL_COLORS = EXHIBITION_DATA;
   paletteMode = 'official';
@@ -745,7 +748,7 @@ function syncOverlayControls() {
   button.setAttribute('aria-checked', String(overlayVisible));
   label.textContent = overlayVisible ? '开启' : '关闭';
   opacityInput.disabled = !overlayVisible;
-  opacityControl.classList.toggle('disabled', !overlayVisible);
+  opacityControl.hidden = !overlayVisible;
 }
 
 function updateOverlayOpacity(val) {

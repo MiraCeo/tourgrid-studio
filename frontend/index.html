@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-10">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-14">
 </head>
 <body>
 
@@ -29,6 +29,7 @@
 
   <!-- Z-INDEX 4: 妞ゅ爼鍎寸€佃壈鍩呴弽?-->
   <div class="top-bar">
+    <div class="top-leading-actions">
     <button class="icon-btn btn-github" title="作者与项目" aria-label="打开作者与项目信息"
             onclick="openAuthorModal()">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -49,6 +50,7 @@
         <path d="M19 9v6"></path>
       </svg>
     </button>
+    </div>
     <span class="warn-text">注意：严禁出现与国家法律法规及政策相抵触的内容</span>
 
     <div class="work-identity" id="topWorkIdentity" aria-live="polite">
@@ -133,48 +135,50 @@
         <div class="nav-viewport-indicator" id="navViewportIndicator" aria-hidden="true"></div>
       </div>
 
-      <section class="left-control-section reference-section" id="overlayControls" hidden>
-        <div class="reference-heading-row">
-          <span class="left-control-heading">画布参考图</span>
-          <button class="reference-switch" id="overlayToggleBtn" type="button"
-                  role="switch" aria-checked="false" onclick="toggleOverlay()">
-            <span class="reference-switch-track" aria-hidden="true">
-              <span class="reference-switch-thumb"></span>
-            </span>
-            <span id="overlayToggleLabel">关闭</span>
-          </button>
-        </div>
-        <label class="opacity-control" id="overlayOpacityControl" for="overlayOpacity">
-          <span>透明度</span>
-          <input type="range" id="overlayOpacity" min="0" max="100" value="40"
-                 oninput="updateOverlayOpacity(this.value)"
-                 onchange="saveToStorage(true)" disabled>
-          <span id="overlayOpacityVal">40%</span>
-        </label>
-      </section>
+      <div class="left-controls">
+        <section class="left-control-section reference-section" id="overlayControls" hidden>
+          <div class="reference-heading-row">
+            <span class="left-control-heading">画布参考图</span>
+            <button class="reference-switch" id="overlayToggleBtn" type="button"
+                    role="switch" aria-checked="false" onclick="toggleOverlay()">
+              <span class="reference-switch-track" aria-hidden="true">
+                <span class="reference-switch-thumb"></span>
+              </span>
+              <span id="overlayToggleLabel">关闭</span>
+            </button>
+          </div>
+          <label class="opacity-control" id="overlayOpacityControl" for="overlayOpacity" hidden>
+            <span>透明度</span>
+            <input type="range" id="overlayOpacity" min="0" max="100" value="40"
+                   oninput="updateOverlayOpacity(this.value)"
+                   onchange="saveToStorage(true)" disabled>
+            <span id="overlayOpacityVal">40%</span>
+          </label>
+        </section>
 
-      <section class="left-control-section zoom-section" id="zoomSliderWrap">
-        <div class="zoom-heading-row">
-          <span class="zoom-heading-icon" aria-label="缩放" title="缩放">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="10.5" cy="10.5" r="6.5"></circle>
-              <path d="M15.5 15.5 21 21"></path>
-            </svg>
-          </span>
-          <button type="button" class="zoom-reset-btn" onclick="fitCanvasToViewport()"
-                  aria-label="适应画布" title="适应画布">
-            <svg class="zoom-reset-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 4v5h5"></path>
-              <path d="M5.6 8.4A7.5 7.5 0 1 1 4.8 15"></path>
-            </svg>
-          </button>
-        </div>
-        <div class="zoom-control-body">
-          <input type="range" class="zoom-slider" id="zoomSlider"
-                 min="20" max="400" value="100" aria-label="画布缩放"
-                 oninput="setZoom(this.value)">
-        </div>
-      </section>
+        <section class="left-control-section zoom-section" id="zoomSliderWrap">
+          <div class="zoom-heading-row">
+            <span class="zoom-heading-icon" aria-label="缩放" title="缩放">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="10.5" cy="10.5" r="6.5"></circle>
+                <path d="M15.5 15.5 21 21"></path>
+              </svg>
+            </span>
+            <button type="button" class="zoom-reset-btn" onclick="fitCanvasToViewport()"
+                    aria-label="适应画布" title="适应画布">
+              <svg class="zoom-reset-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 4v5h5"></path>
+                <path d="M5.6 8.4A7.5 7.5 0 1 1 4.8 15"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="zoom-control-body">
+            <input type="range" class="zoom-slider" id="zoomSlider"
+                   min="20" max="400" value="100" aria-label="画布缩放"
+                   oninput="setZoom(this.value)">
+          </div>
+        </section>
+      </div>
     </div>
 
     <!-- 娑擃厽鐖敍姘辨暰鐢?60% -->
@@ -232,7 +236,7 @@
         <button class="palette-tab" id="statisticsTab" role="tab" aria-selected="false"
                 onclick="setPalettePanelMode('statistics')">
           <span class="statistics-tab-icon">▥</span>
-          <span>统计</span>
+          <span>复刻</span>
         </button>
       </div>
 
@@ -247,7 +251,25 @@
       </div>
 
       <div class="statistics-panel-view" id="statisticsPanelView" hidden>
-        <div class="statistics-hint" id="statisticsHint">选择一种颜色，在画布中高亮对应格子</div>
+        <div class="statistics-hint" id="statisticsHint">选择一种颜色，按高亮格子在游戏内复刻</div>
+        <label class="replication-complete-control" id="replicationCompleteControl" hidden>
+          <input type="checkbox" id="replicationCompleteCheckbox"
+                 onchange="setReplicationColorCompleted(this.checked)">
+          <span class="replication-checkbox-mark" aria-hidden="true"></span>
+          <span id="replicationCompleteLabel">该颜色已在游戏内完成</span>
+        </label>
+        <div class="replication-preview-control" id="replicationPreviewControl">
+          <button type="button" class="active" id="replicationTargetViewBtn"
+                  aria-pressed="true"
+                  onclick="setReplicationPreviewMode('target')">
+            目标图案
+          </button>
+          <button type="button" id="replicationCompletedViewBtn"
+                  aria-pressed="false"
+                  onclick="setReplicationPreviewMode('completed')">
+            已拼图案
+          </button>
+        </div>
         <label class="statistics-sort-control" for="statisticsSort">
           <span>排序</span>
           <select id="statisticsSort" onchange="setStatisticsSortMode(this.value)">
@@ -375,7 +397,7 @@
           <li><span>导入</span>点击顶部“导入”，选择图片并确认裁切区域。</li>
           <li><span>转换</span>浏览器会在本地生成巡展像素图，图片不会上传。</li>
           <li><span>编辑</span>从右侧颜料中选色后直接绘制；选择白色即可擦除。</li>
-          <li><span>核对</span>在“统计”中选择颜色，可只读高亮对应格子。</li>
+          <li><span>复刻</span>在“复刻”中按颜色高亮格子，并勾选记录游戏内完成进度。</li>
           <li><span>查看</span>使用左侧参考图与缩放控制辅助对照细节。</li>
           <li><span>导出</span>完成编辑后，从顶部导出所需的图片或图纸。</li>
         </ol>
@@ -461,16 +483,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260727-10"></script>
-<script src="/static/js/reference-storage.js?v=20260727-10"></script>
-<script src="/static/js/work-codec.js?v=20260727-10"></script>
-<script src="/static/js/natural-64-v1.js?v=20260727-10"></script>
-<script src="/static/js/state.js?v=20260727-10"></script>
-<script src="/static/js/editor.js?v=20260727-10"></script>
-<script src="/static/js/export.js?v=20260727-10"></script>
-<script src="/static/js/import.js?v=20260727-10"></script>
-<script src="/static/js/works.js?v=20260727-10"></script>
-<script src="/static/js/app.js?v=20260727-10"></script>
+<script src="/static/js/storage.js?v=20260727-14"></script>
+<script src="/static/js/reference-storage.js?v=20260727-14"></script>
+<script src="/static/js/work-codec.js?v=20260727-14"></script>
+<script src="/static/js/natural-64-v1.js?v=20260727-14"></script>
+<script src="/static/js/state.js?v=20260727-14"></script>
+<script src="/static/js/editor.js?v=20260727-14"></script>
+<script src="/static/js/export.js?v=20260727-14"></script>
+<script src="/static/js/import.js?v=20260727-14"></script>
+<script src="/static/js/works.js?v=20260727-14"></script>
+<script src="/static/js/app.js?v=20260727-14"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

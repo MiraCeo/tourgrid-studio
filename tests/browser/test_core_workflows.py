@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import re
 from pathlib import Path
 
 import pytest
@@ -94,6 +95,92 @@ def test_canvas_guides_toggle_hides_visual_aids_and_persists(
 
     editor_page.locator("#canvasGuidesBtn").click()
     assert editor_state(editor_page)["canvasGuidesVisible"] is True
+
+
+def test_replication_mode_tracks_completed_colors_and_persists_locally(
+    editor_page: Page,
+) -> None:
+    select_color(editor_page, BLACK)
+    paint_cells(editor_page, [(1, 1)])
+    select_color(editor_page, RED)
+    paint_cells(editor_page, [(2, 1)])
+
+    editor_page.locator("#statisticsTab").click()
+    black_stat = editor_page.locator(
+        f'.statistics-color[data-color="{BLACK}"]'
+    )
+    black_stat.click()
+    complete_control = editor_page.locator("#replicationCompleteControl")
+    expect(complete_control).to_be_visible()
+    complete_control.click()
+    expect(
+        editor_page.locator("#replicationCompleteCheckbox")
+    ).to_be_checked()
+
+    assert editor_state(editor_page)["replicationCompletedColors"] == [BLACK]
+    expect(black_stat).to_have_class(re.compile(r"\bcompleted\b"))
+
+    editor_page.locator(
+        f'.statistics-color[data-color="{RED}"]'
+    ).click()
+    overlay_alpha = editor_page.locator("#overlayCanvas").evaluate(
+        """canvas => {
+          const context = canvas.getContext('2d');
+          const cell = canvas.width / 24;
+          const alphaAt = (x, y) => context.getImageData(
+            Math.floor((x + 0.5) * cell),
+            Math.floor((y + 0.5) * cell),
+            1,
+            1
+          ).data[3];
+          return {
+            completed: alphaAt(1, 1),
+            selected: alphaAt(2, 1),
+            pending: alphaAt(3, 1)
+          };
+        }"""
+    )
+    assert overlay_alpha["completed"] == 0
+    assert overlay_alpha["selected"] == 0
+    assert overlay_alpha["pending"] > 0
+
+    editor_page.reload(wait_until="domcontentloaded")
+    editor_page.wait_for_function(
+        "() => window.__TOURGRID_TEST__?.isReady === true"
+    )
+    assert editor_state(editor_page)["replicationCompletedColors"] == [BLACK]
+
+    editor_page.locator("#statisticsTab").click()
+    editor_page.locator(
+        f'.statistics-color[data-color="{BLACK}"]'
+    ).click()
+    expect(editor_page.locator("#replicationCompleteControl")).to_be_hidden()
+    expect(editor_page.locator("#replicationPreviewControl")).to_be_visible()
+    editor_page.locator("#replicationCompletedViewBtn").click()
+    assert editor_state(editor_page)["replicationPreviewMode"] == "completed"
+    completed_preview_alpha = editor_page.locator("#overlayCanvas").evaluate(
+        """canvas => {
+          const context = canvas.getContext('2d');
+          const cell = canvas.width / 24;
+          const alphaAt = (x, y) => context.getImageData(
+            Math.floor((x + 0.5) * cell),
+            Math.floor((y + 0.5) * cell),
+            1,
+            1
+          ).data[3];
+          return {
+            completed: alphaAt(1, 1),
+            pending: alphaAt(3, 1)
+          };
+        }"""
+    )
+    assert completed_preview_alpha["completed"] == 0
+    assert completed_preview_alpha["pending"] == 255
+
+    editor_page.locator("#paletteTab").click()
+    select_color(editor_page, BLACK)
+    paint_cells(editor_page, [(4, 1)])
+    assert editor_state(editor_page)["replicationCompletedColors"] == []
 
 
 def test_move_canvas_tool_pans_without_editing_and_is_mutually_exclusive(

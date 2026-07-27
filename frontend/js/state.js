@@ -126,6 +126,8 @@ let paletteMode = 'official';
 let palettePanelMode = 'palette';
 let statisticsHighlightColor = null;
 let statisticsSortMode = 'count-desc';
+let replicationCompletedColors = new Set();
+let replicationPreviewMode = 'target';
 let canvasGuidesVisible = true;
 
 // 巡展像素官方色板(待填入)
@@ -186,6 +188,7 @@ let lastPaintedY = -1;
 var STORAGE_KEY = 'pixel_editor_save';
 var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';
 var CANVAS_GUIDES_STORAGE_KEY = 'tourgrid_canvas_guides_visible';
+var REPLICATION_PROGRESS_STORAGE_KEY = 'tourgrid_replication_progress_v1';
 
 function serializeCurrentDocument() {
   return TourgridStorage.serialize({

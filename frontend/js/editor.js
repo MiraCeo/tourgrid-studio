@@ -29,6 +29,7 @@ function init() {
     saveToStorage(true);
   }
   updateTopWorkIdentity();
+  restoreReplicationProgress();
 
   renderColorGrid();
   updateCanvasSize();
@@ -283,6 +284,7 @@ function paintPixel(gx, gy) {
   if (!color) return;
   if (pixelData[gy][gx] === color) return;
 
+  invalidateReplicationProgress();
   pixelData[gy][gx] = color;
   markSharedWorkAsEdited();
   lastPaintedX = gx;
@@ -636,6 +638,8 @@ function makeEditorSnapshot() {
 }
 
 async function restoreEditorSnapshot(snapshot) {
+  invalidateReplicationProgress();
+  statisticsHighlightColor = null;
   await restoreReferenceFromHistory(snapshot.reference);
   pixelData = snapshot.pixels.map(function(row) { return row.slice(); });
   documentMetadata = Object.assign(
@@ -703,7 +707,7 @@ async function restoreManualCheckpoint() {
 
 async function undo() {
   if (isStatisticsMode()) {
-    showToast('统计模式下画布为只读');
+    showToast('复刻模式下画布为只读');
     return;
   }
   if (undoStack.length === 0) {
@@ -736,7 +740,7 @@ async function undo() {
 
 async function redo() {
   if (isStatisticsMode()) {
-    showToast('统计模式下画布为只读');
+    showToast('复刻模式下画布为只读');
     return;
   }
   if (redoStack.length === 0) {
@@ -782,7 +786,7 @@ function clearCanvas() {
     return;
   }
   if (isStatisticsMode()) {
-    showToast('统计模式下画布为只读');
+    showToast('复刻模式下画布为只读');
     return;
   }
   if (!confirm('Clear canvas? This can be undone.')) return;
@@ -790,6 +794,8 @@ function clearCanvas() {
   documentMetadata = TourgridStorage.defaultMetadata();
   updateTopWorkIdentity();
   clearReferenceImage(false);
+  invalidateReplicationProgress();
+  statisticsHighlightColor = null;
   pixelData = Array.from({ length: GRID_SIZE }, () =>
     Array.from({ length: GRID_SIZE }, () => '#FFFFFF')
   );

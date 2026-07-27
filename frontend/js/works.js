@@ -170,7 +170,10 @@ async function loadSharedWorkByCode(code, options) {
   );
   pushUndo();
   clearReferenceImage(false);
+  invalidateReplicationProgress();
+  statisticsHighlightColor = null;
   pixelData = restoredPixels;
+  restoreReplicationProgress();
   restorePaletteSelection('exhibition');
   documentMetadata = {
     sourceMode: 'shared',
