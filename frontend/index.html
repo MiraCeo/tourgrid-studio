@@ -66,8 +66,10 @@
         <span class="nav-icon">🧭</span>
         <span>导航器</span>
       </div>
-      <div class="nav-preview-wrap">
+      <div class="nav-preview-wrap" id="navPreviewWrap" tabindex="0"
+           aria-label="导航缩略图，可点击或拖动定位画布">
         <canvas id="navPreview" width="128" height="128"></canvas>
+        <div class="nav-viewport-indicator" id="navViewportIndicator" aria-hidden="true"></div>
       </div>
 
       <!-- 吸管取色弹窗 -->
@@ -83,37 +85,47 @@
         </div>
       </div>
 
-      <div class="zoom-slider-wrap" id="zoomSliderWrap">
-        <span class="zoom-label">缩放视图</span>
-        <input type="range" class="zoom-slider" id="zoomSlider"
-               min="20" max="300" value="100" oninput="setZoom(this.value)">
-        <span class="zoom-value" id="zoomValue">100%</span>
-      </div>
-      <!-- 移动端缩放按钮（桌面端隐藏） -->
-      <div class="zoom-btns-mobile" id="zoomBtnsMobile">
-        <button class="zoom-mb-btn" onclick="adjustZoom(10)" title="放大">+</button>
-        <span class="zoom-value" id="zoomValueMb">100%</span>
-        <button class="zoom-mb-btn" onclick="adjustZoom(-10)" title="缩小">−</button>
-      </div>
-
-      <!-- 閻㈣绔?鐎电厧鍙嗛崶鎯у瀼閹?-->
-      <!-- 参考图叠加 (导入图片后显示) -->
-      <div id="overlayControls" style="display:none;">
-        <div style="display:flex;align-items:center;gap:6px;width:100%;">
-          <button id="overlayToggleBtn" onclick="toggleOverlay()"
-                  style="flex:1;padding:6px;background:#444;border:none;border-radius:4px;color:#aaa;font-size:11px;cursor:pointer;letter-spacing:1px;">参考图 OFF</button>
+      <section class="left-control-section reference-section" id="overlayControls" hidden>
+        <div class="reference-heading-row">
+          <span class="left-control-heading">画布参考图</span>
+          <button class="reference-switch" id="overlayToggleBtn" type="button"
+                  role="switch" aria-checked="false" onclick="toggleOverlay()">
+            <span class="reference-switch-track" aria-hidden="true">
+              <span class="reference-switch-thumb"></span>
+            </span>
+            <span id="overlayToggleLabel">关闭</span>
+          </button>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;width:100%;">
-          <span style="color:#aaa;font-size:10px;">透明度</span>
-          <input type="range" id="overlayOpacity" min="10" max="90" value="40" style="flex:1;height:4px;"
-                 oninput="updateOverlayOpacity(this.value)">
-          <span style="color:#aaa;font-size:10px;" id="overlayOpacityVal">40%</span>
-        </div>
-      </div>
+        <label class="opacity-control" id="overlayOpacityControl" for="overlayOpacity">
+          <span>透明度</span>
+          <input type="range" id="overlayOpacity" min="0" max="100" value="40"
+                 oninput="updateOverlayOpacity(this.value)" disabled>
+          <span id="overlayOpacityVal">40%</span>
+        </label>
+      </section>
 
-      <button class="nav-toggle-btn" id="navToggleBtn" onclick="toggleViewMode()" disabled>
-        <span id="navToggleLabel">查看像素</span>
-      </button>
+      <section class="left-control-section zoom-section" id="zoomSliderWrap">
+        <div class="zoom-heading-row">
+          <span class="zoom-heading-icon" aria-label="缩放" title="缩放">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10.5" cy="10.5" r="6.5"></circle>
+              <path d="M15.5 15.5 21 21"></path>
+            </svg>
+          </span>
+          <button type="button" class="zoom-reset-btn" onclick="fitCanvasToViewport()"
+                  aria-label="适应画布" title="适应画布">
+            <svg class="zoom-reset-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 4v5h5"></path>
+              <path d="M5.6 8.4A7.5 7.5 0 1 1 4.8 15"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="zoom-control-body">
+          <input type="range" class="zoom-slider" id="zoomSlider"
+                 min="20" max="300" value="100" aria-label="画布缩放"
+                 oninput="setZoom(this.value)">
+        </div>
+      </section>
     </div>
 
     <!-- 娑擃厽鐖敍姘辨暰鐢?60% -->

@@ -52,8 +52,14 @@ function init() {
   // 濠婃俺鐤嗙紓鈺傛杹閿涘牏鏁剧敮鍐啇閸ｎ煉绱?
   canvasContainer.addEventListener('wheel', onWheel, { passive: false });
 
-  // 吸管模式下点击导航器取色
-  navCanvas.addEventListener('click', onNavClick);
+  // 导航缩略图支持点击、拖动和键盘定位画布。
+  var navPreviewWrap = document.getElementById('navPreviewWrap');
+  navPreviewWrap.addEventListener('pointerdown', onNavigatorPointerDown);
+  navPreviewWrap.addEventListener('pointermove', onNavigatorPointerMove);
+  navPreviewWrap.addEventListener('pointerup', onNavigatorPointerUp);
+  navPreviewWrap.addEventListener('pointercancel', onNavigatorPointerUp);
+  navPreviewWrap.addEventListener('keydown', onNavigatorKeyDown);
+  canvasContainer.addEventListener('scroll', updateNavigatorViewport);
 
   // 点击色卡取色
 
@@ -80,8 +86,8 @@ function init() {
     renderNavigator();
   });
 
-  document.getElementById('zoomSlider').value = zoom;
-  document.getElementById('zoomValue').textContent = zoom + '%';
+  updateZoomControlState();
+  syncOverlayControls();
   updateConversionModeUI();
   loadExhibitionPalette();
   } catch(e) {
@@ -231,29 +237,20 @@ function renderNavigator() {
 
   navCtx.clearRect(0, 0, size, size);
 
-  // nav mode check
-  if (navShowOriginal && importedPreviewImage && importedPreviewImage.complete) {
-    navCtx.fillStyle = '#FFFFFF';
-    navCtx.fillRect(0, 0, size, size);
-    navCtx.imageSmoothingEnabled = true;
-    navCtx.imageSmoothingQuality = 'medium';
-    navCtx.drawImage(importedPreviewImage, 0, 0, size, size);
-    navCtx.imageSmoothingEnabled = false;
-  } else {
-    navCtx.fillStyle = '#FFFFFF';
-    navCtx.fillRect(0, 0, size, size);
+  navCtx.fillStyle = '#FFFFFF';
+  navCtx.fillRect(0, 0, size, size);
 
-    const navCellSize = size / GRID_SIZE;
-    for (let y = 0; y < GRID_SIZE; y++) {
-      for (let x = 0; x < GRID_SIZE; x++) {
-        const color = pixelData[y][x];
-        if (color !== '#FFFFFF') {
-          navCtx.fillStyle = color;
-          navCtx.fillRect(x * navCellSize, y * navCellSize, navCellSize, navCellSize);
-        }
+  const navCellSize = size / GRID_SIZE;
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      const color = pixelData[y][x];
+      if (color !== '#FFFFFF') {
+        navCtx.fillStyle = color;
+        navCtx.fillRect(x * navCellSize, y * navCellSize, navCellSize, navCellSize);
       }
     }
   }
+  updateNavigatorViewport();
 }
 
 // --- 閼惧嘲褰囬悽璇茬閸ф劖鐖ｇ€电懓绨查惃鍕剼缁辩姵鐗?---
@@ -362,8 +359,8 @@ function onWheel(e) {
     canvasContainer.scrollTop  = ratioY * newContentSize - (e.clientY - rect.top);
   }
 
-  document.getElementById('zoomSlider').value = zoom;
-  document.getElementById('zoomValue').textContent = zoom + '%';
+  updateZoomControlState();
+  updateNavigatorViewport();
 }
 
 // --- 娑擃參鏁幏鏍ㄥ楠炲磭些 ---

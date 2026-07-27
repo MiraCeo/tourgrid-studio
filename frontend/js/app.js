@@ -2,14 +2,20 @@ function getMinZoom() {
   return Math.max(20, Math.min(85, Math.floor(400 / (GRID_SIZE * BASE_CELL_SIZE) * 100)));
 }
 
+function updateZoomControlState() {
+  var slider = document.getElementById('zoomSlider');
+  if (!slider) return;
+  slider.value = zoom;
+  var min = parseFloat(slider.min) || 20;
+  var max = parseFloat(slider.max) || 300;
+  var progress = max > min ? (zoom - min) / (max - min) * 100 : 0;
+  progress = Math.max(0, Math.min(100, progress));
+  slider.style.setProperty('--zoom-progress', progress + '%');
+}
+
 function setZoom(value) {
   zoom = parseInt(value);
-  document.getElementById('zoomValue').textContent = zoom + '%';
-  // 同步移动端缩放显示
-  var mbVal = document.getElementById('zoomValueMb');
-  if (mbVal) mbVal.textContent = zoom + '%';
-  var slider = document.getElementById('zoomSlider');
-  if (slider) slider.value = zoom;
+  updateZoomControlState();
   updateCanvasSize();
   renderCanvas();
   // 滑块和按钮缩放后保持画布中心位于视口中央。
@@ -21,13 +27,20 @@ function setZoom(value) {
     0,
     (canvasContainer.scrollHeight - canvasContainer.clientHeight) / 2
   );
+  updateNavigatorViewport();
 }
 
-// 移动端缩放按钮 +/-
-function adjustZoom(delta) {
-  var newZoom = zoom + delta;
-  newZoom = Math.max(20, Math.min(300, newZoom));
-  setZoom(newZoom);
+function fitCanvasToViewport() {
+  var availableSize = Math.max(
+    1,
+    Math.min(canvasContainer.clientWidth, canvasContainer.clientHeight) - 24
+  );
+  var targetZoom = Math.floor(
+    availableSize / (GRID_SIZE * BASE_CELL_SIZE) * 100
+  );
+  targetZoom = Math.max(20, Math.min(300, targetZoom));
+  setZoom(targetZoom);
+  showToast('画布已适应当前视口');
 }
 
 // --- 妫版粏澹婇弰鍓с仛閺囧瓨鏌?---
@@ -89,32 +102,81 @@ function onSwatchClick(e) {
   showColorPickPopup(hex, rect);
 }
 
-// --- 吸管点击导航器取色 ---
-function onNavClick(e) {
-  // 仅在吸管模式下响应
-  if (currentTool !== 'inspect') return;
+// --- 导航缩略图：视口框与画布定位 ---
+var navigatorDragging = false;
 
-  var rect = navCanvas.getBoundingClientRect();
-  var sx = e.clientX - rect.left;
-  var sy = e.clientY - rect.top;
-  if (sx < 0 || sy < 0 || sx >= rect.width || sy >= rect.height) return;
+function updateNavigatorViewport() {
+  var indicator = document.getElementById('navViewportIndicator');
+  if (!indicator || !mainCanvas || !canvasContainer) return;
 
-  // 从navCanvas读取像素颜色 (navCanvas尺寸 128×128)
-  var navW = navCanvas.width;
-  var navH = navCanvas.height;
-  var px = Math.floor(sx / rect.width * navW);
-  var py = Math.floor(sy / rect.height * navH);
-  if (px < 0 || px >= navW || py < 0 || py >= navH) return;
+  var canvasRect = mainCanvas.getBoundingClientRect();
+  var viewportRect = canvasContainer.getBoundingClientRect();
+  if (!canvasRect.width || !canvasRect.height) return;
 
-  var pixel = navCtx.getImageData(px, py, 1, 1).data;
-  var r = pixel[0], g = pixel[1], b = pixel[2];
-  // 跳过纯白(空像素)
-  if (r === 255 && g === 255 && b === 255) return;
+  var visibleLeft = Math.max(canvasRect.left, viewportRect.left);
+  var visibleTop = Math.max(canvasRect.top, viewportRect.top);
+  var visibleRight = Math.min(canvasRect.right, viewportRect.right);
+  var visibleBottom = Math.min(canvasRect.bottom, viewportRect.bottom);
 
-  var hex = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+  var leftRatio = Math.max(0, Math.min(1, (visibleLeft - canvasRect.left) / canvasRect.width));
+  var topRatio = Math.max(0, Math.min(1, (visibleTop - canvasRect.top) / canvasRect.height));
+  var widthRatio = Math.max(0, Math.min(1 - leftRatio, (visibleRight - visibleLeft) / canvasRect.width));
+  var heightRatio = Math.max(0, Math.min(1 - topRatio, (visibleBottom - visibleTop) / canvasRect.height));
 
-  // 显示取色弹窗
-  showColorPickPopup(hex, rect);
+  indicator.style.left = (leftRatio * 100) + '%';
+  indicator.style.top = (topRatio * 100) + '%';
+  indicator.style.width = (widthRatio * 100) + '%';
+  indicator.style.height = (heightRatio * 100) + '%';
+}
+
+function positionCanvasFromNavigator(e) {
+  var rect = document.getElementById('navPreviewWrap').getBoundingClientRect();
+  var ratioX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  var ratioY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+  var maxScrollX = Math.max(0, canvasContainer.scrollWidth - canvasContainer.clientWidth);
+  var maxScrollY = Math.max(0, canvasContainer.scrollHeight - canvasContainer.clientHeight);
+
+  canvasContainer.scrollLeft = Math.max(
+    0,
+    Math.min(maxScrollX, ratioX * mainCanvas.clientWidth - canvasContainer.clientWidth / 2)
+  );
+  canvasContainer.scrollTop = Math.max(
+    0,
+    Math.min(maxScrollY, ratioY * mainCanvas.clientHeight - canvasContainer.clientHeight / 2)
+  );
+  updateNavigatorViewport();
+}
+
+function onNavigatorPointerDown(e) {
+  if (e.button !== 0) return;
+  navigatorDragging = true;
+  e.currentTarget.setPointerCapture(e.pointerId);
+  positionCanvasFromNavigator(e);
+  e.preventDefault();
+}
+
+function onNavigatorPointerMove(e) {
+  if (!navigatorDragging) return;
+  positionCanvasFromNavigator(e);
+}
+
+function onNavigatorPointerUp(e) {
+  navigatorDragging = false;
+  if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }
+}
+
+function onNavigatorKeyDown(e) {
+  var stepX = Math.max(20, canvasContainer.clientWidth * 0.12);
+  var stepY = Math.max(20, canvasContainer.clientHeight * 0.12);
+  if (e.key === 'ArrowLeft') canvasContainer.scrollLeft -= stepX;
+  else if (e.key === 'ArrowRight') canvasContainer.scrollLeft += stepX;
+  else if (e.key === 'ArrowUp') canvasContainer.scrollTop -= stepY;
+  else if (e.key === 'ArrowDown') canvasContainer.scrollTop += stepY;
+  else return;
+  e.preventDefault();
+  updateNavigatorViewport();
 }
 
 function showColorPickPopup(hex, navRect) {

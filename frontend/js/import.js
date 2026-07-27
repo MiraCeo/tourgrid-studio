@@ -7,7 +7,6 @@ let isCropping = false;
 
 let importedPixelData = null;
 let importedPreviewImage = null;
-let navShowOriginal = false;
 let activeConversionController = null;
 let conversionInProgress = false;
 let conversionPhaseTimer = null;
@@ -332,19 +331,16 @@ function validateHexPixels(data) {
 }
 
 function finishImportedPixels(usedColors, sourceLabel) {
-  navShowOriginal = false;
+  overlayVisible = false;
   document.getElementById('cropOverlay').classList.remove('show');
-  document.getElementById('navToggleBtn').disabled = false;
-  document.getElementById('overlayControls').style.display = '';
-  document.getElementById('navToggleBtn').classList.remove('imported-mode');
-  document.getElementById('navToggleLabel').textContent = '像素图';
+  document.getElementById('overlayControls').hidden = false;
+  syncOverlayControls();
 
   var fitZoom = Math.floor(480 / (GRID_SIZE * BASE_CELL_SIZE) * 100);
   zoom = Math.max(20, Math.min(100, fitZoom));
   var zoomSlider = document.getElementById('zoomSlider');
-  zoomSlider.value = zoom;
   zoomSlider.min = Math.min(20, zoom);
-  document.getElementById('zoomValue').textContent = zoom + '%';
+  updateZoomControlState();
 
   updateCanvasSize();
   renderCanvas();
@@ -672,6 +668,10 @@ function confirmCropLocal() {
     rawPrevCtx.drawImage(cropImg, sx, sy, sw, sh, rdx, rdy, rdw, rdh);
   }
   importedPreviewImage = new Image();
+  importedPreviewImage.onload = function() {
+    renderNavigator();
+    renderOverlay();
+  };
   importedPreviewImage.src = rawPreview.toDataURL();
 
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
@@ -740,38 +740,28 @@ function renderOverlay() {
 
 function toggleOverlay() {
   overlayVisible = !overlayVisible;
-  var btn = document.getElementById('overlayToggleBtn');
-  if (overlayVisible) {
-    btn.textContent = '参考图 ON';
-    btn.style.background = '#4A90D9';
-    btn.style.color = '#fff';
-  } else {
-    btn.textContent = '参考图 OFF';
-    btn.style.background = '#444';
-    btn.style.color = '#aaa';
-  }
+  syncOverlayControls();
   renderOverlay();
+}
+
+function syncOverlayControls() {
+  var button = document.getElementById('overlayToggleBtn');
+  var label = document.getElementById('overlayToggleLabel');
+  var opacityInput = document.getElementById('overlayOpacity');
+  var opacityControl = document.getElementById('overlayOpacityControl');
+  if (!button || !label || !opacityInput || !opacityControl) return;
+
+  button.classList.toggle('active', overlayVisible);
+  button.setAttribute('aria-checked', String(overlayVisible));
+  label.textContent = overlayVisible ? '开启' : '关闭';
+  opacityInput.disabled = !overlayVisible;
+  opacityControl.classList.toggle('disabled', !overlayVisible);
 }
 
 function updateOverlayOpacity(val) {
   overlayOpacity = parseInt(val) / 100;
   document.getElementById('overlayOpacityVal').textContent = val + '%';
   if (overlayVisible) renderOverlay();
-}
-
-function toggleViewMode() {
-  // 閸欘亜鍨忛幑銏犱箯娓氀冾嚤閼割亜娅掗惃鍕暕鐟欏牆鍞寸€圭櫢绱欓崢鐔锋禈 閳?閸嶅繒绀岄崶鎾呯礆閿涘奔瀵岄悽璇茬娑撳秴褰?
-  navShowOriginal = !navShowOriginal;
-  var btn = document.getElementById('navToggleBtn');
-  var label = document.getElementById('navToggleLabel');
-  if (navShowOriginal) {
-    btn.classList.add('imported-mode');
-    label.textContent = '原图';
-  } else {
-    btn.classList.remove('imported-mode');
-    label.textContent = '像素图';
-  }
-  renderNavigator();
 }
 
 // --- 缂傗晜鏂?---

@@ -350,6 +350,61 @@ def test_canvas_max_zoom_is_1200_square_and_controls_center_it() -> None:
     assert "(canvasContainer.scrollHeight - canvasContainer.clientHeight) / 2" in app
 
 
+def test_left_navigator_groups_reference_and_zoom_controls() -> None:
+    html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    editor = (JAVASCRIPT_ROOT / "editor.js").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+    image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
+
+    assert 'id="navViewportIndicator"' in html
+    assert 'id="navSourceOriginal"' not in html
+    assert 'id="navSourcePixels"' not in html
+    assert "缩略图显示" not in html
+    assert 'role="switch" aria-checked="false"' in html
+    assert 'id="overlayOpacity" min="0" max="100" value="40"' in html
+    assert "fitCanvasToViewport()" in html
+    assert 'class="zoom-reset-btn"' in html
+    assert 'aria-label="适应画布" title="适应画布"' in html
+    assert 'class="zoom-reset-icon"' in html
+    assert 'class="zoom-heading-icon"' in html
+    assert '<span class="left-control-heading">缩放</span>' not in html
+    assert 'id="zoomValue"' not in html
+    assert 'class="zoom-step-btn"' not in html
+    assert 'class="zoom-fit-btn"' not in html
+    assert 'id="zoomBtnsMobile"' not in html
+    assert 'class="zoom-mb-btn"' not in html
+    assert 'id="navToggleBtn"' not in html
+    assert ".nav-viewport-indicator {" in css
+    assert ".nav-source-segment {" not in css
+    assert ".reference-switch.active" in css
+    assert "writing-mode: vertical-lr" in css
+    assert ".zoom-slider::-webkit-slider-runnable-track" in css
+    assert "width: 10px" in css
+    assert ".zoom-slider::-webkit-slider-thumb" in css
+    assert "width: 28px" in css
+    assert ".zoom-reset-btn {" in css
+    assert "--zoom-progress:" in css
+    assert "#72F5F2 var(--zoom-progress)" in css
+    assert ".zoom-reset-icon {" in css
+    assert ".zoom-heading-icon {" in css
+    assert "background: #2C2C30" in css
+
+    assert "onNavigatorPointerDown" in editor
+    assert "canvasContainer.addEventListener('scroll', updateNavigatorViewport)" in editor
+    assert "function updateNavigatorViewport()" in app
+    assert "function positionCanvasFromNavigator(e)" in app
+    assert "function fitCanvasToViewport()" in app
+    assert "function updateZoomControlState()" in app
+    assert "slider.style.setProperty('--zoom-progress'" in app
+    assert "function setNavigatorSource(mode)" not in image_import
+    assert "navShowOriginal" not in image_import
+    assert "navShowOriginal" not in editor
+    assert "navCtx.drawImage(importedPreviewImage" not in editor
+    assert "function syncOverlayControls()" in image_import
+    assert "opacityInput.disabled = !overlayVisible" in image_import
+
+
 def test_all_javascript_files_have_valid_syntax() -> None:
     node = shutil.which("node")
     if not node:
