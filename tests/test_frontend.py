@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260727-1"
+    asset_version = "20260727-3"
 
     assert (
         f'<link rel="stylesheet" '
@@ -258,6 +258,27 @@ def test_exports_include_raw_and_nearest_neighbor_preview() -> None:
     assert "var scale = 16" in source
     assert "buildPixelExportCanvas(scale)" in source
     assert "outputCtx.imageSmoothingEnabled = false" in source
+    assert source.count('class="export-item-icon"') == 3
+    assert source.count('class="export-item-label"') == 3
+    assert "grid-template-columns: 24px minmax(0, 1fr)" in source
+
+
+def test_blueprint_is_fixed_to_24_square_without_palette_remapping() -> None:
+    export = (JAVASCRIPT_ROOT / "export.js").read_text(encoding="utf-8")
+
+    assert "function getBlueprintData()" in export
+    assert "paletteByHex[pixelHex]" in export
+    assert "画布包含色库外颜色" in export
+    assert "GRID_SIZE * GRID_SIZE" in export
+    assert "_blueprint.png" in export
+    assert "var BOARD" not in export
+    assert "boardsX" not in export
+    assert "boardsY" not in export
+    assert "totalBoards" not in export
+    assert "boardBeadMap" not in export
+    assert "colorDistRGB" not in export
+    assert "bestD" not in export
+    assert "分板" not in export
 
 
 def test_storage_migrates_old_documents_and_rejects_invalid_pixels() -> None:

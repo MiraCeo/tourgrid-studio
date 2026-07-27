@@ -1346,9 +1346,10 @@ body {
   display: block;
 }
 .export-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  column-gap: 10px;
   width: 100%;
   padding: 12px 16px;
   background: transparent;
@@ -1364,8 +1365,18 @@ body {
 .export-item:hover {
   background: rgba(255,255,255,0.35);
 }
-.export-item span {
+.export-item-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
   font-size: 16px;
+  line-height: 1;
+}
+.export-item-label {
+  display: block;
+  min-width: 0;
+  line-height: 24px;
 }
 .export-divider {
   height: 2px;

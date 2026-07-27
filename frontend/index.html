@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-<link rel="stylesheet" href="/static/css/editor.css?v=20260727-1">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260727-3">
 </head>
 <body>
 
@@ -335,27 +335,30 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260727-1"></script>
-<script src="/static/js/reference-storage.js?v=20260727-1"></script>
-<script src="/static/js/natural-64-v1.js?v=20260727-1"></script>
-<script src="/static/js/state.js?v=20260727-1"></script>
-<script src="/static/js/editor.js?v=20260727-1"></script>
-<script src="/static/js/export.js?v=20260727-1"></script>
-<script src="/static/js/import.js?v=20260727-1"></script>
-<script src="/static/js/app.js?v=20260727-1"></script>
+<script src="/static/js/storage.js?v=20260727-3"></script>
+<script src="/static/js/reference-storage.js?v=20260727-3"></script>
+<script src="/static/js/natural-64-v1.js?v=20260727-3"></script>
+<script src="/static/js/state.js?v=20260727-3"></script>
+<script src="/static/js/editor.js?v=20260727-3"></script>
+<script src="/static/js/export.js?v=20260727-3"></script>
+<script src="/static/js/import.js?v=20260727-3"></script>
+<script src="/static/js/app.js?v=20260727-3"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
   <button class="export-item" onclick="exportRawPixelImage()">
-    <span>🖼</span> 导出原始尺寸 PNG
+    <span class="export-item-icon" aria-hidden="true">🖼</span>
+    <span class="export-item-label">导出原始尺寸 PNG</span>
   </button>
   <button class="export-item" onclick="exportPixelPreview()">
-    <span>🔍</span> 导出最近邻放大图
+    <span class="export-item-icon" aria-hidden="true">🔍</span>
+    <span class="export-item-label">导出最近邻放大图</span>
   </button>
   <div class="export-divider"></div>
   <div id="exportBeadSection">
     <button class="export-item" id="exportBeadBtn" onclick="exportBeadBlueprint()">
-      <span>📿</span> 导出拼豆图纸
+      <span class="export-item-icon" aria-hidden="true">📿</span>
+      <span class="export-item-label">导出拼豆图纸</span>
     </button>
     <div class="export-warning" id="exportWarning" style="display:none;">当前使用的为非拼豆色卡，请返回并切换后再导出</div>
   </div>
