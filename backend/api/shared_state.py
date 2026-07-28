@@ -30,6 +30,8 @@ class SharedState(Protocol):
 
     async def close(self) -> None: ...
 
+    async def check_health(self) -> None: ...
+
     async def check_rate_limit(
         self,
         key: str,
@@ -66,6 +68,9 @@ class InMemorySharedState:
         return None
 
     async def close(self) -> None:
+        return None
+
+    async def check_health(self) -> None:
         return None
 
     async def check_rate_limit(
@@ -158,6 +163,8 @@ return {current, ttl}
             redis_url,
             encoding="utf-8",
             decode_responses=True,
+            socket_connect_timeout=3,
+            socket_timeout=3,
         )
 
     async def initialize(self) -> None:
@@ -168,6 +175,12 @@ return {current, ttl}
 
     async def close(self) -> None:
         await self._client.aclose()
+
+    async def check_health(self) -> None:
+        try:
+            await self._client.ping()
+        except RedisError as error:
+            raise SharedStateUnavailable("Redis health check failed") from error
 
     async def check_rate_limit(
         self,

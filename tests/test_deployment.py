@@ -45,6 +45,8 @@ def test_api_is_not_published_directly_and_proxy_routes_same_origin() -> None:
     assert "file_server" in caddyfile
     assert "try_files" not in caddyfile
     assert "script-src 'self' 'unsafe-inline'" in caddyfile
+    assert "health_uri /api/v1/ready" in caddyfile
+    assert "http://127.0.0.1:2015" in caddyfile
 
 
 def test_postgres_is_persistent_and_only_bound_to_loopback() -> None:
@@ -59,6 +61,27 @@ def test_postgres_is_persistent_and_only_bound_to_loopback() -> None:
     assert "TOURGRID_DATABASE_URL:" in compose
     assert "condition: service_healthy" in compose
     assert "TOURGRID_DB_PASSWORD=" in production
+
+
+def test_local_web_is_loopback_only_and_deployments_open_explicitly() -> None:
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    local = (ROOT / "deploy/.env.example").read_text(encoding="utf-8")
+    staging = (ROOT / "deploy/staging.env.example").read_text(encoding="utf-8")
+    production = (ROOT / "deploy/production.env.example").read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        '"${TOURGRID_BIND_ADDRESS:-127.0.0.1}:'
+        '${TOURGRID_HTTP_PORT:-8080}:80"'
+    ) in compose
+    assert (
+        '"${TOURGRID_BIND_ADDRESS:-127.0.0.1}:'
+        '${TOURGRID_HTTPS_PORT:-8443}:443"'
+    ) in compose
+    assert "TOURGRID_BIND_ADDRESS=127.0.0.1" in local
+    assert "TOURGRID_BIND_ADDRESS=0.0.0.0" in staging
+    assert "TOURGRID_BIND_ADDRESS=0.0.0.0" in production
 
 
 def test_frontend_image_includes_only_versioned_frontend_sources() -> None:
@@ -132,6 +155,18 @@ def test_production_image_is_non_root_and_has_healthcheck() -> None:
     assert "--forwarded-allow-ips=*\"" in dockerfile
     assert "requirements-prod.lock" in dockerfile
     assert "pip install --prefix=/install --no-deps ." not in dockerfile
+    assert "/api/v1/ready" in dockerfile
+
+
+def test_all_containers_rotate_logs_and_web_has_a_healthcheck() -> None:
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+
+    assert "x-logging: &default-logging" in compose
+    assert compose.count("logging: *default-logging") == 4
+    assert 'max-size: "10m"' in compose
+    assert 'max-file: "5"' in compose
+    assert "http://127.0.0.1:2015/" in compose
+    assert "/api/v1/ready" in compose
 
 
 def test_project_is_run_from_source_checkout_instead_of_wheel_entrypoint() -> None:
@@ -194,3 +229,24 @@ def test_container_no_longer_carries_conversion_runtime_packages() -> None:
     assert "TOURGRID_MAX_CONCURRENT_CONVERSIONS" not in compose
     assert "/tmp:size=32m" in compose
     assert "128KB" in caddyfile
+
+
+def test_ci_has_a_database_only_postgres_store_job() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    postgres_tests = (
+        ROOT / "tests/test_postgres_work_store.py"
+    ).read_text(encoding="utf-8")
+
+    job = workflow.split("\n  postgres-store:", maxsplit=1)[1].split(
+        "\n  container-smoke:",
+        maxsplit=1,
+    )[0]
+    assert "image: postgres:17-alpine" in job
+    assert "TOURGRID_TEST_DATABASE_URL:" in job
+    assert "tests/test_postgres_work_store.py" in job
+    assert "-m postgres_store" in job
+    assert "docker compose" not in job
+    assert "playwright" not in job.lower()
+    assert "postgres_store:" in project
+    assert postgres_tests.count("@pytest.mark.postgres_store") == 2

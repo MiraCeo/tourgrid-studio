@@ -97,7 +97,9 @@ python -m venv .venv
 - API文档：`http://127.0.0.1:8000/docs`
 
 直接启动但未配置 `TOURGRID_DATABASE_URL` 时，编辑、导入和导出仍可使用；作品
-保存接口会返回 `503 work_storage_unavailable`。
+保存接口会返回 `503 work_storage_unavailable`，依赖就绪检查
+`GET /api/v1/ready` 也会返回503。基础存活检查 `GET /api/v1/health`
+仍会返回200。
 
 ## Docker部署
 
@@ -106,12 +108,15 @@ Copy-Item deploy/.env.example deploy/local.env
 docker compose --env-file deploy/local.env up --detach --build --wait
 ```
 
-访问 `http://localhost:8080/`。正式域名、HTTPS、备份和回滚见
+本地示例通过 `TOURGRID_BIND_ADDRESS=127.0.0.1` 只允许当前电脑访问。访问
+`http://localhost:8080/`。测试和生产环境必须显式设置监听地址；正式域名、
+HTTPS、备份和回滚见
 [部署与发布](docs/deployment.md)。
 
 ## API
 
 - `GET /api/v1/health`
+- `GET /api/v1/ready`
 - `GET /api/v1/palettes`
 - `GET /api/v1/palettes/{palette_id}`
 - `POST /api/v1/works`
@@ -153,6 +158,8 @@ docker compose --env-file deploy/local.env up --detach --build --wait
 - `tests/fixtures/`：浏览器本地转换使用的确定性源图片。
 
 PostgreSQL集成测试需要设置 `TOURGRID_TEST_DATABASE_URL`，未设置时会跳过。
+CI中的 `postgres-store` 作业会启动一次性PostgreSQL，并且只直接测试
+`PostgresWorkStore` 的SQL读写和迁移，不经过HTTP、Caddy、Redis或浏览器。
 
 浏览器回归主要覆盖：
 

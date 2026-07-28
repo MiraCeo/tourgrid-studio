@@ -13,6 +13,8 @@ FastAPI不向宿主机公开端口，只允许Caddy通过Compose内部网络访�
 只绑定宿主机回环地址，作品数据保存在 `postgres_data` 卷中。
 
 图片导入和64色转换完全在浏览器中执行，API容器不安装科学计算或图片解码依赖。
+本地环境的Web端口只绑定 `127.0.0.1`；测试和生产示例显式使用 `0.0.0.0`
+接受外部流量。
 
 ## 本地容器验收
 
@@ -25,8 +27,13 @@ docker compose --env-file deploy/local.env up --detach --build --wait
 访问：
 
 - 编辑器：`http://localhost:8080/`
-- 健康检查：`http://localhost:8080/api/v1/health`
+- 存活检查：`http://localhost:8080/api/v1/health`
+- 依赖就绪检查：`http://localhost:8080/api/v1/ready`
 - API文档：`http://localhost:8080/docs`
+
+`deploy/.env.example` 中的 `TOURGRID_BIND_ADDRESS=127.0.0.1` 表示其他局域网
+设备不能直接访问本地测试站点。不要为了本地访问方便将它改成 `0.0.0.0` 并继续
+使用示例管理员令牌。
 
 停止服务：
 
@@ -40,7 +47,8 @@ docker compose --env-file deploy/local.env down
 
 1. 将 `deploy/staging.env.example` 复制为不提交的 `deploy/staging.env`。
 2. 设置测试域名、数据库强密码和不可变版本标签，例如 `0.3.1-rc.1`。
-3. 将域名A/AAAA记录指向服务器并开放TCP 80和443。
+3. 确认 `TOURGRID_BIND_ADDRESS=0.0.0.0`，将域名A记录指向服务器并开放
+   TCP 80和443；若需要AAAA记录，应另行确认宿主机和容器的IPv6发布配置。
 4. 运行完整测试并启动Compose。
 
 ```powershell
@@ -68,6 +76,9 @@ docker compose --env-file deploy/staging.env up --detach --build --wait
 - PostgreSQL备份位置与恢复验证结果；
 - Caddy数据卷状态。
 
+正式环境必须显式设置 `TOURGRID_BIND_ADDRESS=0.0.0.0`，不能依赖Compose的
+本地安全默认值。
+
 单台Compose主机不提供按百分比灰度。需要灰度时，运行互相隔离的旧版和候选版，
 由上游负载均衡器或CDN分配流量；没有流量治理设施时，采用“测试域名→正式域名”
 两阶段发布。
@@ -85,12 +96,20 @@ docker compose --env-file deploy/staging.env up --detach --build --wait
 ## 日志、限流与监控
 
 - Caddy和API输出JSON访问日志。
+- Compose使用Docker `json-file` 日志驱动，每个容器最多保留5个10MB日志文件。
 - API为请求返回 `X-Request-ID`，日志不记录作品像素正文。
 - `POST /api/v1/works` 使用Redis中按客户端IP共享的时间窗口限流。
 - Redis保存带TTL的浏览去重键和临时封禁，不挂载数据卷；重启后丢失是预期行为。
 - 永久客户端封禁和作品软删除记录保存在PostgreSQL中。
 - 设置 `TOURGRID_SENTRY_DSN` 后启用可选Sentry上报，默认不发送个人信息。
 - 多个API实例共享同一个Redis即可共享限流、临时封禁和浏览去重状态。
+- `/api/v1/health`仅检查API进程；`/api/v1/ready`检查PostgreSQL和Redis。
+  API及Caddy上游健康检查使用就绪接口，Web容器另行检查内部静态站点。
+
+CI另有独立的 `postgres-store` 作业：它启动临时PostgreSQL，仅直接调用
+`PostgresWorkStore` 验证迁移、SQL读写、隐藏、恢复、永久清除和墓碑；不经过
+FastAPI、Caddy、Redis、管理员接口或浏览器。该测试数据库由CI创建并在作业结束后
+销毁，不得将 `TOURGRID_TEST_DATABASE_URL` 指向正式数据库。
 
 ## 安全与容量
 

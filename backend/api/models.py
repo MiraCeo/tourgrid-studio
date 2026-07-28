@@ -27,6 +27,12 @@ class HealthResponse(ApiModel):
     default_palette_id: str
 
 
+class ReadinessResponse(ApiModel):
+    status: str
+    database: str
+    shared_state: str
+
+
 class PaletteSummary(ApiModel):
     id: str
     name: str

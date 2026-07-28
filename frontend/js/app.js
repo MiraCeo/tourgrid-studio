@@ -732,6 +732,17 @@ function setPalettePanelMode(mode) {
 // --- 闁款喚娲忚箛顐ｅ祹闁?---
 var authorModalTrigger = null;
 var announcementModalTrigger = null;
+var ANNOUNCEMENT_SESSION_KEY = 'tourgrid-announcement-20260728';
+
+function openAnnouncementOnEntry() {
+  try {
+    if (sessionStorage.getItem(ANNOUNCEMENT_SESSION_KEY) === 'shown') return;
+    sessionStorage.setItem(ANNOUNCEMENT_SESSION_KEY, 'shown');
+  } catch (_error) {
+    // Storage may be unavailable in restricted browsing modes; still show it.
+  }
+  openAnnouncementModal();
+}
 
 function openAnnouncementModal() {
   var modal = document.getElementById('announcementModal');
@@ -966,6 +977,7 @@ document.addEventListener('DOMContentLoaded', function() {
   init();
   installTourgridTestApi();
   loadSharedWorkFromQuery();
+  openAnnouncementOnEntry();
 });
 
 // --- 移动端横竖屏检测（比CSS orientation更可靠）---

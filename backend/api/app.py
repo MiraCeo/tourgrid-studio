@@ -26,15 +26,21 @@ from .models import (
     PaletteColorResponse,
     PaletteDetail,
     PaletteSummary,
+    ReadinessResponse,
 )
 from .observability import configure_error_monitoring, install_operational_middleware
-from .shared_state import SharedState, create_shared_state
-from .work_store import WorkStore, create_work_store
+from .shared_state import (
+    SharedState,
+    SharedStateUnavailable,
+    create_shared_state,
+)
+from .work_store import WorkStore, WorkStoreUnavailable, create_work_store
 from .works import create_works_router
 
 
 FRONTEND_DIR = FilePath(__file__).resolve().parents[2] / "frontend"
 EDITOR_HTML = FRONTEND_DIR / "index.html"
+FAVICON_FILE = FRONTEND_DIR / "favicon.ico"
 ADMIN_DIR = FRONTEND_DIR / "admin"
 
 
@@ -76,6 +82,34 @@ def create_router() -> APIRouter:
             status="ok",
             app_version=APP_VERSION,
             default_palette_id=DEFAULT_PALETTE_ID,
+        )
+
+    @router.get(
+        "/ready",
+        response_model=ReadinessResponse,
+        responses={503: {"model": ErrorResponse}},
+    )
+    async def ready(request: Request) -> ReadinessResponse:
+        try:
+            await request.app.state.work_store.check_health()
+        except WorkStoreUnavailable as error:
+            raise ApiError(
+                503,
+                "database_not_ready",
+                "The database is not ready.",
+            ) from error
+        try:
+            await request.app.state.shared_state.check_health()
+        except SharedStateUnavailable as error:
+            raise ApiError(
+                503,
+                "shared_state_not_ready",
+                "The shared state service is not ready.",
+            ) from error
+        return ReadinessResponse(
+            status="ready",
+            database="ok",
+            shared_state="ok",
         )
 
     @router.get("/palettes", response_model=list[PaletteSummary])
@@ -160,6 +194,10 @@ def create_app(
     @application.get("/", include_in_schema=False)
     async def editor() -> FileResponse:
         return FileResponse(EDITOR_HTML, media_type="text/html")
+
+    @application.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> FileResponse:
+        return FileResponse(FAVICON_FILE, media_type="image/x-icon")
 
     @application.exception_handler(ApiError)
     async def handle_api_error(_request: Request, error: ApiError) -> JSONResponse:

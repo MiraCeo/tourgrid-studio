@@ -104,8 +104,10 @@ def editor_page(
     page.wait_for_function(
         "() => window.__TOURGRID_TEST__?.isReady === true"
     )
+    page.locator("#announcementModal.show").wait_for(state="visible")
+    page.locator(".announcement-close-btn").click()
+    page.locator("#announcementModal").wait_for(state="hidden")
     yield page
 
     context.close()
     assert runtime_errors == []
-

@@ -16,6 +16,7 @@ from backend.api.works import content_digest
 
 
 @pytest.mark.integration
+@pytest.mark.postgres_store
 def test_postgres_store_saves_deduplicates_and_counts_views() -> None:
     database_url = os.getenv("TOURGRID_TEST_DATABASE_URL")
     if not database_url:
@@ -115,6 +116,7 @@ def test_work_api_round_trips_through_postgres() -> None:
 
 
 @pytest.mark.integration
+@pytest.mark.postgres_store
 def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
     database_url = os.getenv("TOURGRID_TEST_DATABASE_URL")
     if not database_url:

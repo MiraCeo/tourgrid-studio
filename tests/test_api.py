@@ -60,6 +60,35 @@ def test_health_reports_application_version(client: TestClient) -> None:
     }
 
 
+def test_readiness_reports_available_dependencies(client: TestClient) -> None:
+    response = client.get("/api/v1/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "database": "ok",
+        "sharedState": "ok",
+    }
+
+
+def test_readiness_fails_without_work_storage() -> None:
+    application = create_app(ApiSettings())
+
+    with TestClient(application) as source_client:
+        response = source_client.get("/api/v1/ready")
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "database_not_ready"
+
+
+def test_favicon_is_served(client: TestClient) -> None:
+    response = client.get("/favicon.ico")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/x-icon"
+    assert response.content.startswith(b"\x00\x00\x01\x00")
+
+
 def test_server_conversion_routes_are_removed(client: TestClient) -> None:
     assert client.post("/api/v1/convert").status_code == 404
     assert (

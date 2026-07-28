@@ -6,7 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-17">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-18">
 </head>
 <body>
 
@@ -446,6 +447,43 @@
           <li><span>导出</span>完成编辑后，从顶部导出所需的图片或图纸。</li>
         </ol>
       </section>
+
+      <section class="announcement-section">
+        <div class="announcement-section-heading">
+          <span class="announcement-section-number">03</span>
+          <h3>隐私与作品保存</h3>
+        </div>
+        <p>
+          导入图片、裁切和颜色转换均在浏览器本地完成，原图和参考图不会上传。
+          发布作品时，服务器仅接收 24×24 像素索引、色板版本以及你填写的标题和作者。
+        </p>
+        <p>
+          浏览次数使用随机匿名 Cookie，并通过临时键进行时间窗口去重；服务日志和
+          滥用防护可能处理访问 IP，永久封禁记录会保存在数据库中。
+        </p>
+        <p class="announcement-note">
+          作品发布后不可自行覆盖或修改，并会长期保存在服务器中；请勿在标题或作者栏
+          填写真实姓名、联系方式等不希望公开的信息。
+        </p>
+      </section>
+
+      <section class="announcement-section">
+        <div class="announcement-section-heading">
+          <span class="announcement-section-number">04</span>
+          <h3>内容规则与联系</h3>
+        </div>
+        <p>
+          请勿发布违法违规、侵害他人权利、包含个人敏感信息或明显用于骚扰的内容。
+          管理员可以隐藏或永久删除违规作品，处理原因会向分享码访问者公开。
+        </p>
+        <p>
+          如需举报违规或侵权内容、申请删除作品，或反馈隐私问题，请通过
+          <a class="announcement-contact-link"
+             href="https://github.com/MiraCeo/tourgrid-studio/issues"
+             target="_blank" rel="noopener noreferrer">项目 GitHub Issues</a>
+          联系维护者。提交时请提供分享码和必要说明，不要公开个人敏感信息。
+        </p>
+      </section>
     </div>
   </section>
 </div>
@@ -530,16 +568,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260728-17"></script>
-<script src="/static/js/reference-storage.js?v=20260728-17"></script>
-<script src="/static/js/work-codec.js?v=20260728-17"></script>
-<script src="/static/js/natural-64-v1.js?v=20260728-17"></script>
-<script src="/static/js/state.js?v=20260728-17"></script>
-<script src="/static/js/editor.js?v=20260728-17"></script>
-<script src="/static/js/export.js?v=20260728-17"></script>
-<script src="/static/js/import.js?v=20260728-17"></script>
-<script src="/static/js/works.js?v=20260728-17"></script>
-<script src="/static/js/app.js?v=20260728-17"></script>
+<script src="/static/js/storage.js?v=20260728-18"></script>
+<script src="/static/js/reference-storage.js?v=20260728-18"></script>
+<script src="/static/js/work-codec.js?v=20260728-18"></script>
+<script src="/static/js/natural-64-v1.js?v=20260728-18"></script>
+<script src="/static/js/state.js?v=20260728-18"></script>
+<script src="/static/js/editor.js?v=20260728-18"></script>
+<script src="/static/js/export.js?v=20260728-18"></script>
+<script src="/static/js/import.js?v=20260728-18"></script>
+<script src="/static/js/works.js?v=20260728-18"></script>
+<script src="/static/js/app.js?v=20260728-18"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

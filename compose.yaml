@@ -1,5 +1,11 @@
 name: tourgrid-studio
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
     image: postgres:17-alpine
@@ -12,6 +18,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:${TOURGRID_DB_PORT:-5432}:5432"
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tourgrid -d tourgrid"]
       interval: 10s
@@ -24,6 +31,7 @@ services:
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     expose:
       - "6379"
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -63,12 +71,13 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
     healthcheck:
       test:
         - CMD
         - python
         - -c
-        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3).read()"
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=3).read()"
       interval: 30s
       timeout: 5s
       start_period: 45s
@@ -88,8 +97,8 @@ services:
       TOURGRID_SITE_ADDRESS: ${TOURGRID_SITE_ADDRESS:-http://}
       TOURGRID_PROXY_MAX_BODY_SIZE: ${TOURGRID_PROXY_MAX_BODY_SIZE:-128KB}
     ports:
-      - "${TOURGRID_HTTP_PORT:-8080}:80"
-      - "${TOURGRID_HTTPS_PORT:-8443}:443"
+      - "${TOURGRID_BIND_ADDRESS:-127.0.0.1}:${TOURGRID_HTTP_PORT:-8080}:80"
+      - "${TOURGRID_BIND_ADDRESS:-127.0.0.1}:${TOURGRID_HTTPS_PORT:-8443}:443"
     volumes:
       - caddy_data:/data
       - caddy_config:/config
@@ -102,6 +111,18 @@ services:
       - NET_BIND_SERVICE
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --spider
+        - http://127.0.0.1:2015/
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
 
 volumes:
   caddy_data:

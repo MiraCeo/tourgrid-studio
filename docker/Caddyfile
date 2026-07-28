@@ -23,7 +23,7 @@
 	route {
 		@backend path /api/* /docs* /openapi.json
 		reverse_proxy @backend api:8000 {
-			health_uri /api/v1/health
+			health_uri /api/v1/ready
 			health_interval 30s
 			health_timeout 5s
 			transport http {
@@ -39,4 +39,9 @@
 		output stdout
 		format json
 	}
+}
+
+http://127.0.0.1:2015 {
+	root * /srv
+	file_server
 }

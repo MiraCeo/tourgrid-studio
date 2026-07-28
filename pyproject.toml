@@ -44,4 +44,5 @@ addopts = "-ra"
 markers = [
   "browser: runs the real Chromium frontend regression suite",
   "integration: requires an explicitly configured external service",
+  "postgres_store: directly tests the PostgreSQL work store without HTTP",
 ]

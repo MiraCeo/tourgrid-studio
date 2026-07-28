@@ -96,6 +96,8 @@ class WorkStore(Protocol):
 
     async def close(self) -> None: ...
 
+    async def check_health(self) -> None: ...
+
     async def save(
         self,
         *,
@@ -196,6 +198,9 @@ class UnavailableWorkStore:
     async def close(self) -> None:
         return None
 
+    async def check_health(self) -> None:
+        raise WorkStoreUnavailable("PostgreSQL storage is not configured")
+
     async def save(self, **_values: object) -> WorkRecord:
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
@@ -264,6 +269,9 @@ class InMemoryWorkStore:
         return None
 
     async def close(self) -> None:
+        return None
+
+    async def check_health(self) -> None:
         return None
 
     async def save(
@@ -563,6 +571,7 @@ class PostgresWorkStore:
             conninfo=database_url,
             min_size=1,
             max_size=5,
+            timeout=5,
             open=False,
         )
 
@@ -598,6 +607,18 @@ class PostgresWorkStore:
 
     async def close(self) -> None:
         await asyncio.to_thread(self._pool.close)
+
+    async def check_health(self) -> None:
+        try:
+            await asyncio.to_thread(self._check_health_sync)
+        except (PsycopgError, PoolTimeout) as error:
+            raise WorkStoreUnavailable(
+                "PostgreSQL health check failed"
+            ) from error
+
+    def _check_health_sync(self) -> None:
+        with self._pool.connection() as connection:
+            connection.execute("SELECT 1").fetchone()
 
     async def save(
         self,

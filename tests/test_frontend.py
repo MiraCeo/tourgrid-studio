@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_ROOT = PROJECT_ROOT / "frontend"
 INDEX_HTML = FRONTEND_ROOT / "index.html"
 JAVASCRIPT_ROOT = FRONTEND_ROOT / "js"
+FAVICON_FILE = FRONTEND_ROOT / "favicon.ico"
 
 
 def read_frontend() -> str:
@@ -40,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260728-17"
+    asset_version = "20260728-18"
 
     assert (
         f'<link rel="stylesheet" '
@@ -66,6 +67,21 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     ]
     assert positions == sorted(positions)
     assert not (PROJECT_ROOT / "像素画编辑器.html").exists()
+
+
+def test_frontend_and_admin_reference_the_project_favicon() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    admin_html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    dockerfile = (
+        PROJECT_ROOT / "docker" / "frontend.Dockerfile"
+    ).read_text(encoding="utf-8")
+
+    assert FAVICON_FILE.read_bytes().startswith(b"\x00\x00\x01\x00")
+    assert '<link rel="icon" href="/favicon.ico"' in html
+    assert '<link rel="icon" href="/favicon.ico"' in admin_html
+    assert "COPY frontend/favicon.ico /srv/favicon.ico" in dockerfile
 
 
 def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
@@ -826,7 +842,7 @@ def test_author_project_modal_uses_no_unlicensed_avatar_and_safe_github_links() 
     assert "if (e.key === 'Escape')" in app
 
 
-def test_announcement_button_and_modal_include_project_intro_and_guide() -> None:
+def test_announcement_is_opened_on_entry_and_includes_project_policies() -> None:
     html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
     css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
@@ -838,14 +854,22 @@ def test_announcement_button_and_modal_include_project_intro_and_guide() -> None
     assert '<h2 id="announcementModalTitle">项目公告</h2>' in html
     assert "<h3>项目介绍</h3>" in html
     assert "<h3>使用指南</h3>" in html
+    assert "<h3>隐私与作品保存</h3>" in html
+    assert "<h3>内容规则与联系</h3>" in html
+    assert "项目 GitHub Issues" in html
+    assert "申请删除作品" in html
+    assert "访问 IP" in html
     assert "更新日志" not in html
-    assert html.count('class="announcement-section"') == 2
+    assert html.count('class="announcement-section"') == 4
     assert ".btn-announcement {" in css
     assert ".announcement-modal {" in css
     assert ".announcement-steps {" in css
     assert "function openAnnouncementModal()" in app
+    assert "function openAnnouncementOnEntry()" in app
     assert "function closeAnnouncementModal()" in app
     assert "function closeAnnouncementModalFromBackdrop(e)" in app
+    assert "sessionStorage.getItem(ANNOUNCEMENT_SESSION_KEY)" in app
+    assert "loadSharedWorkFromQuery();\n  openAnnouncementOnEntry();" in app
 
 
 def test_all_javascript_files_have_valid_syntax() -> None:

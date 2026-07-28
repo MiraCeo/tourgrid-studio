@@ -35,6 +35,24 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 }
 ```
 
+该接口是进程存活检查，不访问PostgreSQL或Redis。
+
+## `GET /api/v1/ready`
+
+检查作品数据库和共享状态服务是否可用。Docker健康检查及Caddy上游主动检查使用
+该接口。依赖全部正常时返回：
+
+```json
+{
+  "status": "ready",
+  "database": "ok",
+  "sharedState": "ok"
+}
+```
+
+PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端源码运行也会返回
+`503 database_not_ready`，这是预期行为。
+
 ## `GET /api/v1/palettes`
 
 返回可用色板的ID、名称、版本、状态和颜色数量。
