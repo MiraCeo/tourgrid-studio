@@ -719,6 +719,14 @@ function markReplicationCellCompleted(x, y) {
   }
 
   replicationCompletedCells.add(replicationCellIndex(x, y));
+  replicationMarkingChanged = true;
+  renderStatisticsHighlightOverlay();
+  return true;
+}
+
+function commitReplicationCellMarking() {
+  if (!replicationMarkingChanged) return false;
+  replicationMarkingChanged = false;
   saveReplicationProgress();
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();

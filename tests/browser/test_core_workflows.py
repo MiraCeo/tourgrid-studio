@@ -188,7 +188,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     click_canvas_cell(editor_page, 3, 1)
     assert editor_state(editor_page)["replicationCompletedCells"] == [25]
     editor_page.keyboard.press("Escape")
-    click_canvas_cell(editor_page, 3, 1)
+    paint_cells(editor_page, [(1, 1), (3, 1)])
     expect(editor_page.locator("#replicationCompleteCheckbox")).to_be_checked()
     state = editor_state(editor_page)
     assert state["replicationCompletedCells"] == [25, 27]
