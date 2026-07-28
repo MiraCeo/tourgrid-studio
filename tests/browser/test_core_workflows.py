@@ -327,6 +327,15 @@ def test_canvas_cell_hover_highlight_is_limited_to_drawing_and_eyedropper(
     move_to_cell(3, 4)
     assert editor_state(editor_page)["hoveredCanvasCell"] == {"x": 3, "y": 4}
     assert hover_canvas.evaluate("element => element.toDataURL()") != baseline
+    center_alpha = hover_canvas.evaluate(
+        """canvas => canvas.getContext('2d').getImageData(
+          Math.floor((3.5 / 24) * canvas.width),
+          Math.floor((4.5 / 24) * canvas.height),
+          1,
+          1
+        ).data[3]"""
+    )
+    assert center_alpha == 0
 
     editor_page.locator("#eyedropperBtn").click()
     move_to_cell(5, 6)

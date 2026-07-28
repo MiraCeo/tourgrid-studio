@@ -163,8 +163,6 @@ function renderCanvasCellHighlight() {
   var luminance = red * 0.299 + green * 0.587 + blue * 0.114;
 
   hoverCtx.save();
-  hoverCtx.fillStyle = 'rgba(103, 245, 242, 0.24)';
-  hoverCtx.fillRect(left, top, width, height);
   hoverCtx.strokeStyle = luminance > 150 ? '#18181C' : '#FFFFFF';
   hoverCtx.lineWidth = lineWidth;
   hoverCtx.strokeRect(
