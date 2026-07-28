@@ -1,7 +1,10 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*.log
 .pytest_cache/
+.pytest-temp/
+.pytest-temp-full/
 .coverage
 htmlcov/
 

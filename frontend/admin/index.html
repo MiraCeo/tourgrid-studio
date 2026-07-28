@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Tourgrid Studio Admin</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="login-panel" id="loginPanel">
+      <p class="eyebrow">TOURGRID STUDIO</p>
+      <h1>管理员后台</h1>
+      <p class="muted">令牌只保存在当前页面内存中，刷新页面后需要重新输入。</p>
+      <form id="loginForm">
+        <label for="adminToken">管理员令牌</label>
+        <input id="adminToken" name="adminToken" type="password"
+               autocomplete="off" minlength="32" required>
+        <button type="submit">进入后台</button>
+      </form>
+      <p class="message error" id="loginError" hidden></p>
+    </section>
+
+    <section class="admin-app" id="adminApp" hidden>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">TOURGRID STUDIO</p>
+          <h1>作品管理</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="secondary" id="refreshButton" type="button">刷新</button>
+          <button class="secondary" id="logoutButton" type="button">退出</button>
+        </div>
+      </header>
+
+      <section class="toolbar" aria-label="作品筛选">
+        <form id="searchForm" class="search-form">
+          <label class="sr-only" for="searchCode">分享码</label>
+          <input id="searchCode" type="search" maxlength="12"
+                 placeholder="输入12位分享码">
+          <button type="submit">查询</button>
+        </form>
+        <label>
+          状态
+          <select id="statusFilter">
+            <option value="">全部作品</option>
+            <option value="active">正常</option>
+            <option value="hidden">已隐藏</option>
+            <option value="purged">已清除</option>
+          </select>
+        </label>
+      </section>
+
+      <p class="message" id="statusMessage" aria-live="polite"></p>
+
+      <div class="workspace">
+        <section class="collection" aria-labelledby="worksHeading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ALL WORKS</p>
+              <h2 id="worksHeading">全部作品</h2>
+            </div>
+            <span class="count" id="visibleCount">0 项</span>
+          </div>
+          <div class="work-grid" id="workGrid"></div>
+          <div class="empty-state" id="emptyState" hidden>当前筛选下没有作品。</div>
+          <button class="load-more secondary" id="loadMoreButton"
+                  type="button" hidden>加载更多</button>
+        </section>
+
+        <aside class="detail-panel" id="detailPanel" aria-labelledby="detailHeading">
+          <div class="detail-placeholder" id="detailPlaceholder">
+            选择一个作品查看完整信息和画面。
+          </div>
+          <div id="detailContent" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">WORK DETAIL</p>
+                <h2 id="detailHeading">作品详情</h2>
+              </div>
+              <span class="status-badge" id="detailStatus"></span>
+            </div>
+            <div class="preview-frame" id="detailPreviewFrame">
+              <canvas id="detailCanvas" width="192" height="192"
+                      aria-label="24×24作品预览"></canvas>
+              <p id="purgedNotice" hidden>作品内容已经永久清除</p>
+            </div>
+            <dl class="metadata" id="detailMetadata"></dl>
+            <div class="moderation-actions" id="moderationActions">
+              <button id="hideButton" type="button">隐藏作品</button>
+              <button class="secondary" id="restoreButton"
+                      type="button">恢复作品</button>
+              <button class="danger" id="purgeButton"
+                      type="button">永久清除</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <section class="operations">
+        <article class="operation-card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ABUSE CONTROL</p>
+              <h2>客户端封禁</h2>
+            </div>
+          </div>
+          <form id="banForm" class="stacked-form">
+            <label>IP地址<input id="banIp" required placeholder="203.0.113.10"></label>
+            <label>原因<input id="banReason" maxlength="200"></label>
+            <label>期限
+              <select id="banDuration">
+                <option value="3600">1小时</option>
+                <option value="86400">24小时</option>
+                <option value="604800">7天</option>
+                <option value="2592000">30天</option>
+                <option value="">永久</option>
+              </select>
+            </label>
+            <button type="submit">添加封禁</button>
+          </form>
+          <form id="unbanForm" class="inline-form">
+            <input id="unbanIp" required placeholder="输入需要解封的IP">
+            <button class="secondary" type="submit">解除封禁</button>
+          </form>
+        </article>
+
+        <article class="operation-card audit-card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">AUDIT LOG</p>
+              <h2>最近管理操作</h2>
+            </div>
+            <button class="secondary small" id="auditRefreshButton"
+                    type="button">刷新</button>
+          </div>
+          <ol class="audit-list" id="auditList"></ol>
+          <p class="muted" id="auditEmpty" hidden>暂无管理操作。</p>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="actionDialog">
+    <form method="dialog" id="actionForm">
+      <h2 id="dialogTitle">确认操作</h2>
+      <p id="dialogDescription"></p>
+      <label for="actionReason">处理原因</label>
+      <textarea id="actionReason" maxlength="500" required></textarea>
+      <label id="confirmationLabel" for="confirmationCode" hidden>
+        输入完整分享码以确认永久清除
+      </label>
+      <input id="confirmationCode" maxlength="12" autocomplete="off" hidden>
+      <p class="message error" id="dialogError" hidden></p>
+      <div class="dialog-actions">
+        <button class="secondary" value="cancel" type="button"
+                id="cancelDialogButton">取消</button>
+        <button class="danger" value="confirm" type="submit"
+                id="confirmDialogButton">确认</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/static/js/work-codec.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

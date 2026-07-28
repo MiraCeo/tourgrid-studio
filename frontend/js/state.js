@@ -94,7 +94,7 @@ function updateTopWorkIdentity() {
   titleElement.textContent = '《' + title + '》';
   metaElement.textContent = (
     '作者：' + author +
-    ' · 分享次数：' + views +
+    ' · 浏览次数：' + views +
     ' · 分享码：' + documentMetadata.sharedCode
   );
   metaElement.hidden = false;

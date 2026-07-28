@@ -18,6 +18,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     image: tourgrid-studio-api:${TOURGRID_IMAGE_TAG:-local}
     build:
@@ -28,10 +40,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       TOURGRID_ENVIRONMENT: ${TOURGRID_ENVIRONMENT:-development}
       TOURGRID_RELEASE: ${TOURGRID_RELEASE:-local}
       TOURGRID_DATABASE_URL: postgresql://tourgrid:${TOURGRID_DB_PASSWORD:-tourgrid-development}@db:5432/tourgrid
+      TOURGRID_REDIS_URL: redis://redis:6379/0
+      TOURGRID_ADMIN_TOKEN: ${TOURGRID_ADMIN_TOKEN:-}
+      TOURGRID_VIEW_DEDUPE_SECONDS: ${TOURGRID_VIEW_DEDUPE_SECONDS:-1800}
       TOURGRID_RATE_LIMIT_REQUESTS: ${TOURGRID_RATE_LIMIT_REQUESTS:-10}
       TOURGRID_RATE_LIMIT_WINDOW_SECONDS: ${TOURGRID_RATE_LIMIT_WINDOW_SECONDS:-60}
       TOURGRID_RATE_LIMIT_MAX_CLIENTS: ${TOURGRID_RATE_LIMIT_MAX_CLIENTS:-10000}

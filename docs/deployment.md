@@ -5,7 +5,8 @@
 ```text
 浏览器 -> Caddy (:80/:443) -> 静态前端
                          \-> /api、/docs、/openapi.json -> FastAPI
-                                                             \-> PostgreSQL
+                                                             ├-> PostgreSQL
+                                                             \-> Redis
 ```
 
 FastAPI不向宿主机公开端口，只允许Caddy通过Compose内部网络访问。PostgreSQL
@@ -85,10 +86,11 @@ docker compose --env-file deploy/staging.env up --detach --build --wait
 
 - Caddy和API输出JSON访问日志。
 - API为请求返回 `X-Request-ID`，日志不记录作品像素正文。
-- `POST /api/v1/works` 使用按客户端IP的进程内滑动窗口限流。
-- `TOURGRID_RATE_LIMIT_MAX_CLIENTS` 限制内存中跟踪的客户端数量。
+- `POST /api/v1/works` 使用Redis中按客户端IP共享的时间窗口限流。
+- Redis保存带TTL的浏览去重键和临时封禁，不挂载数据卷；重启后丢失是预期行为。
+- 永久客户端封禁和作品软删除记录保存在PostgreSQL中。
 - 设置 `TOURGRID_SENTRY_DSN` 后启用可选Sentry上报，默认不发送个人信息。
-- 当前API使用单个Uvicorn worker；横向扩容前应将限流迁移到共享服务。
+- 多个API实例共享同一个Redis即可共享限流、临时封禁和浏览去重状态。
 
 ## 安全与容量
 
@@ -97,6 +99,14 @@ docker compose --env-file deploy/staging.env up --detach --build --wait
 - Caddy添加安全响应头，前端和API保持同源。
 - 当前前端仍有内联事件处理器，因此CSP暂时允许 `script-src 'unsafe-inline'`。
 - `TOURGRID_DB_PASSWORD` 必须使用独立强密码。
+- `TOURGRID_ADMIN_TOKEN` 必须使用另一个至少32字符的随机值，禁止复用数据库
+  密码。它只作为管理员Bearer令牌，不参与数据库连接。
+- 管理员接口包括作品隐藏、恢复、永久清除以及临时/永久客户端封禁；具体请求见
+  [API v1](api-v1.md)。
+- 管理员页面位于 `/admin/`，支持分页查看全部作品及实际画面。隐藏操作可以恢复；
+  永久清除会移除像素、标题和作者，只保留防止重新发布的内容哈希墓碑。
+- `/admin/` 使用不含内联脚本的独立CSP，并设置 `Cache-Control: no-store` 和
+  `X-Robots-Tag: noindex, nofollow`。
 - 定期使用 `pg_dump` 备份作品表，并在独立环境验证恢复。
 
 ## 色板兼容规则

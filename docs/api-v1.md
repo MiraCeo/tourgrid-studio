@@ -11,8 +11,10 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 
 ## 启动
 
+在源码仓库根目录运行：
+
 ```powershell
-.\.venv\Scripts\tourgrid-api.exe
+.\.venv\Scripts\python.exe -m backend
 ```
 
 开发模式：
@@ -89,7 +91,10 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 
 ## `GET /api/v1/works/{code}`
 
-凭区分大小写的12位Base58分享码读取作品。每次成功读取会原子增加浏览次数。
+凭区分大小写的12位Base58分享码读取作品。服务端为浏览器设置仅用于匿名计数的
+`tourgrid_viewer` Cookie；同一浏览器在默认30分钟窗口内重复读取同一作品只计一次。
+去重键只临时保存在Redis中，不写入PostgreSQL。清除Cookie或换用另一浏览器会被
+视为新的浏览会话，因此这是近似浏览次数，不是唯一人数统计。
 作品不包含用户原图、本地参考图或导出的PNG。
 
 可能错误：
@@ -107,12 +112,41 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 
 客户端不得回退调用这些接口。
 
+## 管理员接口
+
+管理员页面位于 `/admin/`。页面可以分页查看全部正常、隐藏和已清除作品；未永久
+清除的作品会返回像素数据并绘制24×24预览。管理员接口使用
+`Authorization: Bearer <TOURGRID_ADMIN_TOKEN>`。管理员令牌必须
+是至少32字符的独立随机值，不得与 `TOURGRID_DB_PASSWORD` 复用，也不要写入仓库。
+后台只在当前页面内存中保存令牌，刷新或退出后需要重新输入。
+
+- `GET /api/v1/admin/session`：验证管理员令牌。
+- `GET /api/v1/admin/works?status=...&limit=48&cursor=...`：按创建顺序分页读取
+  全部作品，可按 `active`、`hidden` 或 `purged` 筛选。
+- `GET /api/v1/admin/works/{code}`：读取单个作品的完整管理信息和可用画面。
+- `POST /api/v1/admin/works/{code}/hide`：隐藏作品。公共分享码立即返回404，
+  内容仍保留并可恢复，相同像素不能重新发布。
+- `POST /api/v1/admin/works/{code}/restore`：恢复隐藏作品。永久清除的作品不能恢复。
+- `POST /api/v1/admin/works/{code}/purge`：永久清除像素、标题和作者。请求体必须
+  同时包含处理原因和完全匹配的 `confirmationCode`。标准化内容哈希墓碑继续保留，
+  因此相同像素不能重新发布。
+- `GET /api/v1/admin/moderation-events`：分页读取管理操作审计记录。
+- `POST /api/v1/admin/bans`：请求体为
+  `{"clientIp":"203.0.113.10","reason":"...","ttlSeconds":3600}`。
+  有 `ttlSeconds` 时写入Redis临时封禁（60秒至30天）；省略时写入PostgreSQL永久
+  封禁。
+- `DELETE /api/v1/admin/bans?clientIp=203.0.113.10`：同时移除临时和永久封禁。
+
+若未配置管理员令牌，这些接口返回 `503 admin_not_configured`，不会使用数据库密码
+作为后备凭据。
+
 ## 限流和请求体
 
-- `POST /api/v1/works` 使用按客户端IP的进程内滑动窗口限流。
+- `POST /api/v1/works` 使用Redis中按客户端IP共享的时间窗口限流。
+- Redis还保存临时封禁和浏览去重键；这些数据都带TTL，不作为永久业务数据。
 - Caddy默认将请求体限制为128KB。
 - API请求ID通过 `X-Request-ID` 返回。
-- 多实例部署前应把限流迁移到Redis等共享服务。
+- 未配置Redis的源码单进程运行会使用内存实现；多实例部署必须配置Redis。
 
 相关环境变量：
 
@@ -121,6 +155,9 @@ TOURGRID_RATE_LIMIT_REQUESTS
 TOURGRID_RATE_LIMIT_WINDOW_SECONDS
 TOURGRID_RATE_LIMIT_MAX_CLIENTS
 TOURGRID_DATABASE_URL
+TOURGRID_REDIS_URL
+TOURGRID_ADMIN_TOKEN
+TOURGRID_VIEW_DEDUPE_SECONDS
 TOURGRID_ENVIRONMENT
 TOURGRID_RELEASE
 TOURGRID_SENTRY_DSN

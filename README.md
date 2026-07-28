@@ -17,7 +17,7 @@ Tourgrid Studio 是一款非官方的 24×24 像素画编辑器。
 - 裁切参考图以256×256 WebP保存到浏览器 IndexedDB。
 - PostgreSQL以432字节色板索引保存不可变作品。
 - 相同像素内容返回同一个12位Base58分享码；首次标题和作者不可覆盖。
-- Caddy、FastAPI和PostgreSQL组成同源Docker Compose部署。
+- Caddy、FastAPI、PostgreSQL和Redis组成同源Docker Compose部署。
 
 当前默认色板 `natural-64-v1` 是临时预测色板。未来色板必须使用新的ID，例如
 `official-v1`，不能覆盖已经发布的色板。
@@ -38,7 +38,8 @@ Caddy
 FastAPI
 ├─ 健康检查
 ├─ 版本化色板查询
-└─ 不可变作品保存与读取 -> PostgreSQL
+├─ 不可变作品保存、读取与管理员软删除 -> PostgreSQL
+└─ 浏览去重、共享限流与临时封禁 -> Redis
 ```
 
 服务器不再接收用户图片，也不提供服务器图片转换或临时预览接口。
@@ -73,26 +74,23 @@ tourgrid-studio/
 
 ## 本地安装
 
-需要Python 3.11～3.13。Pillow仅用于开发测试，不会进入生产依赖。
+需要Python 3.11～3.13。项目只支持从完整的源码仓库运行，不发布或支持独立
+wheel/PyPI安装包；运行时需要仓库中的 `backend/`、`frontend/`、`palettes/`
+和数据库迁移文件保持相对目录结构不变。Pillow仅用于开发测试，不会进入生产依赖。
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m playwright install chromium
-```
-
-使用锁文件复现开发环境：
-
-```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
-.\.venv\Scripts\python.exe -m pip install -e . --no-deps
+.\.venv\Scripts\python.exe -m playwright install chromium
 ```
 
 ## 本地启动
 
+必须在仓库根目录执行：
+
 ```powershell
-.\.venv\Scripts\tourgrid-api.exe
+.\.venv\Scripts\python.exe -m backend
 ```
 
 - 编辑器：`http://127.0.0.1:8000/`
@@ -118,6 +116,16 @@ docker compose --env-file deploy/local.env up --detach --build --wait
 - `GET /api/v1/palettes/{palette_id}`
 - `POST /api/v1/works`
 - `GET /api/v1/works/{code}`
+- `GET /api/v1/admin/works`
+- `GET /api/v1/admin/works/{code}`
+- `POST /api/v1/admin/works/{code}/hide`
+- `POST /api/v1/admin/works/{code}/restore`
+- `POST /api/v1/admin/works/{code}/purge`
+- `POST /api/v1/admin/bans`
+- `DELETE /api/v1/admin/bans`
+
+管理员后台位于 `/admin/`，支持分页查看全部作品、直接预览24×24画面、状态筛选、
+分享码查询、隐藏、恢复、永久清除和管理操作审计。管理员令牌只保存在页面内存中。
 
 完整契约见 [API v1](docs/api-v1.md)。
 
@@ -165,6 +173,8 @@ PostgreSQL集成测试需要设置 `TOURGRID_TEST_DATABASE_URL`，未设置时�
 - 原始导入图片不会上传服务器。
 - 裁切参考图只保存到当前浏览器IndexedDB。
 - 分享接口只接收432字节像素索引、色板版本及可选标题和作者。
+- 浏览次数使用随机匿名Cookie，并在Redis中保存30分钟去重键。
+- 被管理员永久封禁的客户端IP会保存在PostgreSQL；临时封禁仅保存在Redis。
 - “永久保存”依赖PostgreSQL数据卷和可恢复备份，不代表无需运维。
 
 ## 声明

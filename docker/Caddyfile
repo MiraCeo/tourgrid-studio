@@ -13,6 +13,13 @@
 		Content-Security-Policy "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 	}
 
+	@admin path /admin /admin/*
+	header @admin {
+		Cache-Control "no-store"
+		X-Robots-Tag "noindex, nofollow"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+	}
+
 	route {
 		@backend path /api/* /docs* /openapi.json
 		reverse_proxy @backend api:8000 {
@@ -25,7 +32,6 @@
 		}
 
 		root * /srv
-		try_files {path} /index.html
 		file_server
 	}
 

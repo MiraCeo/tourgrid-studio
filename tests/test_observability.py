@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.app import create_app
@@ -98,6 +99,9 @@ def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
         "TOURGRID_DATABASE_URL",
         "postgresql://tourgrid:secret@db:5432/tourgrid",
     )
+    monkeypatch.setenv("TOURGRID_REDIS_URL", "redis://redis:6379/0")
+    monkeypatch.setenv("TOURGRID_ADMIN_TOKEN", "a" * 32)
+    monkeypatch.setenv("TOURGRID_VIEW_DEDUPE_SECONDS", "900")
 
     settings = ApiSettings.from_env()
 
@@ -110,3 +114,17 @@ def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
     assert settings.database_url == (
         "postgresql://tourgrid:secret@db:5432/tourgrid"
     )
+    assert settings.redis_url == "redis://redis:6379/0"
+    assert settings.admin_token == "a" * 32
+    assert settings.view_dedupe_seconds == 900
+
+
+def test_admin_token_cannot_reuse_database_password() -> None:
+    reused_secret = "x" * 32
+    with pytest.raises(ValueError, match="must not reuse"):
+        ApiSettings(
+            database_url=(
+                f"postgresql://tourgrid:{reused_secret}@db/tourgrid"
+            ),
+            admin_token=reused_secret,
+        ).validated()

@@ -3,9 +3,11 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
+# This metadata supports dependency tooling and editable source checkouts.
+# Built wheel artifacts are not a supported runtime distribution.
 name = "tourgrid-studio"
 version = "0.3.1"
-description = "Browser-based 24x24 pixel art editor and immutable work sharing service."
+description = "Source-only browser-based 24x24 pixel art editor and immutable work sharing service."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = [
@@ -18,6 +20,7 @@ requires-python = ">=3.11,<3.14"
 dependencies = [
   "fastapi>=0.115,<1",
   "psycopg[binary,pool]>=3.2,<4",
+  "redis>=6,<8",
   "uvicorn[standard]>=0.34,<1",
 ]
 
@@ -31,9 +34,6 @@ dev = [
 monitoring = [
   "sentry-sdk[fastapi]>=2,<3",
 ]
-
-[project.scripts]
-tourgrid-api = "backend.api.app:run"
 
 [tool.setuptools.packages.find]
 include = ["backend*"]

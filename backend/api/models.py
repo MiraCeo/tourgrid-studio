@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    IPvAnyAddress,
+    field_validator,
+)
 
 
 def to_camel(value: str) -> str:
@@ -78,6 +85,95 @@ class WorkResponse(ApiModel):
     title: str | None = None
     view_count: int
     created_at: datetime
+
+
+class BanClientRequest(ApiModel):
+    client_ip: IPvAnyAddress = Field(validation_alias="clientIp")
+    reason: str | None = Field(default=None, max_length=200)
+    ttl_seconds: int | None = Field(
+        default=None,
+        ge=60,
+        le=2_592_000,
+    )
+
+
+class ModerationResponse(ApiModel):
+    status: str
+    code: str | None = None
+    client_ip: str | None = None
+    scope: str | None = None
+
+
+class AdminSessionResponse(ApiModel):
+    authenticated: bool
+
+
+class ModerationReasonRequest(ApiModel):
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def normalize_reason(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        return value.strip()
+
+
+class RestoreWorkRequest(ApiModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def normalize_restore_reason(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip()
+        return normalized or None
+
+
+class PurgeWorkRequest(ModerationReasonRequest):
+    confirmation_code: str = Field(
+        min_length=12,
+        max_length=12,
+        pattern=r"^[1-9A-HJ-NP-Za-km-z]{12}$",
+    )
+
+
+class AdminWorkResponse(ApiModel):
+    code: str
+    schema_version: int
+    palette_id: str
+    palette_version: int
+    pixels: str | None = None
+    author_name: str | None = None
+    title: str | None = None
+    view_count: int
+    created_at: datetime
+    moderation_status: Literal["active", "hidden", "purged"]
+    moderated_at: datetime | None = None
+    moderation_reason: str | None = None
+    purged_at: datetime | None = None
+
+
+class AdminWorkListResponse(ApiModel):
+    works: list[AdminWorkResponse]
+    next_cursor: int | None = None
+
+
+class ModerationEventResponse(ApiModel):
+    event_id: int
+    action: str
+    target_type: str
+    target_value: str
+    reason: str | None = None
+    request_id: str | None = None
+    administrator_ip: str | None = None
+    created_at: datetime
+
+
+class ModerationEventListResponse(ApiModel):
+    events: list[ModerationEventResponse]
+    next_cursor: int | None = None
 
 
 class ErrorDetail(ApiModel):

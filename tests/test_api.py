@@ -93,7 +93,204 @@ def test_shared_work_is_immutable_deduplicated_and_counted(
     opened_twice = client.get(f"/api/v1/works/{first_body['code']}")
     assert opened_once.status_code == 200
     assert opened_once.json()["viewCount"] == 1
-    assert opened_twice.json()["viewCount"] == 2
+    assert opened_twice.json()["viewCount"] == 1
+
+    client.cookies.delete("tourgrid_viewer")
+    opened_from_new_session = client.get(
+        f"/api/v1/works/{first_body['code']}"
+    )
+    assert opened_from_new_session.json()["viewCount"] == 2
+
+
+def test_legacy_admin_delete_hides_and_tombstones_a_work() -> None:
+    token = "a" * 32
+    application = create_app(
+        ApiSettings(admin_token=token),
+        work_store=InMemoryWorkStore(),
+    )
+    with TestClient(application) as admin_client:
+        created = admin_client.post("/api/v1/works", json=work_payload())
+        code = created.json()["code"]
+
+        unauthorized = admin_client.delete(f"/api/v1/admin/works/{code}")
+        deleted = admin_client.delete(
+            f"/api/v1/admin/works/{code}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"reason": "moderation test"},
+        )
+        opened = admin_client.get(f"/api/v1/works/{code}")
+        republished = admin_client.post(
+            "/api/v1/works",
+            json=work_payload(),
+        )
+
+    assert unauthorized.status_code == 401
+    assert deleted.status_code == 200
+    assert deleted.json() == {
+        "status": "hidden",
+        "code": code,
+    }
+    assert opened.status_code == 404
+    assert republished.status_code == 403
+    assert republished.json()["error"]["code"] == "work_blocked"
+
+
+def test_admin_can_list_preview_and_manage_every_work() -> None:
+    token = "c" * 32
+    application = create_app(
+        ApiSettings(admin_token=token),
+        work_store=InMemoryWorkStore(),
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    with TestClient(application) as admin_client:
+        created = [
+            admin_client.post(
+                "/api/v1/works",
+                json=work_payload(
+                    fill,
+                    title=f"作品{fill}",
+                    author_name="Mira",
+                ),
+            ).json()
+            for fill in range(3)
+        ]
+        session = admin_client.get("/api/v1/admin/session", headers=headers)
+        listed = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={"limit": 2},
+        )
+        second_page = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={
+                "limit": 2,
+                "cursor": listed.json()["nextCursor"],
+            },
+        )
+        code = created[0]["code"]
+        detail = admin_client.get(
+            f"/api/v1/admin/works/{code}",
+            headers=headers,
+        )
+        hidden = admin_client.post(
+            f"/api/v1/admin/works/{code}/hide",
+            headers=headers,
+            json={"reason": "review"},
+        )
+        public_while_hidden = admin_client.get(f"/api/v1/works/{code}")
+        restored = admin_client.post(
+            f"/api/v1/admin/works/{code}/restore",
+            headers=headers,
+            json={"reason": "approved"},
+        )
+        public_after_restore = admin_client.get(f"/api/v1/works/{code}")
+
+    assert session.json() == {"authenticated": True}
+    assert session.headers["Cache-Control"] == "no-store"
+    assert len(listed.json()["works"]) == 2
+    assert listed.json()["nextCursor"] is not None
+    assert len(second_page.json()["works"]) == 1
+    all_codes = {
+        item["code"]
+        for item in listed.json()["works"] + second_page.json()["works"]
+    }
+    assert all_codes == {item["code"] for item in created}
+    assert all(item["pixels"] for item in listed.json()["works"])
+    assert detail.json()["pixels"] == created[0]["pixels"]
+    assert detail.json()["title"] == "作品0"
+    assert detail.json()["authorName"] == "Mira"
+    assert hidden.json()["moderationStatus"] == "hidden"
+    assert public_while_hidden.status_code == 404
+    assert restored.json()["moderationStatus"] == "active"
+    assert public_after_restore.status_code == 200
+
+
+def test_admin_purge_removes_content_and_keeps_tombstone() -> None:
+    token = "d" * 32
+    application = create_app(
+        ApiSettings(admin_token=token),
+        work_store=InMemoryWorkStore(),
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = work_payload(7, title="待清除", author_name="Mira")
+    with TestClient(application) as admin_client:
+        created = admin_client.post("/api/v1/works", json=payload).json()
+        code = created["code"]
+        mismatch = admin_client.post(
+            f"/api/v1/admin/works/{code}/purge",
+            headers=headers,
+            json={
+                "confirmationCode": "123456789ABC",
+                "reason": "permanent removal",
+            },
+        )
+        purged = admin_client.post(
+            f"/api/v1/admin/works/{code}/purge",
+            headers=headers,
+            json={
+                "confirmationCode": code,
+                "reason": "permanent removal",
+            },
+        )
+        restore = admin_client.post(
+            f"/api/v1/admin/works/{code}/restore",
+            headers=headers,
+            json={},
+        )
+        republished = admin_client.post("/api/v1/works", json=payload)
+        purged_list = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={"status": "purged"},
+        )
+        events = admin_client.get(
+            "/api/v1/admin/moderation-events",
+            headers=headers,
+        )
+
+    assert mismatch.status_code == 409
+    assert mismatch.json()["error"]["code"] == "purge_confirmation_mismatch"
+    assert purged.status_code == 200
+    assert purged.json()["moderationStatus"] == "purged"
+    assert "pixels" not in purged.json()
+    assert "authorName" not in purged.json()
+    assert "title" not in purged.json()
+    assert restore.status_code == 409
+    assert republished.status_code == 403
+    assert [item["code"] for item in purged_list.json()["works"]] == [code]
+    assert events.json()["events"][0]["action"] == "work_purged"
+
+
+def test_admin_can_apply_and_remove_shared_temporary_ban() -> None:
+    token = "b" * 32
+    application = create_app(
+        ApiSettings(admin_token=token),
+        work_store=InMemoryWorkStore(),
+    )
+    with TestClient(
+        application,
+        client=("127.0.0.1", 50_000),
+    ) as admin_client:
+        banned = admin_client.post(
+            "/api/v1/admin/bans",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"clientIp": "127.0.0.1", "ttlSeconds": 600},
+        )
+        blocked = admin_client.get("/api/v1/works/123456789ABC")
+        unbanned = admin_client.delete(
+            "/api/v1/admin/bans",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"clientIp": "127.0.0.1"},
+        )
+        after_unban = admin_client.get("/api/v1/works/123456789ABC")
+
+    assert banned.status_code == 201
+    assert banned.json()["scope"] == "temporary"
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "client_banned"
+    assert unbanned.status_code == 200
+    assert after_unban.status_code == 404
 
 
 def test_different_shared_work_gets_a_different_code(client: TestClient) -> None:
@@ -188,6 +385,19 @@ def test_editor_is_served_from_same_origin(client: TestClient) -> None:
     script_response = client.get("/static/js/import.js")
     assert script_response.status_code == 200
     assert "/api/v1/convert" not in script_response.text
+
+
+def test_admin_interface_is_served_without_embedding_credentials(
+    client: TestClient,
+) -> None:
+    response = client.get("/admin/")
+    script = client.get("/admin/admin.js")
+
+    assert response.status_code == 200
+    assert "<title>Tourgrid Studio Admin</title>" in response.text
+    assert "localStorage" not in script.text
+    assert "sessionStorage" not in script.text
+    assert "Authorization" in script.text
 
 
 def test_palette_list_and_detail(client: TestClient) -> None:

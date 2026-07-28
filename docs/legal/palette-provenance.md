@@ -7,11 +7,11 @@
 - Colors sampled from official sources: 24
 - Provisional colors predicted by the project author: 40
 - Official source type: promotional preview broadcast
-- Source URL: to be recorded
-- Broadcast title: to be recorded
-- Publishing account: to be recorded
-- Broadcast date: to be recorded
-- Sampling timestamps: to be recorded
+- Source URL: https://www.bilibili.com/video/BV1o43g69E9z/
+- Broadcast title: 《明日方舟》2026夏日嘉年华特别通讯视频
+- Publishing account: 明日方舟
+- Broadcast date: 2026-07-25 20:25:00 (Asia/Shanghai, UTC+08:00)
+- Sampling timestamp: 37:05
 - Sampling method: manual screenshot color sampling
 - Redistribution authorization: none identified
 
@@ -27,11 +27,11 @@ palette.
 - 从官方来源采样：24 色
 - 项目作者暂时预测：40 色
 - 官方来源类型：官方前瞻直播
-- 来源链接：待补充
-- 直播标题：待补充
-- 发布账号：待补充
-- 直播日期：待补充
-- 采样时间点：待补充
+- 来源链接：https://www.bilibili.com/video/BV1o43g69E9z/
+- 直播标题：《明日方舟》2026夏日嘉年华特别通讯视频
+- 发布账号：明日方舟
+- 直播日期：2026-07-25 20:25:00（Asia/Shanghai，UTC+08:00）
+- 采样时间点：37:05
 - 采样方式：通过直播截图人工取色
 - 再分发授权：尚未发现明确授权
 

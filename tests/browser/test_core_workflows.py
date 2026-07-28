@@ -548,7 +548,7 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     assert all(color == BLACK for row in loaded["pixels"] for color in row)
     expect(editor_page.locator("#topWorkTitle")).to_have_text("《很糊的画》")
     expect(editor_page.locator("#topWorkMeta")).to_contain_text("作者：博士")
-    expect(editor_page.locator("#topWorkMeta")).to_contain_text("分享次数：1")
+    expect(editor_page.locator("#topWorkMeta")).to_contain_text("浏览次数：1")
     expect(editor_page.locator("#topWorkMeta")).to_contain_text(code)
 
     select_color(editor_page, RED)

@@ -14,6 +14,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .config import ApiSettings
+from .shared_state import SharedStateUnavailable
+from .work_store import WorkStoreUnavailable
 
 
 ACCESS_LOGGER = logging.getLogger("tourgrid.access")
@@ -123,12 +125,7 @@ def install_operational_middleware(
     *,
     sentry_sdk: Any | None,
 ) -> None:
-    limiter = SlidingWindowRateLimiter(
-        settings.rate_limit_requests,
-        settings.rate_limit_window_seconds,
-        settings.rate_limit_max_clients,
-    )
-    application.state.rate_limiter = limiter
+    application.state.rate_limiter = application.state.shared_state
 
     @application.middleware("http")
     async def operational_middleware(request: Request, call_next):
@@ -143,9 +140,28 @@ def install_operational_middleware(
         client_ip = request.client.host if request.client else "unknown"
         status_code = 500
 
-        if request.method == "POST" and request.url.path == "/api/v1/works":
-            rate = limiter.check(client_ip)
-            if not rate.allowed:
+        is_publish = (
+            request.method == "POST"
+            and request.url.path == "/api/v1/works"
+        )
+        is_public_work_request = request.url.path.startswith("/api/v1/works")
+
+        if is_publish:
+            try:
+                rate = await application.state.shared_state.check_rate_limit(
+                    client_ip,
+                    limit=settings.rate_limit_requests,
+                    window_seconds=settings.rate_limit_window_seconds,
+                )
+            except SharedStateUnavailable:
+                response = _service_unavailable_response(
+                    "shared_state_unavailable",
+                    "Shared abuse protection is temporarily unavailable.",
+                )
+                rate = None
+            if rate is None:
+                status_code = response.status_code
+            elif not rate.allowed:
                 response = JSONResponse(
                     status_code=429,
                     content={
@@ -156,21 +172,35 @@ def install_operational_middleware(
                     },
                     headers={
                         "Retry-After": str(rate.retry_after_seconds),
-                        "X-RateLimit-Limit": str(limiter.limit),
+                        "X-RateLimit-Limit": str(settings.rate_limit_requests),
                         "X-RateLimit-Remaining": "0",
                     },
                 )
                 status_code = response.status_code
             else:
-                response = await _call_application(
+                response = await _continue_public_request(
                     request,
                     call_next,
+                    client_ip=client_ip,
                     request_id=request_id,
                     sentry_sdk=sentry_sdk,
+                    check_ban=True,
                 )
-                response.headers["X-RateLimit-Limit"] = str(limiter.limit)
+                response.headers["X-RateLimit-Limit"] = str(
+                    settings.rate_limit_requests
+                )
                 response.headers["X-RateLimit-Remaining"] = str(rate.remaining)
                 status_code = response.status_code
+        elif is_public_work_request:
+            response = await _continue_public_request(
+                request,
+                call_next,
+                client_ip=client_ip,
+                request_id=request_id,
+                sentry_sdk=sentry_sdk,
+                check_ban=True,
+            )
+            status_code = response.status_code
         else:
             response = await _call_application(
                 request,
@@ -181,6 +211,8 @@ def install_operational_middleware(
             status_code = response.status_code
 
         response.headers["X-Request-ID"] = request_id
+        if request.url.path.startswith("/api/v1/admin"):
+            response.headers["Cache-Control"] = "no-store"
         duration_ms = round((time.perf_counter() - started) * 1000, 2)
         ACCESS_LOGGER.info(
             json.dumps(
@@ -198,6 +230,60 @@ def install_operational_middleware(
             )
         )
         return response
+
+
+async def _continue_public_request(
+    request: Request,
+    call_next,
+    *,
+    client_ip: str,
+    request_id: str,
+    sentry_sdk: Any | None,
+    check_ban: bool,
+):
+    if check_ban:
+        try:
+            temporarily_banned = (
+                await request.app.state.shared_state.is_temporarily_banned(
+                    client_ip
+                )
+            )
+            persistently_banned = (
+                await request.app.state.work_store.is_client_banned(client_ip)
+            )
+        except SharedStateUnavailable:
+            return _service_unavailable_response(
+                "shared_state_unavailable",
+                "Shared abuse protection is temporarily unavailable.",
+            )
+        except WorkStoreUnavailable:
+            return _service_unavailable_response(
+                "work_storage_unavailable",
+                "Work sharing storage is temporarily unavailable.",
+            )
+        if temporarily_banned or persistently_banned:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": {
+                        "code": "client_banned",
+                        "message": "This client is not allowed to access shared works.",
+                    }
+                },
+            )
+    return await _call_application(
+        request,
+        call_next,
+        request_id=request_id,
+        sentry_sdk=sentry_sdk,
+    )
+
+
+def _service_unavailable_response(code: str, message: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={"error": {"code": code, "message": message}},
+    )
 
 
 async def _call_application(

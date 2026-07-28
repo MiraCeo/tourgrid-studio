@@ -6,10 +6,8 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /build
-COPY pyproject.toml README.md requirements-prod.lock ./
-COPY backend ./backend
-RUN python -m pip install --prefix=/install --requirement requirements-prod.lock \
-    && python -m pip install --prefix=/install --no-deps .
+COPY requirements-prod.lock ./
+RUN python -m pip install --prefix=/install --requirement requirements-prod.lock
 
 
 FROM python:3.12-slim-bookworm AS runtime

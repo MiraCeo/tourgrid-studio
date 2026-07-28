@@ -24,7 +24,7 @@
 ## 本地运行
 
 ```powershell
-.\.venv\Scripts\tourgrid-api.exe
+.\.venv\Scripts\python.exe -m backend
 ```
 
 打开：

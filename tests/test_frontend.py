@@ -853,7 +853,9 @@ def test_all_javascript_files_have_valid_syntax() -> None:
     if not node:
         pytest.skip("Node.js is not installed")
 
-    for path in sorted(JAVASCRIPT_ROOT.glob("*.js")):
+    paths = list(JAVASCRIPT_ROOT.glob("*.js"))
+    paths.extend((FRONTEND_ROOT / "admin").glob("*.js"))
+    for path in sorted(paths):
         result = subprocess.run(
             [node, "--check", str(path)],
             capture_output=True,

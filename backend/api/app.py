@@ -17,6 +17,7 @@ from backend.palette import (
     load_palette,
 )
 
+from .admin import create_admin_router
 from .config import ApiSettings
 from .errors import ApiError
 from .models import (
@@ -27,12 +28,14 @@ from .models import (
     PaletteSummary,
 )
 from .observability import configure_error_monitoring, install_operational_middleware
+from .shared_state import SharedState, create_shared_state
 from .work_store import WorkStore, create_work_store
 from .works import create_works_router
 
 
 FRONTEND_DIR = FilePath(__file__).resolve().parents[2] / "frontend"
 EDITOR_HTML = FRONTEND_DIR / "index.html"
+ADMIN_DIR = FRONTEND_DIR / "admin"
 
 
 def _palette_summary(palette: PaletteDefinition) -> PaletteSummary:
@@ -106,17 +109,26 @@ def create_app(
     settings: ApiSettings | None = None,
     *,
     work_store: WorkStore | None = None,
+    shared_state: SharedState | None = None,
 ) -> FastAPI:
     settings = (settings or ApiSettings.from_env()).validated()
     sentry_sdk = configure_error_monitoring(settings)
     work_store = work_store or create_work_store(settings.database_url)
+    shared_state = shared_state or create_shared_state(
+        settings.redis_url,
+        max_clients=settings.rate_limit_max_clients,
+    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         load_palette(DEFAULT_PALETTE_ID)
         await application.state.work_store.initialize()
         try:
-            yield
+            await application.state.shared_state.initialize()
+            try:
+                yield
+            finally:
+                await application.state.shared_state.close()
         finally:
             await application.state.work_store.close()
 
@@ -128,6 +140,7 @@ def create_app(
     )
     application.state.settings = settings
     application.state.work_store = work_store
+    application.state.shared_state = shared_state
     install_operational_middleware(
         application,
         settings,
@@ -137,6 +150,11 @@ def create_app(
         "/static",
         StaticFiles(directory=FRONTEND_DIR),
         name="frontend-static",
+    )
+    application.mount(
+        "/admin",
+        StaticFiles(directory=ADMIN_DIR, html=True),
+        name="admin-static",
     )
 
     @application.get("/", include_in_schema=False)
@@ -184,6 +202,7 @@ def create_app(
 
     application.include_router(create_router())
     application.include_router(create_works_router())
+    application.include_router(create_admin_router())
     return application
 
 

@@ -38,6 +38,8 @@ python-dotenv==1.2.2
     # via uvicorn
 pyyaml==6.0.3
     # via uvicorn
+redis==7.4.1
+    # via tourgrid-studio (pyproject.toml)
 sentry-sdk==2.66.1
     # via tourgrid-studio (pyproject.toml)
 starlette==1.3.1

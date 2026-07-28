@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from urllib.parse import unquote, urlsplit
 
 
 @dataclass(frozen=True)
@@ -12,6 +13,9 @@ class ApiSettings:
     environment: str = "development"
     release: str = "0.3.1"
     database_url: str | None = None
+    redis_url: str | None = None
+    admin_token: str | None = None
+    view_dedupe_seconds: int = 1_800
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.0
 
@@ -37,6 +41,12 @@ class ApiSettings:
             ),
             release=os.getenv("TOURGRID_RELEASE", defaults.release),
             database_url=os.getenv("TOURGRID_DATABASE_URL") or None,
+            redis_url=os.getenv("TOURGRID_REDIS_URL") or None,
+            admin_token=os.getenv("TOURGRID_ADMIN_TOKEN") or None,
+            view_dedupe_seconds=_env_int(
+                "TOURGRID_VIEW_DEDUPE_SECONDS",
+                defaults.view_dedupe_seconds,
+            ),
             sentry_dsn=os.getenv("TOURGRID_SENTRY_DSN") or None,
             sentry_traces_sample_rate=_env_float(
                 "TOURGRID_SENTRY_TRACES_SAMPLE_RATE",
@@ -49,6 +59,7 @@ class ApiSettings:
             "rate_limit_requests": self.rate_limit_requests,
             "rate_limit_window_seconds": self.rate_limit_window_seconds,
             "rate_limit_max_clients": self.rate_limit_max_clients,
+            "view_dedupe_seconds": self.view_dedupe_seconds,
         }
         for name, value in positive_values.items():
             if value <= 0:
@@ -57,6 +68,24 @@ class ApiSettings:
             raise ValueError("environment cannot be empty")
         if not self.release.strip():
             raise ValueError("release cannot be empty")
+        if self.admin_token is not None:
+            if (
+                len(self.admin_token) < 32
+                or self.admin_token != self.admin_token.strip()
+            ):
+                raise ValueError(
+                    "admin_token must be at least 32 characters without "
+                    "leading or trailing whitespace"
+                )
+            if self.database_url:
+                database_password = urlsplit(self.database_url).password
+                if (
+                    database_password is not None
+                    and self.admin_token == unquote(database_password)
+                ):
+                    raise ValueError(
+                        "admin_token must not reuse the database password"
+                    )
         if not 0 <= self.sentry_traces_sample_rate <= 1:
             raise ValueError("sentry_traces_sample_rate must be between 0 and 1")
         return self

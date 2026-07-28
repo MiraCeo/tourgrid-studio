@@ -11,7 +11,8 @@ from fastapi.testclient import TestClient
 
 from backend.api.app import create_app
 from backend.api.config import ApiSettings
-from backend.api.work_store import PostgresWorkStore
+from backend.api.work_store import PostgresWorkStore, WorkModerated
+from backend.api.works import content_digest
 
 
 @pytest.mark.integration
@@ -111,3 +112,112 @@ def test_work_api_round_trips_through_postgres() -> None:
             "DELETE FROM works WHERE content_hash = %s",
             (bytes.fromhex(content_hash_hex),),
         )
+
+
+@pytest.mark.integration
+def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
+    database_url = os.getenv("TOURGRID_TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("TOURGRID_TEST_DATABASE_URL is not configured")
+
+    pixel_data = secrets.token_bytes(432)
+    content_hash = content_digest(
+        schema_version=1,
+        palette_id="natural-64-v1",
+        palette_version=1,
+        pixel_data=pixel_data,
+    )
+
+    async def exercise() -> None:
+        store = PostgresWorkStore(database_url)
+        await store.initialize()
+        code = ""
+        try:
+            record = await store.save(
+                schema_version=1,
+                palette_id="natural-64-v1",
+                palette_version=1,
+                pixel_data=pixel_data,
+                content_hash=content_hash,
+                author_name="Mira",
+                title="管理测试",
+            )
+            code = record.code
+            listed, _cursor = await store.list_admin_works(
+                status=None,
+                limit=100,
+                cursor=None,
+            )
+            assert code in {item.code for item in listed}
+
+            hidden = await store.hide_work(
+                code,
+                reason="integration review",
+                request_id="integration-hide",
+                administrator_ip="127.0.0.1",
+            )
+            assert hidden is not None
+            assert hidden.moderation_status == "hidden"
+            assert await store.get(code) is None
+
+            restored = await store.restore_work(
+                code,
+                reason="integration approved",
+                request_id="integration-restore",
+                administrator_ip="127.0.0.1",
+            )
+            assert restored is not None
+            assert restored.moderation_status == "active"
+
+            purged = await store.purge_work(
+                code,
+                reason="integration purge",
+                request_id="integration-purge",
+                administrator_ip="127.0.0.1",
+            )
+            assert purged is not None
+            assert purged.moderation_status == "purged"
+            assert purged.pixel_data is None
+            with pytest.raises(WorkModerated):
+                await store.save(
+                    schema_version=1,
+                    palette_id="natural-64-v1",
+                    palette_version=1,
+                    pixel_data=pixel_data,
+                    content_hash=content_hash,
+                    author_name=None,
+                    title=None,
+                )
+
+            def verify_and_remove() -> None:
+                with connect(database_url) as connection:
+                    row = connection.execute(
+                        """
+                        SELECT pixel_data, author_name, title
+                        FROM works
+                        WHERE code = %s
+                        """,
+                        (code,),
+                    ).fetchone()
+                    assert row == (None, None, None)
+                    assert connection.execute(
+                        """
+                        SELECT 1 FROM work_tombstones
+                        WHERE canonical_content_hash = %s
+                        """,
+                        (content_hash,),
+                    ).fetchone() == (1,)
+                    connection.execute(
+                        "DELETE FROM moderation_events WHERE target_value = %s",
+                        (code,),
+                    )
+                    connection.execute(
+                        "DELETE FROM works WHERE code = %s",
+                        (code,),
+                    )
+
+            await asyncio.to_thread(verify_and_remove)
+        finally:
+            await store.close()
+
+    asyncio.run(exercise())
