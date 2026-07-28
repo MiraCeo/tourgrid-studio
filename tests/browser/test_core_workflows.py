@@ -721,6 +721,224 @@ def test_export_menu_stays_inside_narrow_viewports(editor_page: Page) -> None:
         editor_page.locator(".btn-primary").click()
 
 
+def test_work_share_modal_scrolls_to_all_actions_in_short_landscape(
+    editor_page: Page,
+) -> None:
+    width = 640
+    height = 320
+    editor_page.set_viewport_size({"width": width, "height": height})
+
+    editor_page.locator(".btn-primary").click()
+    editor_page.locator("#publishWorkMenuBtn").click()
+    modal = editor_page.locator(".work-share-modal")
+    expect(modal).to_be_visible()
+    editor_page.wait_for_timeout(220)
+
+    box = modal.bounding_box()
+    assert box is not None
+    assert box["y"] >= 8
+    assert box["y"] + box["height"] <= height - 8
+    assert modal.evaluate(
+        "(element) => element.scrollHeight > element.clientHeight"
+    )
+
+    load_button = editor_page.locator("#loadWorkButton")
+    load_button.scroll_into_view_if_needed()
+    expect(load_button).to_be_visible()
+    load_box = load_button.bounding_box()
+    assert load_box is not None
+    assert load_box["y"] >= 0
+    assert load_box["y"] + load_box["height"] <= height
+
+    publish_button = editor_page.locator("#publishWorkButton")
+    publish_button.scroll_into_view_if_needed()
+    publish_button.click()
+    confirm_button = editor_page.locator("#confirmPublishButton")
+    confirm_button.scroll_into_view_if_needed()
+    expect(confirm_button).to_be_visible()
+    confirm_box = confirm_button.bounding_box()
+    assert confirm_box is not None
+    assert confirm_box["y"] >= 0
+    assert confirm_box["y"] + confirm_box["height"] <= height
+
+
+def test_fullscreen_button_hides_when_browser_api_is_unavailable(
+    editor_page: Page,
+) -> None:
+    editor_page.set_viewport_size({"width": 640, "height": 360})
+    editor_page.evaluate(
+        """
+        () => {
+          Object.defineProperty(document.documentElement, 'requestFullscreen', {
+            configurable: true,
+            value: undefined
+          });
+          Object.defineProperty(
+            document.documentElement,
+            'webkitRequestFullscreen',
+            {configurable: true, value: undefined}
+          );
+          syncFullscreenControl();
+        }
+        """
+    )
+
+    expect(editor_page.locator("#mobileFullscreenBtn")).to_be_hidden()
+
+
+def test_mobile_focus_mode_drawers_and_toolbar_gestures(
+    editor_page: Page,
+) -> None:
+    width = 640
+    height = 360
+    editor_page.set_viewport_size({"width": width, "height": height})
+    body = editor_page.locator("body")
+    mode_button = editor_page.locator("#mobileWorkspaceModeBtn")
+    left_panel = editor_page.locator("#leftPanel")
+    right_panel = editor_page.locator("#rightPanel")
+    center_panel = editor_page.locator("#centerPanel")
+    top_bar = editor_page.locator(".top-bar")
+
+    expect(mode_button).to_be_visible()
+    expect(body).not_to_have_class(re.compile(r"\bmobile-focus-mode\b"))
+    original_center_box = center_panel.bounding_box()
+    assert original_center_box is not None
+
+    mode_button.click()
+    expect(body).to_have_class(re.compile(r"\bmobile-focus-mode\b"))
+    expect(mode_button).to_have_attribute("aria-pressed", "true")
+    focus_center_box = center_panel.bounding_box()
+    assert focus_center_box is not None
+    assert focus_center_box["width"] > original_center_box["width"]
+    assert focus_center_box["width"] == pytest.approx(width, abs=1)
+
+    editor_page.locator("#mobileLeftPanelBtn").click()
+    expect(body).to_have_class(re.compile(r"\bmobile-left-drawer-open\b"))
+    expect(editor_page.locator("#mobileLeftPanelBtn")).to_have_attribute(
+        "aria-expanded", "true"
+    )
+    editor_page.wait_for_timeout(220)
+    left_box = left_panel.bounding_box()
+    assert left_box is not None
+    assert left_box["x"] >= 0
+
+    editor_page.locator("#mobileRightPanelBtn").click()
+    expect(body).not_to_have_class(
+        re.compile(r"\bmobile-left-drawer-open\b")
+    )
+    expect(body).to_have_class(re.compile(r"\bmobile-right-drawer-open\b"))
+    editor_page.wait_for_timeout(220)
+    right_box = right_panel.bounding_box()
+    assert right_box is not None
+    assert right_box["x"] + right_box["width"] <= width + 1
+
+    editor_page.locator("#workspaceDrawerBackdrop").click(
+        position={"x": 80, "y": height / 2}
+    )
+    expect(body).not_to_have_class(
+        re.compile(r"\bmobile-right-drawer-open\b")
+    )
+
+    expanded_top_height = top_bar.bounding_box()["height"]
+    editor_page.locator("#mobileToolbarHandle").click()
+    expect(body).to_have_class(re.compile(r"\bmobile-toolbar-collapsed\b"))
+    editor_page.wait_for_timeout(220)
+    collapsed_top_height = top_bar.bounding_box()["height"]
+    assert collapsed_top_height < expanded_top_height
+    assert collapsed_top_height <= 1
+
+    editor_page.locator("#mobileToolbarHandle").click()
+    expect(body).not_to_have_class(
+        re.compile(r"\bmobile-toolbar-collapsed\b")
+    )
+
+    center_box = center_panel.bounding_box()
+    assert center_box is not None
+    gesture_x = center_box["x"] + 4
+    gesture_start_y = center_box["y"] + center_box["height"] - 8
+    editor_page.dispatch_event(
+        "#centerPanel",
+        "pointerdown",
+        {
+            "pointerId": 41,
+            "pointerType": "touch",
+            "button": 0,
+            "clientX": gesture_x,
+            "clientY": gesture_start_y,
+        },
+    )
+    editor_page.dispatch_event(
+        "#centerPanel",
+        "pointermove",
+        {
+            "pointerId": 41,
+            "pointerType": "touch",
+            "button": 0,
+            "clientX": gesture_x,
+            "clientY": gesture_start_y - 60,
+        },
+    )
+    editor_page.dispatch_event(
+        "#centerPanel",
+        "pointerup",
+        {
+            "pointerId": 41,
+            "pointerType": "touch",
+            "button": 0,
+            "clientX": gesture_x,
+            "clientY": gesture_start_y - 60,
+        },
+    )
+    expect(body).to_have_class(re.compile(r"\bmobile-toolbar-collapsed\b"))
+
+    collapsed_center_box = center_panel.bounding_box()
+    assert collapsed_center_box is not None
+    restore_x = collapsed_center_box["x"] + 4
+    restore_start_y = collapsed_center_box["y"] + 8
+    editor_page.dispatch_event(
+        "#centerPanel",
+        "pointerdown",
+        {
+            "pointerId": 42,
+            "pointerType": "touch",
+            "button": 0,
+            "clientX": restore_x,
+            "clientY": restore_start_y,
+        },
+    )
+    editor_page.dispatch_event(
+        "#centerPanel",
+        "pointermove",
+        {
+            "pointerId": 42,
+            "pointerType": "touch",
+            "button": 0,
+            "clientX": restore_x,
+            "clientY": restore_start_y + 60,
+        },
+    )
+    editor_page.dispatch_event(
+        "#centerPanel",
+        "pointerup",
+        {
+            "pointerId": 42,
+            "pointerType": "touch",
+            "button": 0,
+            "clientX": restore_x,
+            "clientY": restore_start_y + 60,
+        },
+    )
+    expect(body).not_to_have_class(
+        re.compile(r"\bmobile-toolbar-collapsed\b")
+    )
+    mode_button.click()
+    expect(body).not_to_have_class(re.compile(r"\bmobile-focus-mode\b"))
+    expect(body).not_to_have_class(
+        re.compile(r"\bmobile-toolbar-collapsed\b")
+    )
+    expect(mode_button).to_have_attribute("aria-pressed", "false")
+
+
 def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     code = "7Kp3mXqB4NzR"
     all_black_payload = base64.b64encode(bytes(432)).decode("ascii")

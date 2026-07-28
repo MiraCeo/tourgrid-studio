@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-28">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-01">
 </head>
 <body>
 
@@ -59,6 +59,16 @@
               d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"></path>
         <path class="fullscreen-exit-icon"
               d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"></path>
+      </svg>
+    </button>
+
+    <button class="icon-btn btn-workspace-mode" id="mobileWorkspaceModeBtn"
+            type="button" title="切换至专注模式"
+            aria-label="切换至专注模式" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3.5" y="4" width="17" height="16" rx="2"></rect>
+        <path d="M8 4v16M16 4v16"></path>
+        <path class="workspace-focus-mark" d="M10 9h4v6h-4z"></path>
       </svg>
     </button>
     </div>
@@ -121,9 +131,38 @@
 
   <!-- Z-INDEX 5: 娑撳鐖敮鍐ㄧ湰 -->
   <div class="editor-body">
+    <button class="mobile-toolbar-handle" id="mobileToolbarHandle"
+            type="button" aria-label="折叠顶部工具栏"
+            aria-expanded="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m7 14 5-5 5 5"></path>
+      </svg>
+    </button>
+
+    <button class="mobile-panel-toggle mobile-panel-toggle-left"
+            id="mobileLeftPanelBtn" type="button"
+            aria-label="打开导航与参考面板" aria-expanded="false"
+            aria-controls="leftPanel">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8"></circle>
+        <path d="m12 6 2.2 5.8L12 18l-2.2-6.2z"></path>
+      </svg>
+    </button>
+
+    <button class="mobile-panel-toggle mobile-panel-toggle-right"
+            id="mobileRightPanelBtn" type="button"
+            aria-label="打开工具与颜料面板" aria-expanded="false"
+            aria-controls="rightPanel">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m12 3 8 9-8 9-8-9z"></path>
+      </svg>
+    </button>
+
+    <button class="workspace-drawer-backdrop" id="workspaceDrawerBackdrop"
+            type="button" aria-label="关闭侧边面板" hidden></button>
 
     <!-- 瀹革附鐖敍姘嚤閼割亜娅?20% -->
-    <div class="left-panel">
+    <div class="left-panel" id="leftPanel">
       <div class="nav-title">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="9"></circle>
@@ -205,7 +244,7 @@
     </div>
 
     <!-- 閸欒櫕鐖敍姘额杹閺傛瑥浼愰崗?20% -->
-    <div class="right-panel">
+    <div class="right-panel" id="rightPanel">
       <div class="editorial-area-label">Editorial Area</div>
       <div class="tool-icons">
         <button class="tool-icon-btn" id="canvasGuidesBtn" type="button"
@@ -627,16 +666,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260728-28"></script>
-<script src="/static/js/reference-storage.js?v=20260728-28"></script>
-<script src="/static/js/work-codec.js?v=20260728-28"></script>
-<script src="/static/js/natural-64-v1.js?v=20260728-28"></script>
-<script src="/static/js/state.js?v=20260728-28"></script>
-<script src="/static/js/editor.js?v=20260728-28"></script>
-<script src="/static/js/export.js?v=20260728-28"></script>
-<script src="/static/js/import.js?v=20260728-28"></script>
-<script src="/static/js/works.js?v=20260728-28"></script>
-<script src="/static/js/app.js?v=20260728-28"></script>
+<script src="/static/js/storage.js?v=20260729-01"></script>
+<script src="/static/js/reference-storage.js?v=20260729-01"></script>
+<script src="/static/js/work-codec.js?v=20260729-01"></script>
+<script src="/static/js/natural-64-v1.js?v=20260729-01"></script>
+<script src="/static/js/state.js?v=20260729-01"></script>
+<script src="/static/js/editor.js?v=20260729-01"></script>
+<script src="/static/js/export.js?v=20260729-01"></script>
+<script src="/static/js/import.js?v=20260729-01"></script>
+<script src="/static/js/works.js?v=20260729-01"></script>
+<script src="/static/js/app.js?v=20260729-01"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

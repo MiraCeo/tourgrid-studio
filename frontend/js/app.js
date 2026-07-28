@@ -982,6 +982,18 @@ function onKeyDown(e) {
       closeAuthorModal();
       return;
     }
+    if (closeMobileWorkspaceDrawers()) {
+      e.preventDefault();
+      return;
+    }
+    if (
+      mobileWorkspaceModeActive &&
+      document.body.classList.contains('mobile-toolbar-collapsed')
+    ) {
+      e.preventDefault();
+      setMobileToolbarCollapsed(false);
+      return;
+    }
     if (eyedropperActive) {
       e.preventDefault();
       setEyedropperActive(false);
@@ -1065,9 +1077,33 @@ function getFullscreenElement() {
   return document.fullscreenElement || document.webkitFullscreenElement || null;
 }
 
+function isFullscreenSupported() {
+  var root = document.documentElement;
+  if (!root || !(root.requestFullscreen || root.webkitRequestFullscreen)) {
+    return false;
+  }
+  if ('fullscreenEnabled' in document && document.fullscreenEnabled === false) {
+    return false;
+  }
+  if (
+    'webkitFullscreenEnabled' in document &&
+    document.webkitFullscreenEnabled === false
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function syncFullscreenControl() {
   var button = document.getElementById('mobileFullscreenBtn');
   if (!button) return;
+  var supported = isFullscreenSupported();
+  button.hidden = !supported;
+  if (!supported) {
+    button.classList.remove('is-fullscreen');
+    button.setAttribute('aria-pressed', 'false');
+    return;
+  }
   var active = Boolean(getFullscreenElement());
   button.classList.toggle('is-fullscreen', active);
   button.setAttribute('aria-pressed', active ? 'true' : 'false');
@@ -1077,6 +1113,10 @@ function syncFullscreenControl() {
 
 async function toggleFullscreen() {
   try {
+    if (!isFullscreenSupported()) {
+      syncFullscreenControl();
+      return;
+    }
     if (getFullscreenElement()) {
       var exitFullscreen =
         document.exitFullscreen || document.webkitExitFullscreen;
@@ -1086,10 +1126,6 @@ async function toggleFullscreen() {
       var root = document.documentElement;
       var requestFullscreen =
         root.requestFullscreen || root.webkitRequestFullscreen;
-      if (!requestFullscreen) {
-        showToast('当前浏览器不支持网页全屏，可尝试添加到主屏幕');
-        return;
-      }
       if (root.requestFullscreen) {
         try {
           await requestFullscreen.call(root, { navigationUI: 'hide' });
@@ -1111,6 +1147,228 @@ async function toggleFullscreen() {
 document.addEventListener('fullscreenchange', syncFullscreenControl);
 document.addEventListener('webkitfullscreenchange', syncFullscreenControl);
 
+var mobileWorkspaceModeActive = false;
+var mobileWorkspaceGesture = null;
+var MOBILE_WORKSPACE_MODE_KEY = 'tourgrid.mobileWorkspaceMode';
+var MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40;
+
+function scheduleMobileWorkspaceLayoutSync() {
+  window.requestAnimationFrame(function() {
+    updateNavigatorViewport();
+  });
+  window.setTimeout(function() {
+    updateNavigatorViewport();
+  }, 220);
+}
+
+function syncMobileWorkspaceControls() {
+  var modeButton = document.getElementById('mobileWorkspaceModeBtn');
+  var toolbarHandle = document.getElementById('mobileToolbarHandle');
+  var leftButton = document.getElementById('mobileLeftPanelBtn');
+  var rightButton = document.getElementById('mobileRightPanelBtn');
+  var backdrop = document.getElementById('workspaceDrawerBackdrop');
+  var body = document.body;
+  var toolbarCollapsed = body.classList.contains('mobile-toolbar-collapsed');
+  var leftOpen = body.classList.contains('mobile-left-drawer-open');
+  var rightOpen = body.classList.contains('mobile-right-drawer-open');
+
+  if (modeButton) {
+    modeButton.classList.toggle('is-focus-mode', mobileWorkspaceModeActive);
+    modeButton.setAttribute(
+      'aria-pressed',
+      mobileWorkspaceModeActive ? 'true' : 'false'
+    );
+    modeButton.setAttribute(
+      'aria-label',
+      mobileWorkspaceModeActive ? '切换至原三栏模式' : '切换至专注模式'
+    );
+    modeButton.title =
+      mobileWorkspaceModeActive ? '切换至原三栏模式' : '切换至专注模式';
+  }
+  if (toolbarHandle) {
+    toolbarHandle.setAttribute(
+      'aria-expanded',
+      toolbarCollapsed ? 'false' : 'true'
+    );
+    toolbarHandle.setAttribute(
+      'aria-label',
+      toolbarCollapsed ? '展开顶部工具栏' : '折叠顶部工具栏'
+    );
+  }
+  if (leftButton) {
+    leftButton.setAttribute('aria-expanded', leftOpen ? 'true' : 'false');
+    leftButton.setAttribute(
+      'aria-label',
+      leftOpen ? '关闭导航与参考面板' : '打开导航与参考面板'
+    );
+  }
+  if (rightButton) {
+    rightButton.setAttribute('aria-expanded', rightOpen ? 'true' : 'false');
+    rightButton.setAttribute(
+      'aria-label',
+      rightOpen ? '关闭工具与颜料面板' : '打开工具与颜料面板'
+    );
+  }
+  if (backdrop) backdrop.hidden = !(leftOpen || rightOpen);
+}
+
+function closeMobileWorkspaceDrawers() {
+  var body = document.body;
+  var wasOpen =
+    body.classList.contains('mobile-left-drawer-open') ||
+    body.classList.contains('mobile-right-drawer-open');
+  body.classList.remove(
+    'mobile-left-drawer-open',
+    'mobile-right-drawer-open'
+  );
+  syncMobileWorkspaceControls();
+  return wasOpen;
+}
+
+function setMobileWorkspaceDrawer(side) {
+  if (!mobileWorkspaceModeActive) return;
+  var body = document.body;
+  var className =
+    side === 'left'
+      ? 'mobile-left-drawer-open'
+      : 'mobile-right-drawer-open';
+  var shouldOpen = !body.classList.contains(className);
+  body.classList.remove(
+    'mobile-left-drawer-open',
+    'mobile-right-drawer-open'
+  );
+  if (shouldOpen) body.classList.add(className);
+  syncMobileWorkspaceControls();
+  scheduleMobileWorkspaceLayoutSync();
+}
+
+function setMobileToolbarCollapsed(collapsed) {
+  if (!mobileWorkspaceModeActive) collapsed = false;
+  document.body.classList.toggle(
+    'mobile-toolbar-collapsed',
+    Boolean(collapsed)
+  );
+  syncMobileWorkspaceControls();
+  scheduleMobileWorkspaceLayoutSync();
+}
+
+function setMobileWorkspaceMode(active, announce) {
+  mobileWorkspaceModeActive = Boolean(active);
+  document.body.classList.toggle(
+    'mobile-focus-mode',
+    mobileWorkspaceModeActive
+  );
+  if (!mobileWorkspaceModeActive) {
+    document.body.classList.remove(
+      'mobile-toolbar-collapsed',
+      'mobile-left-drawer-open',
+      'mobile-right-drawer-open'
+    );
+  }
+  try {
+    if (mobileWorkspaceModeActive) {
+      sessionStorage.setItem(MOBILE_WORKSPACE_MODE_KEY, 'focus');
+    } else {
+      sessionStorage.removeItem(MOBILE_WORKSPACE_MODE_KEY);
+    }
+  } catch (error) {
+    // 隐私模式可能禁用会话存储；布局仍在当前页面内生效。
+  }
+  syncMobileWorkspaceControls();
+  scheduleMobileWorkspaceLayoutSync();
+  if (announce) {
+    showToast(
+      mobileWorkspaceModeActive
+        ? '已切换至专注模式'
+        : '已恢复原三栏模式'
+    );
+  }
+}
+
+function toggleMobileWorkspaceMode() {
+  setMobileWorkspaceMode(!mobileWorkspaceModeActive, true);
+}
+
+function restoreMobileWorkspaceMode() {
+  var active = false;
+  try {
+    active = sessionStorage.getItem(MOBILE_WORKSPACE_MODE_KEY) === 'focus';
+  } catch (error) {
+    active = false;
+  }
+  setMobileWorkspaceMode(active, false);
+}
+
+function toggleMobileToolbar() {
+  setMobileToolbarCollapsed(
+    !document.body.classList.contains('mobile-toolbar-collapsed')
+  );
+}
+
+function onMobileWorkspacePointerDown(event) {
+  if (
+    !mobileWorkspaceModeActive ||
+    event.target !== event.currentTarget ||
+    (typeof event.button === 'number' && event.button !== 0)
+  ) {
+    return;
+  }
+  mobileWorkspaceGesture = {
+    pointerId: event.pointerId,
+    startY: event.clientY,
+    currentY: event.clientY
+  };
+  if (event.currentTarget.setPointerCapture) {
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch (error) {
+      // 合成事件没有活动指针，真实触摸事件仍可正常捕获。
+    }
+  }
+}
+
+function onMobileWorkspacePointerMove(event) {
+  if (
+    !mobileWorkspaceGesture ||
+    mobileWorkspaceGesture.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+  mobileWorkspaceGesture.currentY = event.clientY;
+}
+
+function finishMobileWorkspaceGesture(event) {
+  if (
+    !mobileWorkspaceGesture ||
+    mobileWorkspaceGesture.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+  var deltaY =
+    mobileWorkspaceGesture.currentY - mobileWorkspaceGesture.startY;
+  mobileWorkspaceGesture = null;
+  if (
+    event.currentTarget.hasPointerCapture &&
+    event.currentTarget.hasPointerCapture(event.pointerId)
+  ) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+  if (deltaY <= -MOBILE_WORKSPACE_SWIPE_THRESHOLD) {
+    setMobileToolbarCollapsed(true);
+  } else if (deltaY >= MOBILE_WORKSPACE_SWIPE_THRESHOLD) {
+    setMobileToolbarCollapsed(false);
+  }
+}
+
+function cancelMobileWorkspaceGesture(event) {
+  if (
+    mobileWorkspaceGesture &&
+    mobileWorkspaceGesture.pointerId === event.pointerId
+  ) {
+    mobileWorkspaceGesture = null;
+  }
+}
+
 function bindStaticControls() {
   function on(id, eventName, handler) {
     var element = document.getElementById(id);
@@ -1120,6 +1378,21 @@ function bindStaticControls() {
   on('authorInfoBtn', 'click', openAuthorModal);
   on('announcementBtn', 'click', openAnnouncementModal);
   on('mobileFullscreenBtn', 'click', toggleFullscreen);
+  on('mobileWorkspaceModeBtn', 'click', toggleMobileWorkspaceMode);
+  on('mobileToolbarHandle', 'click', toggleMobileToolbar);
+  on('mobileLeftPanelBtn', 'click', function() {
+    setMobileWorkspaceDrawer('left');
+  });
+  on('mobileRightPanelBtn', 'click', function() {
+    setMobileWorkspaceDrawer('right');
+  });
+  on('workspaceDrawerBackdrop', 'click', closeMobileWorkspaceDrawers);
+  on('centerPanel', 'pointerdown', onMobileWorkspacePointerDown);
+  on('centerPanel', 'pointermove', onMobileWorkspacePointerMove);
+  on('centerPanel', 'pointerup', finishMobileWorkspaceGesture);
+  on('centerPanel', 'pointercancel', cancelMobileWorkspaceGesture);
+  syncFullscreenControl();
+  restoreMobileWorkspaceMode();
   on('clearCanvasBtn', 'click', clearCanvas);
   on('manualCheckpointRestoreBtn', 'click', restoreManualCheckpoint);
   on('manualCheckpointSaveBtn', 'click', manualSave);

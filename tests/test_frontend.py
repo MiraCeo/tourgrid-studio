@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260728-28"
+    asset_version = "20260729-01"
 
     assert (
         f'<link rel="stylesheet" '
@@ -825,12 +825,54 @@ def test_mobile_fullscreen_control_uses_browser_fullscreen_api() -> None:
     assert 'class="fullscreen-enter-icon"' in html
     assert 'class="fullscreen-exit-icon"' in html
     assert ".btn-fullscreen {" in css
+    assert ".btn-fullscreen[hidden] {" in css
+    assert "function isFullscreenSupported()" in app
+    assert "button.hidden = !supported" in app
     assert "function toggleFullscreen()" in app
     assert "root.requestFullscreen || root.webkitRequestFullscreen" in app
     assert "{ navigationUI: 'hide' }" in app
     assert "document.exitFullscreen || document.webkitExitFullscreen" in app
     assert "document.addEventListener('fullscreenchange'" in app
     assert "function syncFullscreenControl()" in app
+
+
+def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="mobileWorkspaceModeBtn"' in html
+    assert 'id="mobileToolbarHandle"' in html
+    assert 'id="mobileLeftPanelBtn"' in html
+    assert 'id="mobileRightPanelBtn"' in html
+    assert 'id="workspaceDrawerBackdrop"' in html
+    assert 'id="leftPanel"' in html
+    assert 'id="rightPanel"' in html
+    assert ".btn-workspace-mode {" in css
+    assert "body.mobile-focus-mode .left-panel" in css
+    assert "body.mobile-focus-mode .right-panel" in css
+    assert "body.mobile-focus-mode .center-panel" in css
+    assert "body.mobile-focus-mode.mobile-toolbar-collapsed .top-bar" in css
+    assert "function setMobileWorkspaceMode(active, announce)" in app
+    assert "function setMobileWorkspaceDrawer(side)" in app
+    assert "function setMobileToolbarCollapsed(collapsed)" in app
+    assert "function onMobileWorkspacePointerDown(event)" in app
+    assert "MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40" in app
+    assert "sessionStorage.setItem(MOBILE_WORKSPACE_MODE_KEY, 'focus')" in app
+
+
+def test_work_share_modal_is_scrollable_inside_short_safe_viewports() -> None:
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    works = (JAVASCRIPT_ROOT / "works.js").read_text(encoding="utf-8")
+
+    assert ".work-share-overlay {" in css
+    assert "max(8px, env(safe-area-inset-top))" in css
+    assert "max(8px, env(safe-area-inset-bottom))" in css
+    assert ".work-share-modal {" in css
+    assert "max-height: 100%" in css
+    assert "-webkit-overflow-scrolling: touch" in css
+    assert "@media (max-height: 480px)" in css
+    assert "if (dialog) dialog.scrollTop = 0" in works
 
 
 def test_author_project_modal_uses_no_unlicensed_avatar_and_safe_github_links() -> None:

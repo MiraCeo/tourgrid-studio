@@ -198,6 +198,15 @@ body {
   background: #222;
   color: #72F5F2;
 }
+.btn-fullscreen[hidden] {
+  display: none !important;
+}
+.btn-workspace-mode {
+  display: none;
+  background: #222;
+  color: #d7d9dc;
+}
+.btn-workspace-mode svg,
 .btn-fullscreen svg {
   width: 19px;
   height: 19px;
@@ -206,6 +215,16 @@ body {
   stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.btn-workspace-mode .workspace-focus-mark {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.25;
+}
+.btn-workspace-mode.is-focus-mode {
+  background: #276f72;
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(114,245,242,0.25);
 }
 .btn-fullscreen .fullscreen-exit-icon {
   display: none;
@@ -387,6 +406,12 @@ body {
   min-height: 0;
   max-height: none;
   overflow: hidden;
+}
+
+.mobile-toolbar-handle,
+.mobile-panel-toggle,
+.workspace-drawer-backdrop {
+  display: none;
 }
 
 /* --- 瀹革附鐖敍姘嚤閼割亜娅掓０鍕潔闂堛垺婢?20% --- */
@@ -1406,8 +1431,25 @@ body {
   scrollbar-color: #55565c transparent;
 }
 
+.work-share-overlay {
+  padding:
+    max(8px, env(safe-area-inset-top))
+    max(8px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .work-share-modal {
   width: min(470px, calc(100vw - 32px));
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #55565c transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
   text-align: left;
 }
 .work-share-modal > .author-kicker,
@@ -1635,6 +1677,25 @@ body {
   }
   .work-share-confirm-actions .work-share-action {
     width: 100%;
+  }
+}
+
+@media (max-height: 480px) {
+  .work-share-modal {
+    padding: 18px 20px;
+  }
+  .work-share-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 8px;
+  }
+  .work-share-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .work-share-section {
+    margin-top: 12px;
+    padding: 12px;
   }
 }
 .work-share-status {
@@ -2179,6 +2240,9 @@ body {
   .top-bar .btn-fullscreen {
     display: flex;
   }
+  .top-bar .btn-workspace-mode {
+    display: flex;
+  }
   .top-bar .warn-text {
     display: none;
   }
@@ -2211,6 +2275,146 @@ body {
   }
   .crop-zoom-slider { width: 100px; }
   .crop-btn { padding: 6px 16px; font-size: 12px; }
+
+  /* 可选专注模式：原三栏布局仍为默认状态。 */
+  body.mobile-focus-mode .top-bar {
+    max-height: 64px;
+    overflow: hidden;
+    transition:
+      max-height 0.2s ease,
+      padding 0.2s ease,
+      border-color 0.2s ease,
+      opacity 0.16s ease;
+  }
+  body.mobile-focus-mode.mobile-toolbar-collapsed .top-bar {
+    min-height: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-color: transparent;
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.mobile-focus-mode .editor-body {
+    position: relative;
+    isolation: isolate;
+  }
+  body.mobile-focus-mode .center-panel {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    touch-action: none;
+  }
+  body.mobile-focus-mode .canvas-container {
+    width: min(100%, calc(100dvh - 82px));
+    transition: width 0.2s ease;
+  }
+  body.mobile-focus-mode.mobile-toolbar-collapsed .canvas-container {
+    width: min(100%, calc(100dvh - 24px));
+  }
+  body.mobile-focus-mode .left-panel,
+  body.mobile-focus-mode .right-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+    height: auto;
+    max-height: none;
+    flex: none;
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 28px rgba(0,0,0,0.45);
+  }
+  body.mobile-focus-mode .left-panel {
+    left: 0;
+    width: min(82vw, 320px);
+    transform: translateX(-105%);
+  }
+  body.mobile-focus-mode .right-panel {
+    right: 0;
+    width: min(82vw, 360px);
+    transform: translateX(105%);
+  }
+  body.mobile-focus-mode.mobile-left-drawer-open .left-panel,
+  body.mobile-focus-mode.mobile-right-drawer-open .right-panel {
+    transform: translateX(0);
+  }
+  body.mobile-focus-mode .mobile-toolbar-handle {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    z-index: 24;
+    display: grid;
+    width: 42px;
+    height: 24px;
+    border: 1px solid rgba(114,245,242,0.48);
+    border-radius: 0 0 14px 14px;
+    place-items: center;
+    background: rgba(31,34,38,0.88);
+    color: #72F5F2;
+    transform: translateX(-50%);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  }
+  body.mobile-focus-mode .mobile-toolbar-handle svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.2s ease;
+  }
+  body.mobile-focus-mode.mobile-toolbar-collapsed
+  .mobile-toolbar-handle svg {
+    transform: rotate(180deg);
+  }
+  body.mobile-focus-mode .mobile-panel-toggle {
+    position: absolute;
+    top: 50%;
+    z-index: 18;
+    display: grid;
+    width: 38px;
+    height: 56px;
+    border: 1px solid rgba(114,245,242,0.45);
+    place-items: center;
+    background: rgba(31,34,38,0.88);
+    color: #72F5F2;
+    transform: translateY(-50%);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.34);
+  }
+  body.mobile-focus-mode .mobile-panel-toggle svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  body.mobile-focus-mode .mobile-panel-toggle-left {
+    left: 0;
+    border-left: none;
+    border-radius: 0 16px 16px 0;
+  }
+  body.mobile-focus-mode .mobile-panel-toggle-right {
+    right: 0;
+    border-right: none;
+    border-radius: 16px 0 0 16px;
+  }
+  body.mobile-focus-mode .workspace-drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: rgba(7,10,12,0.46);
+  }
+  body.mobile-focus-mode .workspace-drawer-backdrop[hidden] {
+    display: none;
+  }
 }
 
 @media (max-width: 680px) {

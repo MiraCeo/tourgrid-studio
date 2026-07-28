@@ -17,6 +17,8 @@ function openWorkShareModal(mode) {
   if (!modal) return;
   workShareModalTrigger = document.activeElement;
   modal.hidden = false;
+  var dialog = modal.querySelector('.work-share-modal');
+  if (dialog) dialog.scrollTop = 0;
   setWorkShareStatus('', '');
   requestAnimationFrame(function() {
     modal.classList.add('show');
