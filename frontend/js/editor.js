@@ -355,7 +355,7 @@ function paintPixel(gx, gy) {
   if (!color) return;
   if (pixelData[gy][gx] === color) return;
 
-  invalidateReplicationProgress(true);
+  markReplicationCellChanged(gx, gy);
   pixelData[gy][gx] = color;
   markSharedWorkAsEdited();
   lastPaintedX = gx;
@@ -385,7 +385,14 @@ function onMouseDown(e) {
     return;
   }
 
-  if (isStatisticsMode()) return;
+  if (isStatisticsMode()) {
+    const replicationPos = getGridPos(e);
+    if (markReplicationCellCompleted(replicationPos.x, replicationPos.y)) {
+      renderCanvasCellHighlight();
+    }
+    e.preventDefault();
+    return;
+  }
   if (!currentColor) {
     showToast('请先从颜料中选择一种颜色');
     return;
@@ -431,6 +438,7 @@ function onMouseUp(e) {
     isDrawing = false;
     lastPaintedX = -1;
     lastPaintedY = -1;
+    commitReplicationCanvasEdit(true);
     renderColorGrid();
     saveToStorage(true);
   }
@@ -537,7 +545,11 @@ function onTouchStart(e) {
       sampleCanvasColor(samplePos.x, samplePos.y);
       return;
     }
-    if (isStatisticsMode()) return;
+    if (isStatisticsMode()) {
+      const replicationPos = getGridPos(e.touches[0]);
+      markReplicationCellCompleted(replicationPos.x, replicationPos.y);
+      return;
+    }
     if (!currentColor) {
       showToast('请先从颜料中选择一种颜色');
       return;
@@ -631,6 +643,7 @@ function onTouchEnd(e) {
     isDrawing = false;
     lastPaintedX = -1;
     lastPaintedY = -1;
+    commitReplicationCanvasEdit(true);
     renderColorGrid();
     saveToStorage(true);
   }
@@ -714,10 +727,16 @@ function makeEditorSnapshot() {
 }
 
 async function restoreEditorSnapshot(snapshot) {
-  invalidateReplicationProgress(true);
+  var previousPixels = pixelData.map(function(row) { return row.slice(); });
+  var previousFingerprint = replicationWorkFingerprint();
   statisticsHighlightColor = null;
   await restoreReferenceFromHistory(snapshot.reference);
   pixelData = snapshot.pixels.map(function(row) { return row.slice(); });
+  reconcileReplicationProgress(
+    previousPixels,
+    previousFingerprint,
+    true
+  );
   documentMetadata = Object.assign(
     TourgridStorage.defaultMetadata(),
     snapshot.metadata || {}

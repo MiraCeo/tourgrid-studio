@@ -528,7 +528,7 @@ async function confirmCropLocal() {
     };
   }
 
-  replicationCompletedColors.clear();
+  replicationCompletedCells.clear();
   statisticsHighlightColor = null;
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
   restoreReplicationProgress();

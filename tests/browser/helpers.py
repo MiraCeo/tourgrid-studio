@@ -18,6 +18,16 @@ def select_color(page: Page, color: str) -> None:
     page.locator(f'.color-swatch[data-color="{color}"]').click()
 
 
+def click_canvas_cell(page: Page, x: int, y: int) -> None:
+    canvas = page.locator("#pixelCanvas")
+    box = canvas.bounding_box()
+    assert box is not None
+    page.mouse.click(
+        box["x"] + (x + 0.5) * box["width"] / 24,
+        box["y"] + (y + 0.5) * box["height"] / 24,
+    )
+
+
 def paint_cells(
     page: Page,
     cells: list[tuple[int, int]],
@@ -69,4 +79,3 @@ def wait_for_history(page: Page) -> None:
 def clear_canvas(page: Page) -> None:
     page.once("dialog", lambda dialog: dialog.accept())
     page.locator(".btn-delete").click()
-

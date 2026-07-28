@@ -9,6 +9,7 @@ from PIL import Image
 from playwright.sync_api import Page, expect
 
 from .helpers import (
+    click_canvas_cell,
     clear_canvas,
     editor_state,
     import_image,
@@ -150,6 +151,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
 ) -> None:
     select_color(editor_page, BLACK)
     paint_cells(editor_page, [(1, 1)])
+    paint_cells(editor_page, [(3, 1)])
     select_color(editor_page, RED)
     paint_cells(editor_page, [(2, 1)])
 
@@ -160,13 +162,45 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     black_stat.click()
     complete_control = editor_page.locator("#replicationCompleteControl")
     expect(complete_control).to_be_visible()
-    complete_control.click()
-    expect(
-        editor_page.locator("#replicationCompleteCheckbox")
-    ).to_be_checked()
+    complete_checkbox = editor_page.locator("#replicationCompleteCheckbox")
 
-    assert editor_state(editor_page)["replicationCompletedColors"] == [BLACK]
+    click_canvas_cell(editor_page, 1, 1)
+    expect(complete_checkbox).not_to_be_checked()
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [25]
+    assert state["replicationCompletedColors"] == []
+    expect(black_stat).not_to_have_class(re.compile(r"\bcompleted\b"))
+
+    editor_page.reload(wait_until="domcontentloaded")
+    editor_page.wait_for_function(
+        "() => window.__TOURGRID_TEST__?.isReady === true"
+    )
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [25]
+    assert state["replicationCompletedColors"] == []
+
+    editor_page.locator("#statisticsTab").click()
+    black_stat = editor_page.locator(
+        f'.statistics-color[data-color="{BLACK}"]'
+    )
+    black_stat.click()
+    editor_page.locator("#moveCanvasBtn").click()
+    click_canvas_cell(editor_page, 3, 1)
+    assert editor_state(editor_page)["replicationCompletedCells"] == [25]
+    editor_page.keyboard.press("Escape")
+    click_canvas_cell(editor_page, 3, 1)
+    expect(editor_page.locator("#replicationCompleteCheckbox")).to_be_checked()
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [25, 27]
+    assert state["replicationCompletedColors"] == [BLACK]
     expect(black_stat).to_have_class(re.compile(r"\bcompleted\b"))
+
+    complete_control.click()
+    expect(editor_page.locator("#replicationCompleteCheckbox")).not_to_be_checked()
+    assert editor_state(editor_page)["replicationCompletedCells"] == []
+    complete_control.click()
+    expect(editor_page.locator("#replicationCompleteCheckbox")).to_be_checked()
+    assert editor_state(editor_page)["replicationCompletedCells"] == [25, 27]
 
     editor_page.locator(
         f'.statistics-color[data-color="{RED}"]'
@@ -184,7 +218,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
           return {
             completed: alphaAt(1, 1),
             selected: alphaAt(2, 1),
-            pending: alphaAt(3, 1)
+            pending: alphaAt(4, 1)
           };
         }"""
     )
@@ -196,7 +230,9 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     editor_page.wait_for_function(
         "() => window.__TOURGRID_TEST__?.isReady === true"
     )
-    assert editor_state(editor_page)["replicationCompletedColors"] == [BLACK]
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [25, 27]
+    assert state["replicationCompletedColors"] == [BLACK]
 
     editor_page.locator("#statisticsTab").click()
     expect(editor_page.locator("#replicationCompleteControl")).to_be_hidden()
@@ -215,7 +251,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
           ).data[3];
           return {
             completed: alphaAt(1, 1),
-            pending: alphaAt(3, 1)
+            pending: alphaAt(4, 1)
           };
         }"""
     )
@@ -224,18 +260,87 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
 
     editor_page.once("dialog", lambda dialog: dialog.accept())
     editor_page.locator("#replicationResetBtn").click()
+    assert editor_state(editor_page)["replicationCompletedCells"] == []
     assert editor_state(editor_page)["replicationCompletedColors"] == []
 
     editor_page.locator(
         f'.statistics-color[data-color="{BLACK}"]'
     ).click()
     editor_page.locator("#replicationCompleteControl").click()
-    assert editor_state(editor_page)["replicationCompletedColors"] == [BLACK]
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [25, 27]
+    assert state["replicationCompletedColors"] == [BLACK]
 
     editor_page.locator("#paletteTab").click()
+    select_color(editor_page, RED)
+    paint_cells(editor_page, [(1, 1)])
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [27]
+    assert state["replicationCompletedColors"] == [BLACK]
+
     select_color(editor_page, BLACK)
     paint_cells(editor_page, [(4, 1)])
-    assert editor_state(editor_page)["replicationCompletedColors"] == []
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [27]
+    assert state["replicationCompletedColors"] == []
+
+    editor_page.reload(wait_until="domcontentloaded")
+    editor_page.wait_for_function(
+        "() => window.__TOURGRID_TEST__?.isReady === true"
+    )
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [27]
+    assert state["replicationCompletedColors"] == []
+
+    editor_page.locator("#statisticsTab").click()
+    editor_page.locator(
+        f'.statistics-color[data-color="{BLACK}"]'
+    ).click()
+    expect(editor_page.locator("#replicationCompleteCheckbox")).not_to_be_checked()
+
+
+def test_legacy_completed_color_progress_migrates_to_completed_cells(
+    editor_page: Page,
+) -> None:
+    select_color(editor_page, BLACK)
+    paint_cells(editor_page, [(1, 1)])
+    paint_cells(editor_page, [(3, 1)])
+    fingerprint = editor_page.evaluate("() => replicationWorkFingerprint()")
+    editor_page.evaluate(
+        """([key, fingerprint, color]) => {
+          localStorage.setItem(key, JSON.stringify({
+            version: 1,
+            works: {
+              [fingerprint]: {
+                completedColors: [color],
+                updatedAt: Date.now()
+              }
+            }
+          }));
+        }""",
+        ["tourgrid_replication_progress_v1", fingerprint, BLACK],
+    )
+
+    editor_page.reload(wait_until="domcontentloaded")
+    editor_page.wait_for_function(
+        "() => window.__TOURGRID_TEST__?.isReady === true"
+    )
+    state = editor_state(editor_page)
+    assert state["replicationCompletedCells"] == [25, 27]
+    assert state["replicationCompletedColors"] == [BLACK]
+    stored = editor_page.evaluate(
+        """([key, fingerprint]) => {
+          const store = JSON.parse(localStorage.getItem(key));
+          return {
+            version: store.version,
+            record: store.works[fingerprint]
+          };
+        }""",
+        ["tourgrid_replication_progress_v1", fingerprint],
+    )
+    assert stored["version"] == 2
+    assert stored["record"]["completedCells"] == [25, 27]
+    assert "completedColors" not in stored["record"]
 
 
 def test_replication_opens_without_selection_and_preserves_palette_choice(

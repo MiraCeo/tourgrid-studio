@@ -127,7 +127,9 @@ let paletteMode = 'official';
 let palettePanelMode = 'palette';
 let statisticsHighlightColor = null;
 let statisticsSortMode = 'count-desc';
-let replicationCompletedColors = new Set();
+let replicationCompletedCells = new Set();
+let replicationEditSourceFingerprint = null;
+let replicationEditRemovedCellCount = 0;
 let replicationPreviewMode = 'target';
 let paletteColorBeforeReplication = null;
 let replicationSelectionChanged = false;
@@ -191,6 +193,7 @@ let lastPaintedY = -1;
 var STORAGE_KEY = 'pixel_editor_save';
 var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';
 var CANVAS_GUIDES_STORAGE_KEY = 'tourgrid_canvas_guides_visible';
+// 保留原键名以便原有整色完成记录在读取时迁移为逐格进度。
 var REPLICATION_PROGRESS_STORAGE_KEY = 'tourgrid_replication_progress_v1';
 
 function updateLocalSaveStatus(savedAt, state) {

@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260728-25"
+    asset_version = "20260728-26"
 
     assert (
         f'<link rel="stylesheet" '
@@ -202,10 +202,10 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "function setReplicationColorCompleted(completed)" in app
     assert "function setReplicationPreviewMode(mode)" in app
     assert "function clearCurrentReplicationProgress()" in app
-    assert "function saveReplicationProgress()" in app
+    assert "function saveReplicationProgress(previousFingerprint)" in app
     assert "function restoreReplicationProgress()" in app
     assert "function invalidateReplicationProgress(notify)" in app
-    assert "replicationCompletedColors.has(pixelColor)" in app
+    assert "isReplicationCellCompleted(x, y)" in app
     assert "if (selected && !completed)" in app
     assert "replicationPreviewMode === 'completed'" in app
     assert "completedPreview" in app
@@ -260,7 +260,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "请先从颜料中选择一种颜色" in editor
     assert "let currentColor = '#222222'" in state
     assert "mainCtx.fillText" not in editor
-    assert "if (isStatisticsMode()) return;" in editor
+    assert "markReplicationCellCompleted(replicationPos.x, replicationPos.y)" in editor
     assert "复刻模式下画布为只读" in editor
     assert "renderStatisticsHighlightOverlay()" in overlay
     assert "'rgba(16, 18, 22, 0.72)'" in app
