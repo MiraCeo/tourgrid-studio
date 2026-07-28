@@ -309,6 +309,40 @@ def test_move_canvas_tool_pans_without_editing_and_is_mutually_exclusive(
     expect(canvas).to_have_css("cursor", "crosshair")
 
 
+def test_canvas_cell_hover_highlight_is_limited_to_drawing_and_eyedropper(
+    editor_page: Page,
+) -> None:
+    canvas = editor_page.locator("#pixelCanvas")
+    hover_canvas = editor_page.locator("#hoverCanvas")
+    baseline = hover_canvas.evaluate("element => element.toDataURL()")
+    box = canvas.bounding_box()
+    assert box is not None
+
+    def move_to_cell(x: int, y: int) -> None:
+        editor_page.mouse.move(
+            box["x"] + (x + 0.5) * box["width"] / 24,
+            box["y"] + (y + 0.5) * box["height"] / 24,
+        )
+
+    move_to_cell(3, 4)
+    assert editor_state(editor_page)["hoveredCanvasCell"] == {"x": 3, "y": 4}
+    assert hover_canvas.evaluate("element => element.toDataURL()") != baseline
+
+    editor_page.locator("#eyedropperBtn").click()
+    move_to_cell(5, 6)
+    state = editor_state(editor_page)
+    assert state["eyedropperActive"] is True
+    assert state["hoveredCanvasCell"] == {"x": 5, "y": 6}
+    assert hover_canvas.evaluate("element => element.toDataURL()") != baseline
+
+    editor_page.locator("#moveCanvasBtn").click()
+    move_to_cell(7, 8)
+    state = editor_state(editor_page)
+    assert state["moveCanvasActive"] is True
+    assert state["hoveredCanvasCell"] is None
+    assert hover_canvas.evaluate("element => element.toDataURL()") == baseline
+
+
 def test_continuous_stroke_is_one_undo_step_and_can_be_redone(
     editor_page: Page,
 ) -> None:

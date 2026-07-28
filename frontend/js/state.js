@@ -122,6 +122,7 @@ let currentColor = '#222222';
 let currentTool = 'brush';
 let eyedropperActive = false;
 let moveCanvasActive = false;
+let hoveredCanvasCell = null;
 let paletteMode = 'official';
 let palettePanelMode = 'palette';
 let statisticsHighlightColor = null;
@@ -300,7 +301,7 @@ let redoStack = [];
 let historyOperationInProgress = false;
 
 // --- DOM瀵洜鏁?---
-let mainCanvas, mainCtx, navCanvas, navCtx;
+let mainCanvas, mainCtx, navCanvas, navCtx, hoverCanvas, hoverCtx;
 let canvasContainer, centerPanel;
 
 // --- init ---

@@ -798,6 +798,14 @@ body {
   touch-action: none;
 }
 
+#hoverCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
 /* 閸椾礁鐡х€规矮缍呯痪?*/
 /* 缂冩垶鐗哥亸鍝勵嚟閹稿洨銇?*/
 /* --- 閸欒櫕鐖敍姘额杹閺傛瑥浼愰崗閿嬬埉 20% --- */

@@ -2,6 +2,8 @@ function init() {
   try {
   mainCanvas = document.getElementById('pixelCanvas');
   mainCtx = mainCanvas.getContext('2d');
+  hoverCanvas = document.getElementById('hoverCanvas');
+  hoverCtx = hoverCanvas.getContext('2d');
   navCanvas = document.getElementById('navPreview');
   navCtx = navCanvas.getContext('2d');
   overlayCanvas = document.getElementById('overlayCanvas');
@@ -47,7 +49,7 @@ function init() {
   mainCanvas.addEventListener('mousedown', onMouseDown);
   mainCanvas.addEventListener('mousemove', onMouseMove);
   mainCanvas.addEventListener('mouseup', onMouseUp);
-  mainCanvas.addEventListener('mouseleave', onMouseUp);
+  mainCanvas.addEventListener('mouseleave', onCanvasMouseLeave);
   mainCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
   // 鐟欙附鎳滄禍瀣╂
@@ -114,6 +116,8 @@ function updateCanvasSize() {
   const canvasPixelSize = GRID_SIZE * cellSize;
   mainCanvas.width = canvasPixelSize;
   mainCanvas.height = canvasPixelSize;
+  hoverCanvas.width = canvasPixelSize;
+  hoverCanvas.height = canvasPixelSize;
   // 娑撳秴鍟€鐠佸墽鐤咰SS鐎逛粙鐝敍瀹慳nvas娴犮儱甯慨瀣瀻鏉堛劎宸煎〒鍙夌厠閿涘苯顔愰崳鈺玽erflow閹貉冨煑閸欘垵顫嗛崠鍝勭厵
 }
 
@@ -130,6 +134,65 @@ function drawCanvasCenterAxes(ctx, width, height) {
   ctx.lineTo(width, height / 2);
   ctx.stroke();
   ctx.restore();
+}
+
+function canShowCanvasCellHighlight() {
+  return !isStatisticsMode() &&
+    !moveCanvasActive &&
+    !temporaryPanKeyHeld &&
+    !isPanning;
+}
+
+function renderCanvasCellHighlight() {
+  hoverCtx.clearRect(0, 0, hoverCanvas.width, hoverCanvas.height);
+  if (!hoveredCanvasCell || !canShowCanvasCellHighlight()) return;
+
+  var x = hoveredCanvasCell.x;
+  var y = hoveredCanvasCell.y;
+  var left = Math.round(x * hoverCanvas.width / GRID_SIZE);
+  var right = Math.round((x + 1) * hoverCanvas.width / GRID_SIZE);
+  var top = Math.round(y * hoverCanvas.height / GRID_SIZE);
+  var bottom = Math.round((y + 1) * hoverCanvas.height / GRID_SIZE);
+  var width = Math.max(1, right - left);
+  var height = Math.max(1, bottom - top);
+  var lineWidth = Math.max(1, Math.min(3, Math.min(width, height) * 0.12));
+  var color = String(pixelData[y][x] || '#FFFFFF');
+  var red = parseInt(color.slice(1, 3), 16);
+  var green = parseInt(color.slice(3, 5), 16);
+  var blue = parseInt(color.slice(5, 7), 16);
+  var luminance = red * 0.299 + green * 0.587 + blue * 0.114;
+
+  hoverCtx.save();
+  hoverCtx.fillStyle = 'rgba(103, 245, 242, 0.24)';
+  hoverCtx.fillRect(left, top, width, height);
+  hoverCtx.strokeStyle = luminance > 150 ? '#18181C' : '#FFFFFF';
+  hoverCtx.lineWidth = lineWidth;
+  hoverCtx.strokeRect(
+    left + lineWidth / 2,
+    top + lineWidth / 2,
+    Math.max(0, width - lineWidth),
+    Math.max(0, height - lineWidth)
+  );
+  hoverCtx.restore();
+}
+
+function setHoveredCanvasCell(cell) {
+  var next = cell &&
+    cell.x >= 0 && cell.x < GRID_SIZE &&
+    cell.y >= 0 && cell.y < GRID_SIZE
+    ? { x: cell.x, y: cell.y }
+    : null;
+  var unchanged = hoveredCanvasCell === null && next === null ||
+    hoveredCanvasCell !== null && next !== null &&
+    hoveredCanvasCell.x === next.x && hoveredCanvasCell.y === next.y;
+  if (unchanged) return false;
+  hoveredCanvasCell = next;
+  return true;
+}
+
+function clearCanvasCellHighlight() {
+  if (!setHoveredCanvasCell(null)) return;
+  renderCanvasCellHighlight();
 }
 
 function renderCanvas() {
@@ -198,6 +261,7 @@ function renderCanvas() {
   }
 
   drawCanvasCenterAxes(mainCtx, w, h);
+  renderCanvasCellHighlight();
   renderOverlay();
 }
 
@@ -334,11 +398,22 @@ function onMouseDown(e) {
 }
 
 function onMouseMove(e) {
-  if (!isDrawing || isStatisticsMode()) return;
   const pos = getGridPos(e);
+  var hoverChanged = canShowCanvasCellHighlight()
+    ? setHoveredCanvasCell(pos)
+    : setHoveredCanvasCell(null);
+  if (!isDrawing || isStatisticsMode()) {
+    if (hoverChanged) renderCanvasCellHighlight();
+    return;
+  }
   paintPixel(pos.x, pos.y);
   renderCanvas();
   renderNavigator();
+}
+
+function onCanvasMouseLeave(e) {
+  onMouseUp(e);
+  clearCanvasCellHighlight();
 }
 
 function onMouseUp(e) {
@@ -396,6 +471,7 @@ function onWheel(e) {
 function onPanStart(e) {
   if (e.button === 1) {
     e.preventDefault();
+    clearCanvasCellHighlight();
     isPanning = true;
     panStartX = e.clientX;
     panStartY = e.clientY;

@@ -202,6 +202,9 @@ function setMoveCanvasActive(active) {
   moveCanvasActive = Boolean(active);
   isDrawing = false;
   isPanning = false;
+  if (moveCanvasActive && typeof clearCanvasCellHighlight === 'function') {
+    clearCanvasCellHighlight();
+  }
 
   var button = document.getElementById('moveCanvasBtn');
   if (button) {
@@ -715,6 +718,7 @@ function setPalettePanelMode(mode) {
 
   if (readOnly) {
     isDrawing = false;
+    clearCanvasCellHighlight();
     renderStatisticsPanel();
     renderStatisticsHighlightOverlay();
     if (statisticsHighlightColor) {
@@ -858,6 +862,7 @@ function onKeyDown(e) {
     e.preventDefault();
     if (!temporaryPanKeyHeld) {
       temporaryPanKeyHeld = true;
+      clearCanvasCellHighlight();
       canvasContainer.classList.add('temporary-pan-active');
     }
     return;
@@ -1090,6 +1095,7 @@ function installTourgridTestApi() {
         canvasGuidesVisible: canvasGuidesVisible,
         eyedropperActive: eyedropperActive,
         moveCanvasActive: moveCanvasActive,
+        hoveredCanvasCell: hoveredCanvasCell,
         conversionInProgress: conversionInProgress,
         historyOperationInProgress: historyOperationInProgress
       };
