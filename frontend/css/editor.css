@@ -193,6 +193,30 @@ body {
   color: #72F5F2;
 }
 
+.btn-fullscreen {
+  display: none;
+  background: #222;
+  color: #72F5F2;
+}
+.btn-fullscreen svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.btn-fullscreen .fullscreen-exit-icon {
+  display: none;
+}
+.btn-fullscreen.is-fullscreen .fullscreen-enter-icon {
+  display: none;
+}
+.btn-fullscreen.is-fullscreen .fullscreen-exit-icon {
+  display: block;
+}
+
 .warn-text {
   font-size: 13px;
   color: #666;
@@ -1992,31 +2016,29 @@ body {
     width: min(100%, calc(100dvh - 118px));
   }
 
-  /* 顶栏拆为身份行与操作行，避免按钮无序挤压 */
+  /* 窄屏顶栏始终保持单行；空间优先留给操作按钮 */
   .top-bar {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "leading identity"
-      "actions actions";
+    display: flex;
+    flex-wrap: nowrap;
     min-height: 0;
     padding: 6px 8px;
-    gap: 5px 8px;
+    gap: 6px;
   }
   .top-leading-actions {
-    grid-area: leading;
     gap: 6px;
   }
   .top-bar .work-identity {
-    grid-area: identity;
-    align-items: flex-start;
-    text-align: left;
+    display: none;
   }
   .top-bar .btn-group {
-    grid-area: actions;
-    width: 100%;
+    width: auto;
+    min-width: 0;
     justify-content: flex-end;
-    margin-left: 0;
+    margin-left: auto;
+    gap: 6px;
+  }
+  .top-bar .btn-fullscreen {
+    display: flex;
   }
   .top-bar .warn-text {
     display: none;

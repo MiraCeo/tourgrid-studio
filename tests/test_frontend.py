@@ -40,7 +40,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260728-16"
+    asset_version = "20260728-17"
 
     assert (
         f'<link rel="stylesheet" '
@@ -772,13 +772,31 @@ def test_top_bar_and_left_controls_have_stable_narrow_layout() -> None:
     assert "@media (max-width: 1180px)" in css
     assert "@media (max-width: 900px)" in css
     assert "@media (max-width: 680px)" in css
-    assert '"leading identity"' in css
-    assert '"actions actions"' in css
-    assert "grid-area: actions" in css
+    assert "flex-wrap: nowrap" in css
+    assert ".top-bar .work-identity {\n    display: none;" in css
+    assert ".top-bar .btn-fullscreen {\n    display: flex;" in css
     assert ".left-controls {" in css
     assert "overflow-x: hidden" in css
     assert "overscroll-behavior: contain" in css
     assert ".opacity-control[hidden]" in css
+
+
+def test_mobile_fullscreen_control_uses_browser_fullscreen_api() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="mobileFullscreenBtn"' in html
+    assert 'onclick="toggleFullscreen()"' in html
+    assert 'class="fullscreen-enter-icon"' in html
+    assert 'class="fullscreen-exit-icon"' in html
+    assert ".btn-fullscreen {" in css
+    assert "function toggleFullscreen()" in app
+    assert "root.requestFullscreen || root.webkitRequestFullscreen" in app
+    assert "{ navigationUI: 'hide' }" in app
+    assert "document.exitFullscreen || document.webkitExitFullscreen" in app
+    assert "document.addEventListener('fullscreenchange'" in app
+    assert "function syncFullscreenControl()" in app
 
 
 def test_author_project_modal_uses_local_avatar_and_safe_github_links() -> None:

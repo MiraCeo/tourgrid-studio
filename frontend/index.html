@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>明日方舟夏日嘉年华像素画编辑器</title>
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-16">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-17">
 </head>
 <body>
 
@@ -48,6 +48,17 @@
         <path d="M6 9.5v5l10 4V5.5z"></path>
         <path d="M8.5 15.5 10 20h3l-1.2-3.2"></path>
         <path d="M19 9v6"></path>
+      </svg>
+    </button>
+
+    <button class="icon-btn btn-fullscreen" id="mobileFullscreenBtn"
+            type="button" title="进入全屏" aria-label="进入全屏"
+            aria-pressed="false" onclick="toggleFullscreen()">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path class="fullscreen-enter-icon"
+              d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"></path>
+        <path class="fullscreen-exit-icon"
+              d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"></path>
       </svg>
     </button>
     </div>
@@ -522,16 +533,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260728-16"></script>
-<script src="/static/js/reference-storage.js?v=20260728-16"></script>
-<script src="/static/js/work-codec.js?v=20260728-16"></script>
-<script src="/static/js/natural-64-v1.js?v=20260728-16"></script>
-<script src="/static/js/state.js?v=20260728-16"></script>
-<script src="/static/js/editor.js?v=20260728-16"></script>
-<script src="/static/js/export.js?v=20260728-16"></script>
-<script src="/static/js/import.js?v=20260728-16"></script>
-<script src="/static/js/works.js?v=20260728-16"></script>
-<script src="/static/js/app.js?v=20260728-16"></script>
+<script src="/static/js/storage.js?v=20260728-17"></script>
+<script src="/static/js/reference-storage.js?v=20260728-17"></script>
+<script src="/static/js/work-codec.js?v=20260728-17"></script>
+<script src="/static/js/natural-64-v1.js?v=20260728-17"></script>
+<script src="/static/js/state.js?v=20260728-17"></script>
+<script src="/static/js/editor.js?v=20260728-17"></script>
+<script src="/static/js/export.js?v=20260728-17"></script>
+<script src="/static/js/import.js?v=20260728-17"></script>
+<script src="/static/js/works.js?v=20260728-17"></script>
+<script src="/static/js/app.js?v=20260728-17"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

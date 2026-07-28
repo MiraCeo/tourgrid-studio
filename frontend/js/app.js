@@ -869,6 +869,56 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
+function getFullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
+function syncFullscreenControl() {
+  var button = document.getElementById('mobileFullscreenBtn');
+  if (!button) return;
+  var active = Boolean(getFullscreenElement());
+  button.classList.toggle('is-fullscreen', active);
+  button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  button.setAttribute('aria-label', active ? '退出全屏' : '进入全屏');
+  button.title = active ? '退出全屏' : '进入全屏';
+}
+
+async function toggleFullscreen() {
+  try {
+    if (getFullscreenElement()) {
+      var exitFullscreen =
+        document.exitFullscreen || document.webkitExitFullscreen;
+      if (!exitFullscreen) throw new Error('fullscreen-exit-unsupported');
+      await exitFullscreen.call(document);
+    } else {
+      var root = document.documentElement;
+      var requestFullscreen =
+        root.requestFullscreen || root.webkitRequestFullscreen;
+      if (!requestFullscreen) {
+        showToast('当前浏览器不支持网页全屏，可尝试添加到主屏幕');
+        return;
+      }
+      if (root.requestFullscreen) {
+        try {
+          await requestFullscreen.call(root, { navigationUI: 'hide' });
+        } catch (error) {
+          if (!(error instanceof TypeError)) throw error;
+          await requestFullscreen.call(root);
+        }
+      } else {
+        await requestFullscreen.call(root);
+      }
+    }
+  } catch (error) {
+    showToast('无法切换全屏，请检查浏览器权限');
+  } finally {
+    syncFullscreenControl();
+  }
+}
+
+document.addEventListener('fullscreenchange', syncFullscreenControl);
+document.addEventListener('webkitfullscreenchange', syncFullscreenControl);
+
 // --- 启动 ---
 function installTourgridTestApi() {
   var params = new URLSearchParams(window.location.search);
