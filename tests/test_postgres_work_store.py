@@ -159,6 +159,10 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             assert hidden is not None
             assert hidden.moderation_status == "hidden"
             assert await store.get(code) is None
+            hidden_state = await store.get_moderation_state(code)
+            assert hidden_state is not None
+            assert hidden_state.status == "hidden"
+            assert hidden_state.reason == "integration review"
 
             restored = await store.restore_work(
                 code,
@@ -178,6 +182,10 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             assert purged is not None
             assert purged.moderation_status == "purged"
             assert purged.pixel_data is None
+            purged_state = await store.get_moderation_state(code)
+            assert purged_state is not None
+            assert purged_state.status == "purged"
+            assert purged_state.reason == "integration purge"
             with pytest.raises(WorkModerated):
                 await store.save(
                     schema_version=1,

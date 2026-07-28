@@ -74,6 +74,12 @@ class AdminWorkRecord:
 
 
 @dataclass(frozen=True)
+class WorkModerationState:
+    status: str
+    reason: str | None
+
+
+@dataclass(frozen=True)
 class ModerationEventRecord:
     event_id: int
     action: str
@@ -105,6 +111,11 @@ class WorkStore(Protocol):
     async def get_and_increment_views(self, code: str) -> WorkRecord | None: ...
 
     async def get(self, code: str) -> WorkRecord | None: ...
+
+    async def get_moderation_state(
+        self,
+        code: str,
+    ) -> WorkModerationState | None: ...
 
     async def delete_work(self, code: str, reason: str | None) -> bool: ...
 
@@ -192,6 +203,12 @@ class UnavailableWorkStore:
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
     async def get(self, _code: str) -> WorkRecord | None:
+        raise WorkStoreUnavailable("PostgreSQL storage is not configured")
+
+    async def get_moderation_state(
+        self,
+        _code: str,
+    ) -> WorkModerationState | None:
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
     async def delete_work(self, _code: str, _reason: str | None) -> bool:
@@ -309,6 +326,17 @@ class InMemoryWorkStore:
             if code in self._deleted_codes:
                 return None
             return self._by_code.get(code)
+
+    async def get_moderation_state(
+        self,
+        code: str,
+    ) -> WorkModerationState | None:
+        async with self._lock:
+            status = self._status_by_code.get(code)
+            if status is None:
+                return None
+            _moderated_at, reason, _purged_at = self._moderation_by_code[code]
+            return WorkModerationState(status=status, reason=reason)
 
     async def delete_work(self, code: str, reason: str | None) -> bool:
         result = await self.hide_work(
@@ -758,6 +786,35 @@ class PostgresWorkStore:
                 (code,),
             ).fetchone()
             return WorkRecord(*row) if row is not None else None
+
+    async def get_moderation_state(
+        self,
+        code: str,
+    ) -> WorkModerationState | None:
+        try:
+            return await asyncio.to_thread(
+                self._get_moderation_state_sync,
+                code,
+            )
+        except (PsycopgError, PoolTimeout) as error:
+            raise WorkStoreUnavailable(
+                "PostgreSQL moderation state read failed"
+            ) from error
+
+    def _get_moderation_state_sync(
+        self,
+        code: str,
+    ) -> WorkModerationState | None:
+        with self._pool.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT moderation_status, moderation_reason
+                FROM works
+                WHERE code = %s
+                """,
+                (code,),
+            ).fetchone()
+            return WorkModerationState(*row) if row is not None else None
 
     async def delete_work(self, code: str, reason: str | None) -> bool:
         try:

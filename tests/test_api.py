@@ -102,6 +102,20 @@ def test_shared_work_is_immutable_deduplicated_and_counted(
     assert opened_from_new_session.json()["viewCount"] == 2
 
 
+def test_missing_shared_work_returns_chinese_message(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/v1/works/123456789ABC")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "work_not_found",
+            "message": "该作品不存在。",
+        }
+    }
+
+
 def test_legacy_admin_delete_hides_and_tombstones_a_work() -> None:
     token = "a" * 32
     application = create_app(
@@ -202,6 +216,12 @@ def test_admin_can_list_preview_and_manage_every_work() -> None:
     assert detail.json()["authorName"] == "Mira"
     assert hidden.json()["moderationStatus"] == "hidden"
     assert public_while_hidden.status_code == 404
+    assert public_while_hidden.json() == {
+        "error": {
+            "code": "work_hidden",
+            "message": "该作品已被隐藏。处理原因：review。",
+        }
+    }
     assert restored.json()["moderationStatus"] == "active"
     assert public_after_restore.status_code == 200
 
@@ -233,6 +253,7 @@ def test_admin_purge_removes_content_and_keeps_tombstone() -> None:
                 "reason": "permanent removal",
             },
         )
+        public_after_purge = admin_client.get(f"/api/v1/works/{code}")
         restore = admin_client.post(
             f"/api/v1/admin/works/{code}/restore",
             headers=headers,
@@ -256,6 +277,13 @@ def test_admin_purge_removes_content_and_keeps_tombstone() -> None:
     assert "pixels" not in purged.json()
     assert "authorName" not in purged.json()
     assert "title" not in purged.json()
+    assert public_after_purge.status_code == 404
+    assert public_after_purge.json() == {
+        "error": {
+            "code": "work_deleted",
+            "message": "该作品已被删除。处理原因：permanent removal。",
+        }
+    }
     assert restore.status_code == 409
     assert republished.status_code == 403
     assert [item["code"] for item in purged_list.json()["works"]] == [code]

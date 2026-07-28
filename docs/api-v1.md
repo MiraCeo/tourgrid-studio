@@ -99,7 +99,9 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 
 可能错误：
 
-- `404 work_not_found`
+- `404 work_not_found`：分享码对应的作品不存在。
+- `404 work_hidden`：作品已隐藏，消息中包含公开的处理原因。
+- `404 work_deleted`：作品已永久删除，消息中包含公开的处理原因。
 - `422 request_validation_failed`
 - `503 work_storage_unavailable`
 
@@ -125,7 +127,7 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
   全部作品，可按 `active`、`hidden` 或 `purged` 筛选。
 - `GET /api/v1/admin/works/{code}`：读取单个作品的完整管理信息和可用画面。
 - `POST /api/v1/admin/works/{code}/hide`：隐藏作品。公共分享码立即返回404，
-  内容仍保留并可恢复，相同像素不能重新发布。
+  内容仍保留并可恢复，相同像素不能重新发布。处理原因会向分享码访问者公开。
 - `POST /api/v1/admin/works/{code}/restore`：恢复隐藏作品。永久清除的作品不能恢复。
 - `POST /api/v1/admin/works/{code}/purge`：永久清除像素、标题和作者。请求体必须
   同时包含处理原因和完全匹配的 `confirmationCode`。标准化内容哈希墓碑继续保留，
@@ -170,9 +172,10 @@ TOURGRID_SENTRY_TRACES_SAMPLE_RATE
 {
   "error": {
     "code": "work_not_found",
-    "message": "Shared work does not exist."
+    "message": "该作品不存在。"
   }
 }
 ```
 
-参数验证错误还会包含 `details` 数组。
+隐藏或删除作品会分别返回 `work_hidden` 或 `work_deleted`，并在 `message` 中附带
+管理员填写的处理原因。参数验证错误还会包含 `details` 数组。

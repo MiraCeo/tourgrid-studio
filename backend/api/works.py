@@ -77,6 +77,27 @@ def work_response(record: WorkRecord) -> WorkResponse:
     )
 
 
+async def unavailable_work_error(store: WorkStore, code: str) -> ApiError:
+    state = await store.get_moderation_state(code)
+    if state is None or state.status == "active":
+        return ApiError(404, "work_not_found", "该作品不存在。")
+
+    reason = state.reason or "未提供"
+    if state.status == "hidden":
+        return ApiError(
+            404,
+            "work_hidden",
+            f"该作品已被隐藏。处理原因：{reason}。",
+        )
+    if state.status == "purged":
+        return ApiError(
+            404,
+            "work_deleted",
+            f"该作品已被删除。处理原因：{reason}。",
+        )
+    return ApiError(404, "work_not_found", "该作品不存在。")
+
+
 def create_works_router() -> APIRouter:
     router = APIRouter(prefix="/api/v1/works", tags=["works"])
 
@@ -166,7 +187,7 @@ def create_works_router() -> APIRouter:
         try:
             record = await store.get(code)
             if record is None:
-                raise ApiError(404, "work_not_found", "Shared work does not exist.")
+                raise await unavailable_work_error(store, code)
 
             viewer_id = request.cookies.get(VIEWER_COOKIE, "")
             if not VIEWER_ID_PATTERN.fullmatch(viewer_id):
@@ -186,6 +207,8 @@ def create_works_router() -> APIRouter:
             )
             if should_count:
                 record = await store.get_and_increment_views(code)
+                if record is None:
+                    raise await unavailable_work_error(store, code)
         except WorkStoreUnavailable as error:
             raise ApiError(
                 503,
@@ -198,8 +221,6 @@ def create_works_router() -> APIRouter:
                 "shared_state_unavailable",
                 "Shared view tracking is temporarily unavailable.",
             ) from error
-        if record is None:
-            raise ApiError(404, "work_not_found", "Shared work does not exist.")
         return work_response(record)
 
     return router
