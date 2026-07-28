@@ -83,6 +83,41 @@ docker compose --env-file deploy/staging.env up --detach --build --wait
 由上游负载均衡器或CDN分配流量；没有流量治理设施时，采用“测试域名→正式域名”
 两阶段发布。
 
+## 更新现有单机部署
+
+以下流程适用于服务器已经从Git仓库运行本项目，并继续使用原Compose项目和生产
+环境文件的情况。`ENV_FILE` 必须指向服务器上现有的生产环境文件。
+
+```bash
+cd /path/to/tourgrid-studio
+ENV_FILE=/absolute/path/to/production.env
+
+mkdir -p ../tourgrid-backups
+docker compose --env-file "$ENV_FILE" exec -T db \
+  pg_dump -U tourgrid -d tourgrid -Fc \
+  > "../tourgrid-backups/tourgrid-$(date +%Y%m%d-%H%M%S).dump"
+
+git pull --ff-only
+docker compose --env-file "$ENV_FILE" config --quiet
+docker compose --env-file "$ENV_FILE" up --detach --build --wait
+```
+
+不需要先执行 `docker compose down`。`up --detach --build --wait` 会基于新源码重建
+并替换需要更新的应用容器，同时继续使用原有的 `postgres_data`、`caddy_data` 和
+`caddy_config` 命名卷。不得为常规更新添加 `--volumes`。
+
+更新后检查：
+
+```bash
+docker compose --env-file "$ENV_FILE" ps
+docker compose --env-file "$ENV_FILE" logs --tail=100 api web
+curl --fail --show-error https://your-domain.example/api/v1/health
+curl --fail --show-error https://your-domain.example/api/v1/ready
+```
+
+浏览器端还应实际验证首页、管理员页面、图片本地导入、作品保存与读取。前端静态
+资源使用版本查询参数；发布后若旧标签页仍显示旧界面，执行一次强制刷新即可。
+
 ## 回滚
 
 1. 将流量切回旧实例或停止候选实例。
