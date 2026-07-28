@@ -309,7 +309,7 @@ def test_move_canvas_tool_pans_without_editing_and_is_mutually_exclusive(
     expect(canvas).to_have_css("cursor", "crosshair")
 
 
-def test_canvas_cell_hover_highlight_is_limited_to_drawing_and_eyedropper(
+def test_canvas_cell_hover_preview_and_outline_follow_editor_mode(
     editor_page: Page,
 ) -> None:
     canvas = editor_page.locator("#pixelCanvas")
@@ -327,15 +327,15 @@ def test_canvas_cell_hover_highlight_is_limited_to_drawing_and_eyedropper(
     move_to_cell(3, 4)
     assert editor_state(editor_page)["hoveredCanvasCell"] == {"x": 3, "y": 4}
     assert hover_canvas.evaluate("element => element.toDataURL()") != baseline
-    center_alpha = hover_canvas.evaluate(
+    preview_pixel = hover_canvas.evaluate(
         """canvas => canvas.getContext('2d').getImageData(
           Math.floor((3.5 / 24) * canvas.width),
           Math.floor((4.5 / 24) * canvas.height),
           1,
           1
-        ).data[3]"""
+        ).data"""
     )
-    assert center_alpha == 0
+    assert preview_pixel == [34, 34, 34, 255]
 
     editor_page.locator("#eyedropperBtn").click()
     move_to_cell(5, 6)
@@ -343,6 +343,15 @@ def test_canvas_cell_hover_highlight_is_limited_to_drawing_and_eyedropper(
     assert state["eyedropperActive"] is True
     assert state["hoveredCanvasCell"] == {"x": 5, "y": 6}
     assert hover_canvas.evaluate("element => element.toDataURL()") != baseline
+    eyedropper_center_alpha = hover_canvas.evaluate(
+        """canvas => canvas.getContext('2d').getImageData(
+          Math.floor((5.5 / 24) * canvas.width),
+          Math.floor((6.5 / 24) * canvas.height),
+          1,
+          1
+        ).data[3]"""
+    )
+    assert eyedropper_center_alpha == 0
 
     editor_page.locator("#moveCanvasBtn").click()
     move_to_cell(7, 8)
@@ -350,6 +359,22 @@ def test_canvas_cell_hover_highlight_is_limited_to_drawing_and_eyedropper(
     assert state["moveCanvasActive"] is True
     assert state["hoveredCanvasCell"] is None
     assert hover_canvas.evaluate("element => element.toDataURL()") == baseline
+
+    editor_page.keyboard.press("Escape")
+    editor_page.locator("#statisticsTab").click()
+    move_to_cell(9, 10)
+    state = editor_state(editor_page)
+    assert state["hoveredCanvasCell"] == {"x": 9, "y": 10}
+    assert hover_canvas.evaluate("element => element.toDataURL()") != baseline
+    replication_center_alpha = hover_canvas.evaluate(
+        """canvas => canvas.getContext('2d').getImageData(
+          Math.floor((9.5 / 24) * canvas.width),
+          Math.floor((10.5 / 24) * canvas.height),
+          1,
+          1
+        ).data[3]"""
+    )
+    assert replication_center_alpha == 0
 
 
 def test_continuous_stroke_is_one_undo_step_and_can_be_redone(

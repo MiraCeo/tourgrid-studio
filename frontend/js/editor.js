@@ -137,8 +137,7 @@ function drawCanvasCenterAxes(ctx, width, height) {
 }
 
 function canShowCanvasCellHighlight() {
-  return !isStatisticsMode() &&
-    !moveCanvasActive &&
+  return !moveCanvasActive &&
     !temporaryPanKeyHeld &&
     !isPanning;
 }
@@ -156,13 +155,20 @@ function renderCanvasCellHighlight() {
   var width = Math.max(1, right - left);
   var height = Math.max(1, bottom - top);
   var lineWidth = Math.max(1, Math.min(3, Math.min(width, height) * 0.12));
-  var color = String(pixelData[y][x] || '#FFFFFF');
+  var previewColor = !isStatisticsMode() && !eyedropperActive && currentColor
+    ? String(currentColor).toUpperCase()
+    : null;
+  var color = previewColor || String(pixelData[y][x] || '#FFFFFF');
   var red = parseInt(color.slice(1, 3), 16);
   var green = parseInt(color.slice(3, 5), 16);
   var blue = parseInt(color.slice(5, 7), 16);
   var luminance = red * 0.299 + green * 0.587 + blue * 0.114;
 
   hoverCtx.save();
+  if (previewColor) {
+    hoverCtx.fillStyle = previewColor;
+    hoverCtx.fillRect(left, top, width, height);
+  }
   hoverCtx.strokeStyle = luminance > 150 ? '#18181C' : '#FFFFFF';
   hoverCtx.lineWidth = lineWidth;
   hoverCtx.strokeRect(
