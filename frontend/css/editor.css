@@ -1749,6 +1749,40 @@ body {
   text-align: center;
   font-size: 10px;
 }
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.shortcut-grid > div {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #45454b;
+  border-radius: 7px;
+  background: #29292d;
+  color: #b8b8bd;
+  font-size: 10px;
+}
+.shortcut-grid kbd {
+  justify-self: start;
+  padding: 3px 6px;
+  border: 1px solid #626269;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #1c1c20;
+  color: #72f5f2;
+  font: 600 10px/1.3 'Consolas', monospace;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .shortcut-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .crop-overlay {
   position: fixed;

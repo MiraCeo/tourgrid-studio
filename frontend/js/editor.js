@@ -220,7 +220,9 @@ function syncCanvasGuidesButton() {
     'aria-label',
     canvasGuidesVisible ? '隐藏画布辅助线' : '显示画布辅助线'
   );
-  button.title = canvasGuidesVisible ? '隐藏辅助线' : '显示辅助线';
+  button.title = canvasGuidesVisible
+    ? '隐藏辅助线（G）'
+    : '显示辅助线（G）';
 }
 
 function toggleCanvasGuides() {
@@ -297,7 +299,7 @@ function onMouseDown(e) {
   if (historyOperationInProgress) return;
   if (e.button !== 0) return; // 閸欘亜鎼锋惔鏂夸箯闁?
   // 缁岀儤鐗?瀹革箓鏁?閳?閹锋牗瀚块獮宕囆?
-  if (spaceHeld || moveCanvasActive) {
+  if (temporaryPanKeyHeld || moveCanvasActive) {
     isPanning = true;
     panStartX = e.clientX;
     panStartY = e.clientY;
@@ -342,7 +344,7 @@ function onMouseMove(e) {
 
 function onMouseUp(e) {
   // 缂佹挻娼粚鐑樼壐閹锋牗瀚?
-  if (isPanning && (spaceHeld || moveCanvasActive)) {
+  if (isPanning && (temporaryPanKeyHeld || moveCanvasActive)) {
     isPanning = false;
     canvasContainer.classList.remove('panning');
     mainCanvas.style.cursor = 'grab';
@@ -408,7 +410,7 @@ function onPanStart(e) {
 function onPanMove(e) {
   if (!isPanning) return;
   // 缁岀儤鐗?瀹革箓鏁幏鏍ㄥ
-  if ((spaceHeld || moveCanvasActive) && e.buttons === 1) {
+  if ((temporaryPanKeyHeld || moveCanvasActive) && e.buttons === 1) {
     canvasContainer.scrollLeft = panScrollStartX - (e.clientX - panStartX);
     canvasContainer.scrollTop  = panScrollStartY - (e.clientY - panStartY);
     return;
@@ -424,14 +426,14 @@ function onPanEnd(e) {
   if (!isPanning) return;
   if (
     e.button === 1 ||
-    ((spaceHeld || moveCanvasActive) && e.button === 0)
+    ((temporaryPanKeyHeld || moveCanvasActive) && e.button === 0)
   ) {
     isPanning = false;
     canvasContainer.classList.remove('panning');
     canvasContainer.style.cursor =
-      (spaceHeld || moveCanvasActive) ? 'grab' : '';
+      (temporaryPanKeyHeld || moveCanvasActive) ? 'grab' : '';
     mainCanvas.style.cursor =
-      (spaceHeld || moveCanvasActive) ? 'grab' : 'crosshair';
+      (temporaryPanKeyHeld || moveCanvasActive) ? 'grab' : 'crosshair';
   }
 }
 

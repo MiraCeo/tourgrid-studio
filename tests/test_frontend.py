@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260728-20"
+    asset_version = "20260728-21"
 
     assert (
         f'<link rel="stylesheet" '
@@ -145,8 +145,8 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
 
     assert 'class="editorial-area-label">Editorial Area</div>' in html
     assert html.count('class="tool-icon-btn"') == 5
-    assert 'title="撤销"' in html
-    assert 'title="重做"' in html
+    assert 'title="撤销（Ctrl/Cmd + Z）"' in html
+    assert 'title="重做（Ctrl/Cmd + Y 或 Ctrl/Cmd + Shift + Z）"' in html
     assert 'id="eyedropperBtn"' in html
     assert 'id="moveCanvasBtn"' in html
     assert 'aria-label="吸管取色"' in html
@@ -557,11 +557,11 @@ def test_manual_checkpoint_is_distinct_from_autosave_and_precedes_import() -> No
     assert "function loadManualCheckpoint()" in state
     assert "async function restoreManualCheckpoint()" in editor
     assert "var checkpoint = loadManualCheckpoint()" in editor
-    assert "manualSave();" in app
-    assert "exportRawPixelImage();" not in app[
-        app.index("} else if (e.ctrlKey && e.key === 's')") :
-        app.index("// --- Toast ---")
-    ]
+    assert "!hasShortcutModifier(e) && key === 's'" in app
+    assert "e.ctrlKey && e.key === 's'" not in app
+    assert "function isShortcutInput(target)" in app
+    assert "input, textarea, select, button, a[href]" in app
+    assert "e.metaKey" in app
     assert html.index('id="manualCheckpointRestoreBtn"') < html.index(
         'id="manualCheckpointSaveBtn"'
     )
@@ -754,7 +754,7 @@ def test_left_navigator_groups_reference_and_zoom_controls() -> None:
     assert 'id="overlayOpacity" min="0" max="100" value="40"' in html
     assert "on('zoomResetBtn', 'click', fitCanvasToViewport)" in app
     assert 'class="zoom-reset-btn"' in html
-    assert 'aria-label="适应画布" title="适应画布"' in html
+    assert 'aria-label="适应画布" title="适应画布（0）"' in html
     assert 'class="zoom-reset-icon"' in html
     assert 'class="zoom-heading-icon"' in html
     assert '<span class="left-control-heading">缩放</span>' not in html
@@ -878,7 +878,10 @@ def test_announcement_is_opened_on_entry_and_includes_project_policies() -> None
     assert "申请删除作品" in html
     assert "访问 IP" in html
     assert "更新日志" not in html
-    assert html.count('class="announcement-section"') == 4
+    assert html.count('class="announcement-section"') == 5
+    assert "<h3>快捷键帮助</h3>" in html
+    assert '<kbd>按住 H</kbd>' in html
+    assert "输入框、下拉框、文本区域、按钮、链接或可编辑内容聚焦时" in html
     assert ".btn-announcement {" in css
     assert ".announcement-modal {" in css
     assert ".announcement-steps {" in css

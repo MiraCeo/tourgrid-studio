@@ -44,16 +44,64 @@ def test_initial_editor_is_blank_and_uses_the_fixed_palette(
     assert editor_page.locator("#overlayControls").is_hidden()
 
 
+def test_keyboard_shortcuts_are_scoped_away_from_form_controls(
+    editor_page: Page,
+) -> None:
+    select_color(editor_page, BLACK)
+    paint_cells(editor_page, [(1, 1)])
+    before_input = editor_state(editor_page)
+
+    editor_page.locator(".btn-primary").click()
+    editor_page.get_by_role("button", name="保存并分享作品").click()
+    title_input = editor_page.locator("#workTitleInput")
+    title_input.fill("")
+    title_input.type("BE")
+    editor_page.keyboard.press("Control+z")
+
+    protected = editor_state(editor_page)
+    assert protected["currentColor"] == BLACK
+    assert protected["undoDepth"] == before_input["undoDepth"]
+    assert pixel_signature(protected) == pixel_signature(before_input)
+
+    editor_page.keyboard.press("Escape")
+    expect(editor_page.locator("#workShareModal")).to_be_hidden()
+
+    editor_page.keyboard.press("e")
+    assert editor_state(editor_page)["currentColor"] == WHITE
+
+    editor_page.keyboard.press("s")
+    assert editor_state(editor_page)["manualCheckpointExists"] is True
+
+    guides_before = editor_state(editor_page)["canvasGuidesVisible"]
+    editor_page.keyboard.press("g")
+    assert editor_state(editor_page)["canvasGuidesVisible"] is not guides_before
+
+    editor_page.keyboard.press("i")
+    assert editor_state(editor_page)["eyedropperActive"] is True
+    editor_page.keyboard.press("m")
+    state = editor_state(editor_page)
+    assert state["eyedropperActive"] is False
+    assert state["moveCanvasActive"] is True
+    editor_page.keyboard.press("Escape")
+    assert editor_state(editor_page)["moveCanvasActive"] is False
+
+    canvas = editor_page.locator("#pixelCanvas")
+    editor_page.keyboard.down("h")
+    expect(canvas).to_have_css("cursor", "grab")
+    editor_page.keyboard.up("h")
+    expect(canvas).to_have_css("cursor", "crosshair")
+
+
 def test_canvas_guides_toggle_hides_visual_aids_and_persists(
     editor_page: Page,
 ) -> None:
     guides_button = editor_page.locator("#canvasGuidesBtn")
     assert editor_state(editor_page)["canvasGuidesVisible"] is True
-    expect(guides_button).to_have_attribute("title", "隐藏辅助线")
+    expect(guides_button).to_have_attribute("title", "隐藏辅助线（G）")
 
     guides_button.click()
     assert editor_state(editor_page)["canvasGuidesVisible"] is False
-    expect(guides_button).to_have_attribute("title", "显示辅助线")
+    expect(guides_button).to_have_attribute("title", "显示辅助线（G）")
     assert "active" in (guides_button.get_attribute("class") or "").split()
 
     select_color(editor_page, BLACK)

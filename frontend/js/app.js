@@ -46,6 +46,8 @@ function fitCanvasToViewport() {
 // --- 绘制工具 ---
 function setTool(tool) {
   currentTool = 'brush';
+  if (typeof setEyedropperActive === 'function') setEyedropperActive(false);
+  if (typeof setMoveCanvasActive === 'function') setMoveCanvasActive(false);
   if (tool === 'eraser') {
     selectColor('#FFFFFF');
   }
@@ -205,7 +207,9 @@ function setMoveCanvasActive(active) {
   if (button) {
     button.classList.toggle('active', moveCanvasActive);
     button.setAttribute('aria-pressed', String(moveCanvasActive));
-    button.title = moveCanvasActive ? '退出移动画布' : '移动画布';
+    button.title = moveCanvasActive
+      ? '退出移动画布模式（M）'
+      : '切换移动画布模式（M）';
   }
   if (canvasContainer) {
     canvasContainer.classList.toggle(
@@ -800,6 +804,20 @@ function closeAuthorModalFromBackdrop(e) {
   if (e.target === e.currentTarget) closeAuthorModal();
 }
 
+function isShortcutInput(target) {
+  return Boolean(
+    target &&
+    typeof target.closest === 'function' &&
+    target.closest(
+      'input, textarea, select, button, a[href], [contenteditable="true"]'
+    )
+  );
+}
+
+function hasShortcutModifier(e) {
+  return e.ctrlKey || e.metaKey || e.altKey;
+}
+
 function onKeyDown(e) {
   if (e.key === 'Escape') {
     var workShareModal = document.getElementById('workShareModal');
@@ -833,36 +851,57 @@ function onKeyDown(e) {
       return;
     }
   }
-  // 缁岀儤鐗搁幐澶夌瑓閿涘牅绗夐崷銊ㄧ翻閸忋儲顢嬮崘鍜冪礆閳?閸氼垳鏁ら幏鏍ㄥ楠炲磭些
-  if (e.code === 'Space' && !e.target.closest('input,textarea,button')) {
+
+  if (isShortcutInput(e.target)) return;
+
+  if (e.code === 'KeyH' && !hasShortcutModifier(e)) {
     e.preventDefault();
-    if (!spaceHeld) {
-      spaceHeld = true;
+    if (!temporaryPanKeyHeld) {
+      temporaryPanKeyHeld = true;
       mainCanvas.style.cursor = 'grab';
       canvasContainer.style.cursor = 'grab';
     }
     return;
   }
-  if (e.ctrlKey && e.key === 'z') {
+
+  var primaryModifier = e.ctrlKey || e.metaKey;
+  var key = String(e.key || '').toLowerCase();
+  if (primaryModifier && !e.altKey && key === 'z') {
     e.preventDefault();
     if (e.shiftKey) redo();
     else undo();
-  } else if (e.ctrlKey && e.key === 'y') {
+  } else if (primaryModifier && !e.altKey && key === 'y') {
     e.preventDefault();
     redo();
-  } else if (!isStatisticsMode() && (e.key === 'b' || e.key === 'B')) {
-    setTool('brush');
-  } else if (!isStatisticsMode() && (e.key === 'e' || e.key === 'E')) {
-    setTool('eraser');
-  } else if (e.ctrlKey && e.key === 's') {
+  } else if (!hasShortcutModifier(e) && key === 's') {
     e.preventDefault();
     manualSave();
+  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'b') {
+    e.preventDefault();
+    setTool('brush');
+    showToast('已切换到画笔');
+  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'e') {
+    e.preventDefault();
+    setTool('eraser');
+    showToast('已切换到白色橡皮');
+  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'i') {
+    e.preventDefault();
+    toggleEyedropper();
+  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'm') {
+    e.preventDefault();
+    toggleMoveCanvas();
+  } else if (!hasShortcutModifier(e) && key === 'g') {
+    e.preventDefault();
+    toggleCanvasGuides();
+  } else if (!hasShortcutModifier(e) && key === '0') {
+    e.preventDefault();
+    fitCanvasToViewport();
   }
 }
 
 function onKeyUp(e) {
-  if (e.code === 'Space') {
-    spaceHeld = false;
+  if (e.code === 'KeyH') {
+    temporaryPanKeyHeld = false;
     if (!isPanning) {
       mainCanvas.style.cursor = moveCanvasActive ? 'grab' : 'crosshair';
       canvasContainer.style.cursor = moveCanvasActive ? 'grab' : '';
@@ -1052,6 +1091,7 @@ function installTourgridTestApi() {
         overlayVisible: overlayVisible,
         overlayOpacity: overlayOpacity,
         canvasGuidesVisible: canvasGuidesVisible,
+        eyedropperActive: eyedropperActive,
         moveCanvasActive: moveCanvasActive,
         conversionInProgress: conversionInProgress,
         historyOperationInProgress: historyOperationInProgress

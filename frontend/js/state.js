@@ -289,7 +289,7 @@ function clearStorage() {
 
 // --- 閹锋牗瀚块獮宕囆╅悩鑸碘偓?---
 let isPanning = false;
-let spaceHeld = false;
+let temporaryPanKeyHeld = false;
 let panStartX = 0, panStartY = 0;
 let panScrollStartX = 0, panScrollStartY = 0;
 
