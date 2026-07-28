@@ -1244,11 +1244,13 @@ body {
   cursor: crosshair;
 }
 .canvas-container.move-canvas-active #pixelCanvas,
-.canvas-container.statistics-readonly.move-canvas-active #pixelCanvas {
+.canvas-container.statistics-readonly.move-canvas-active #pixelCanvas,
+.canvas-container.temporary-pan-active #pixelCanvas,
+.canvas-container.statistics-readonly.temporary-pan-active #pixelCanvas {
   cursor: grab;
 }
-.canvas-container.move-canvas-active.panning #pixelCanvas,
-.canvas-container.statistics-readonly.move-canvas-active.panning #pixelCanvas {
+.canvas-container.panning #pixelCanvas,
+.canvas-container.statistics-readonly.panning #pixelCanvas {
   cursor: grabbing;
 }
 

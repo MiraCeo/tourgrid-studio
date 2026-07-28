@@ -305,7 +305,6 @@ function onMouseDown(e) {
     panStartY = e.clientY;
     panScrollStartX = canvasContainer.scrollLeft;
     panScrollStartY = canvasContainer.scrollTop;
-    mainCanvas.style.cursor = 'grabbing';
     canvasContainer.classList.add('panning');
     e.preventDefault();
     return;
@@ -347,7 +346,6 @@ function onMouseUp(e) {
   if (isPanning && (temporaryPanKeyHeld || moveCanvasActive)) {
     isPanning = false;
     canvasContainer.classList.remove('panning');
-    mainCanvas.style.cursor = 'grab';
     return;
   }
   if (isDrawing) {
@@ -403,7 +401,7 @@ function onPanStart(e) {
     panStartY = e.clientY;
     panScrollStartX = canvasContainer.scrollLeft;
     panScrollStartY = canvasContainer.scrollTop;
-    canvasContainer.style.cursor = 'grabbing';
+    canvasContainer.classList.add('panning');
   }
 }
 
@@ -430,10 +428,6 @@ function onPanEnd(e) {
   ) {
     isPanning = false;
     canvasContainer.classList.remove('panning');
-    canvasContainer.style.cursor =
-      (temporaryPanKeyHeld || moveCanvasActive) ? 'grab' : '';
-    mainCanvas.style.cursor =
-      (temporaryPanKeyHeld || moveCanvasActive) ? 'grab' : 'crosshair';
   }
 }
 
@@ -566,7 +560,6 @@ function onTouchEnd(e) {
   if (isPanning) {
     isPanning = false;
     canvasContainer.classList.remove('panning');
-    mainCanvas.style.cursor = moveCanvasActive ? 'grab' : 'crosshair';
   }
 }
 

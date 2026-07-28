@@ -291,14 +291,22 @@ def test_move_canvas_tool_pans_without_editing_and_is_mutually_exclusive(
     assert pixel_signature(moved) == initial_pixels
     assert moved["undoDepth"] == initial_undo_depth
 
+    canvas = editor_page.locator("#pixelCanvas")
+    expect(canvas).to_have_css("cursor", "grab")
     editor_page.locator("#eyedropperBtn").click()
     exclusive = editor_state(editor_page)
     assert exclusive["moveCanvasActive"] is False
+    assert exclusive["eyedropperActive"] is True
+    expect(canvas).to_have_css("cursor", "crosshair")
     editor_page.keyboard.press("Escape")
 
     move_button.click()
+    expect(canvas).to_have_css("cursor", "grab")
     editor_page.keyboard.press("Escape")
     assert editor_state(editor_page)["moveCanvasActive"] is False
+    editor_page.locator("#eyedropperBtn").click()
+    assert editor_state(editor_page)["eyedropperActive"] is True
+    expect(canvas).to_have_css("cursor", "crosshair")
 
 
 def test_continuous_stroke_is_one_undo_step_and_can_be_redone(

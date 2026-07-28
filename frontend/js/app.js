@@ -858,8 +858,7 @@ function onKeyDown(e) {
     e.preventDefault();
     if (!temporaryPanKeyHeld) {
       temporaryPanKeyHeld = true;
-      mainCanvas.style.cursor = 'grab';
-      canvasContainer.style.cursor = 'grab';
+      canvasContainer.classList.add('temporary-pan-active');
     }
     return;
   }
@@ -900,12 +899,10 @@ function onKeyDown(e) {
 }
 
 function onKeyUp(e) {
-  if (e.code === 'KeyH') {
+  if (e.code === 'KeyH' && temporaryPanKeyHeld) {
     temporaryPanKeyHeld = false;
-    if (!isPanning) {
-      mainCanvas.style.cursor = moveCanvasActive ? 'grab' : 'crosshair';
-      canvasContainer.style.cursor = moveCanvasActive ? 'grab' : '';
-    }
+    isPanning = false;
+    canvasContainer.classList.remove('temporary-pan-active', 'panning');
   }
 }
 
