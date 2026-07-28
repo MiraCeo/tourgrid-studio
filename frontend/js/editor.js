@@ -61,6 +61,7 @@ function init() {
   // keydown
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', finishReplicationMarking);
 
   // 濠婃俺鐤嗙紓鈺傛杹閿涘牏鏁剧敮鍐啇閸ｎ煉绱?
   canvasContainer.addEventListener('wheel', onWheel, { passive: false });
@@ -415,9 +416,6 @@ function onMouseMove(e) {
     ? setHoveredCanvasCell(pos)
     : setHoveredCanvasCell(null);
   if (isStatisticsMode()) {
-    if (isReplicationMarking && (e.buttons & 1) === 1) {
-      markReplicationCellCompleted(pos.x, pos.y);
-    }
     if (hoverChanged) renderCanvasCellHighlight();
     return;
   }
@@ -431,16 +429,23 @@ function onMouseMove(e) {
 }
 
 function onCanvasMouseLeave(e) {
+  if (isReplicationMarking) {
+    clearCanvasCellHighlight();
+    return;
+  }
   onMouseUp(e);
   clearCanvasCellHighlight();
 }
 
+function finishReplicationMarking() {
+  if (!isReplicationMarking) return false;
+  isReplicationMarking = false;
+  commitReplicationCellMarking();
+  return true;
+}
+
 function onMouseUp(e) {
-  if (isReplicationMarking) {
-    isReplicationMarking = false;
-    commitReplicationCellMarking();
-    return;
-  }
+  if (finishReplicationMarking()) return;
   // 缂佹挻娼粚鐑樼壐閹锋牗瀚?
   if (isPanning && (temporaryPanKeyHeld || moveCanvasActive)) {
     isPanning = false;
@@ -507,6 +512,13 @@ function onPanStart(e) {
 }
 
 function onPanMove(e) {
+  if (isReplicationMarking) {
+    if ((e.buttons & 1) === 1) {
+      const replicationPos = getGridPos(e);
+      markReplicationCellCompleted(replicationPos.x, replicationPos.y);
+    }
+    return;
+  }
   if (!isPanning) return;
   // 缁岀儤鐗?瀹革箓鏁幏鏍ㄥ
   if ((temporaryPanKeyHeld || moveCanvasActive) && e.buttons === 1) {
@@ -522,6 +534,7 @@ function onPanMove(e) {
 }
 
 function onPanEnd(e) {
+  if (e.button === 0 && finishReplicationMarking()) return;
   if (!isPanning) return;
   if (
     e.button === 1 ||
@@ -659,10 +672,7 @@ function onTouchMove(e) {
 }
 
 function onTouchEnd(e) {
-  if (isReplicationMarking) {
-    isReplicationMarking = false;
-    commitReplicationCellMarking();
-  }
+  finishReplicationMarking();
   if (isDrawing) {
     isDrawing = false;
     lastPaintedX = -1;
