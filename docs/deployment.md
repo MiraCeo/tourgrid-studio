@@ -43,6 +43,29 @@ docker compose --env-file deploy/local.env down
 
 生产环境不要在未备份PostgreSQL和Caddy数据时使用 `down --volumes`。
 
+## Docker构建依赖源
+
+API镜像默认从 `https://pypi.org/simple` 下载经过哈希锁定的Python依赖。
+网络不稳定时，只需修改部署环境文件，不需要改动
+`docker/api.Dockerfile`：
+
+```dotenv
+TOURGRID_PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+TOURGRID_PIP_TIMEOUT=120
+TOURGRID_PIP_RETRIES=10
+```
+
+索引地址也可以换成其他能够完整同步PyPI文件及元数据的可信镜像。更换索引不会
+关闭 `requirements-prod.lock` 的哈希校验；如果镜像缺少锁文件指定的发行文件，
+构建会明确失败，不应通过移除 `--require-hashes` 绕过。
+
+修改环境文件后重新构建API：
+
+```bash
+docker compose --env-file "$ENV_FILE" build --no-cache --progress=plain api
+docker compose --env-file "$ENV_FILE" up --detach --build --wait
+```
+
 ## 测试环境
 
 1. 将 `deploy/staging.env.example` 复制为不提交的 `deploy/staging.env`。

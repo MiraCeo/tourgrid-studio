@@ -2,12 +2,22 @@
 
 FROM python:3.12-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b AS builder
 
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG PIP_DEFAULT_TIMEOUT=120
+ARG PIP_RETRIES=10
+
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /build
 COPY requirements-prod.lock ./
-RUN python -m pip install --require-hashes --prefix=/install --requirement requirements-prod.lock
+RUN python -m pip install \
+    --require-hashes \
+    --prefix=/install \
+    --index-url "${PIP_INDEX_URL}" \
+    --timeout "${PIP_DEFAULT_TIMEOUT}" \
+    --retries "${PIP_RETRIES}" \
+    --requirement requirements-prod.lock
 
 
 FROM python:3.12-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b AS runtime

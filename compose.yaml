@@ -43,6 +43,10 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
+      args:
+        PIP_INDEX_URL: ${TOURGRID_PIP_INDEX_URL:-https://pypi.org/simple}
+        PIP_DEFAULT_TIMEOUT: ${TOURGRID_PIP_TIMEOUT:-120}
+        PIP_RETRIES: ${TOURGRID_PIP_RETRIES:-10}
     restart: unless-stopped
     init: true
     depends_on:

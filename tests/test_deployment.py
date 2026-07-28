@@ -160,6 +160,37 @@ def test_production_image_is_non_root_and_has_healthcheck() -> None:
     assert "/api/v1/ready" in dockerfile
 
 
+def test_api_dependency_index_is_configurable_without_weakening_hash_checks() -> None:
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    dockerfile = (ROOT / "docker/api.Dockerfile").read_text(encoding="utf-8")
+    environments = [
+        (ROOT / path).read_text(encoding="utf-8")
+        for path in (
+            "deploy/.env.example",
+            "deploy/staging.env.example",
+            "deploy/production.env.example",
+        )
+    ]
+
+    assert (
+        "PIP_INDEX_URL: "
+        "${TOURGRID_PIP_INDEX_URL:-https://pypi.org/simple}"
+    ) in compose
+    assert "PIP_DEFAULT_TIMEOUT: ${TOURGRID_PIP_TIMEOUT:-120}" in compose
+    assert "PIP_RETRIES: ${TOURGRID_PIP_RETRIES:-10}" in compose
+    assert "ARG PIP_INDEX_URL=https://pypi.org/simple" in dockerfile
+    assert '--index-url "${PIP_INDEX_URL}"' in dockerfile
+    assert '--timeout "${PIP_DEFAULT_TIMEOUT}"' in dockerfile
+    assert '--retries "${PIP_RETRIES}"' in dockerfile
+    assert "--require-hashes" in dockerfile
+    assert all(
+        "TOURGRID_PIP_INDEX_URL=https://pypi.org/simple" in environment
+        and "TOURGRID_PIP_TIMEOUT=120" in environment
+        and "TOURGRID_PIP_RETRIES=10" in environment
+        for environment in environments
+    )
+
+
 def test_all_containers_rotate_logs_and_web_has_a_healthcheck() -> None:
     compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
 
