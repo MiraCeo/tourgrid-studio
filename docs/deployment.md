@@ -116,10 +116,14 @@ FastAPI、Caddy、Redis、管理员接口或浏览器。该测试数据库由CI�
 - Caddy默认限制请求体为128KB，远大于单个作品JSON但不允许大文件上传。
 - API以非root用户运行，根文件系统只读，`/tmp` tmpfs限制为32MB。
 - Caddy添加安全响应头，前端和API保持同源。
-- 当前前端仍有内联事件处理器，因此CSP暂时允许 `script-src 'unsafe-inline'`。
+- 页面事件全部由外部脚本绑定，CSP使用 `script-src 'self'` 和
+  `script-src-attr 'none'`，不允许内联脚本或内联事件处理器。
 - `TOURGRID_DB_PASSWORD` 必须使用独立强密码。
 - `TOURGRID_ADMIN_TOKEN` 必须使用另一个至少32字符的随机值，禁止复用数据库
   密码。它只作为管理员Bearer令牌，不参与数据库连接。
+- `TOURGRID_ADMIN_AUTH_FAILURE_LIMIT` 和
+  `TOURGRID_ADMIN_AUTH_FAILURE_WINDOW_SECONDS` 控制按客户端IP共享的管理员认证
+  失败限流；默认是15分钟内5次，成功认证会清除该IP的失败记录。
 - 管理员接口包括作品隐藏、恢复、永久清除以及临时/永久客户端封禁；具体请求见
   [API v1](api-v1.md)。
 - 管理员页面位于 `/admin/`，支持分页查看全部作品及实际画面。隐藏操作可以恢复；
@@ -127,6 +131,10 @@ FastAPI、Caddy、Redis、管理员接口或浏览器。该测试数据库由CI�
 - `/admin/` 使用不含内联脚本的独立CSP，并设置 `Cache-Control: no-store` 和
   `X-Robots-Tag: noindex, nofollow`。
 - 定期使用 `pg_dump` 备份作品表，并在独立环境验证恢复。
+- Python锁文件包含下载哈希，容器构建使用 `--require-hashes`；基础镜像和
+  GitHub Actions锁定到不可变摘要/SHA。Dependabot每周检查Python、Docker和
+  Actions更新。CI中的Python依赖审计与容器漏洞扫描当前为报告模式，不阻断发布，
+  应先处理报告并在规则稳定后再改为强制失败。
 
 ## 色板兼容规则
 

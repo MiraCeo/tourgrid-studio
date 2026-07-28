@@ -40,6 +40,24 @@ class SharedState(Protocol):
         window_seconds: float,
     ) -> RateLimitResult: ...
 
+    async def check_admin_auth_failures(
+        self,
+        client_ip: str,
+        *,
+        limit: int,
+        window_seconds: float,
+    ) -> RateLimitResult: ...
+
+    async def record_admin_auth_failure(
+        self,
+        client_ip: str,
+        *,
+        limit: int,
+        window_seconds: float,
+    ) -> RateLimitResult: ...
+
+    async def clear_admin_auth_failures(self, client_ip: str) -> None: ...
+
     async def claim_view(
         self,
         code: str,
@@ -60,6 +78,9 @@ class InMemorySharedState:
     def __init__(self, max_clients: int = 10_000) -> None:
         self.max_clients = max_clients
         self._requests: OrderedDict[str, deque[float]] = OrderedDict()
+        self._admin_auth_failures: OrderedDict[str, deque[float]] = (
+            OrderedDict()
+        )
         self._views: dict[str, float] = {}
         self._bans: dict[str, float] = {}
         self._lock = asyncio.Lock()
@@ -107,6 +128,80 @@ class InMemorySharedState:
             entries.append(current)
             return RateLimitResult(True, max(0, limit - len(entries)), 0)
 
+    async def check_admin_auth_failures(
+        self,
+        client_ip: str,
+        *,
+        limit: int,
+        window_seconds: float,
+    ) -> RateLimitResult:
+        current = time.monotonic()
+        cutoff = current - window_seconds
+        async with self._lock:
+            entries = self._admin_auth_failures.get(client_ip)
+            if entries is not None:
+                while entries and entries[0] <= cutoff:
+                    entries.popleft()
+                if not entries:
+                    del self._admin_auth_failures[client_ip]
+                    entries = None
+                else:
+                    self._admin_auth_failures.move_to_end(client_ip)
+            count = len(entries) if entries is not None else 0
+            retry_after = (
+                0
+                if count < limit
+                else max(
+                    1,
+                    int(entries[0] + window_seconds - current + 0.999),
+                )
+            )
+            return RateLimitResult(
+                count < limit,
+                max(0, limit - count),
+                retry_after,
+            )
+
+    async def record_admin_auth_failure(
+        self,
+        client_ip: str,
+        *,
+        limit: int,
+        window_seconds: float,
+    ) -> RateLimitResult:
+        current = time.monotonic()
+        cutoff = current - window_seconds
+        async with self._lock:
+            entries = self._admin_auth_failures.get(client_ip)
+            if entries is None:
+                if len(self._admin_auth_failures) >= self.max_clients:
+                    self._admin_auth_failures.popitem(last=False)
+                entries = deque()
+                self._admin_auth_failures[client_ip] = entries
+            else:
+                self._admin_auth_failures.move_to_end(client_ip)
+            while entries and entries[0] <= cutoff:
+                entries.popleft()
+            entries.append(current)
+            allowed = len(entries) < limit
+            retry_after = (
+                0
+                if allowed
+                else max(
+                    1,
+                    int(entries[0] + window_seconds - current + 0.999),
+                )
+            )
+            return RateLimitResult(
+                allowed,
+                max(0, limit - len(entries)),
+                retry_after,
+            )
+
+    async def clear_admin_auth_failures(self, client_ip: str) -> None:
+        async with self._lock:
+            self._admin_auth_failures.pop(client_ip, None)
+
     async def claim_view(
         self,
         code: str,
@@ -150,6 +245,11 @@ local current = redis.call('INCR', KEYS[1])
 if current == 1 then
   redis.call('PEXPIRE', KEYS[1], ARGV[1])
 end
+local ttl = redis.call('PTTL', KEYS[1])
+return {current, ttl}
+"""
+    _RATE_LIMIT_STATUS_SCRIPT = """
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
 local ttl = redis.call('PTTL', KEYS[1])
 return {current, ttl}
 """
@@ -206,6 +306,70 @@ return {current, ttl}
             max(0, limit - int(current)),
             0 if allowed else max(1, (int(ttl_ms) + 999) // 1000),
         )
+
+    async def check_admin_auth_failures(
+        self,
+        client_ip: str,
+        *,
+        limit: int,
+        window_seconds: float,
+    ) -> RateLimitResult:
+        redis_key = f"tourgrid:rate:admin-auth:{client_ip}"
+        try:
+            current, ttl_ms = await self._client.eval(
+                self._RATE_LIMIT_STATUS_SCRIPT,
+                1,
+                redis_key,
+            )
+        except RedisError as error:
+            raise SharedStateUnavailable(
+                "Redis admin authentication limit lookup failed"
+            ) from error
+        count = int(current)
+        allowed = count < limit
+        return RateLimitResult(
+            allowed,
+            max(0, limit - count),
+            0 if allowed else max(1, (int(ttl_ms) + 999) // 1000),
+        )
+
+    async def record_admin_auth_failure(
+        self,
+        client_ip: str,
+        *,
+        limit: int,
+        window_seconds: float,
+    ) -> RateLimitResult:
+        window_ms = max(1, round(window_seconds * 1000))
+        redis_key = f"tourgrid:rate:admin-auth:{client_ip}"
+        try:
+            current, ttl_ms = await self._client.eval(
+                self._RATE_LIMIT_SCRIPT,
+                1,
+                redis_key,
+                window_ms,
+            )
+        except RedisError as error:
+            raise SharedStateUnavailable(
+                "Redis admin authentication limit update failed"
+            ) from error
+        count = int(current)
+        allowed = count < limit
+        return RateLimitResult(
+            allowed,
+            max(0, limit - count),
+            0 if allowed else max(1, (int(ttl_ms) + 999) // 1000),
+        )
+
+    async def clear_admin_auth_failures(self, client_ip: str) -> None:
+        try:
+            await self._client.delete(
+                f"tourgrid:rate:admin-auth:{client_ip}"
+            )
+        except RedisError as error:
+            raise SharedStateUnavailable(
+                "Redis admin authentication limit reset failed"
+            ) from error
 
     async def claim_view(
         self,

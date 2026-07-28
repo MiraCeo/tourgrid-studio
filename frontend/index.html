@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-18">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-19">
 </head>
 <body>
 
@@ -31,8 +31,7 @@
   <!-- Z-INDEX 4: 妞ゅ爼鍎寸€佃壈鍩呴弽?-->
   <div class="top-bar">
     <div class="top-leading-actions">
-    <button class="icon-btn btn-github" title="作者与项目" aria-label="打开作者与项目信息"
-            onclick="openAuthorModal()">
+    <button class="icon-btn btn-github" id="authorInfoBtn" title="作者与项目" aria-label="打开作者与项目信息">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="6" cy="4" r="2"></circle>
         <circle cx="18" cy="6" r="2"></circle>
@@ -42,8 +41,7 @@
       </svg>
     </button>
 
-    <button class="icon-btn btn-announcement" title="项目公告" aria-label="打开项目公告"
-            onclick="openAnnouncementModal()">
+    <button class="icon-btn btn-announcement" id="announcementBtn" title="项目公告" aria-label="打开项目公告">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 10v4"></path>
         <path d="M6 9.5v5l10 4V5.5z"></path>
@@ -54,7 +52,7 @@
 
     <button class="icon-btn btn-fullscreen" id="mobileFullscreenBtn"
             type="button" title="进入全屏" aria-label="进入全屏"
-            aria-pressed="false" onclick="toggleFullscreen()">
+            aria-pressed="false">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path class="fullscreen-enter-icon"
               d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"></path>
@@ -71,8 +69,8 @@
     </div>
 
     <div class="btn-group">
-      <button class="icon-btn btn-delete" title="删除画布"
-              aria-label="删除画布" onclick="clearCanvas()">
+      <button class="icon-btn btn-delete" id="clearCanvasBtn" title="删除画布"
+              aria-label="删除画布">
         <svg class="top-action-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 7h16"></path>
           <path d="m9 7 .6-2h4.8l.6 2"></path>
@@ -81,14 +79,13 @@
         </svg>
       </button>
       <button class="icon-btn btn-undo" id="manualCheckpointRestoreBtn"
-              title="恢复到手动保存点" aria-label="恢复到手动保存点"
-              onclick="restoreManualCheckpoint()">
+              title="恢复到手动保存点" aria-label="恢复到手动保存点">
         <svg class="top-action-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 8V4l-3 3 3 3V8a8 8 0 1 1-1 7"></path>
         </svg>
       </button>
       <button class="icon-btn btn-save" id="manualCheckpointSaveBtn"
-              title="创建手动保存点 (Ctrl+S)" onclick="manualSave()"
+              title="创建手动保存点 (Ctrl+S)"
               aria-label="创建手动保存点">
         <svg class="top-action-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 3h13l3 3v15H4z"></path>
@@ -97,16 +94,16 @@
         </svg>
       </button>
       <button class="btn-import" id="topImportButton" type="button"
-              title="导入图片" onclick="document.getElementById('importFileInput').click()">
+              title="导入图片">
         <svg class="import-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3 6h7l2 2h9v11H3z"></path>
           <path d="M3 6v13"></path>
         </svg>
         <span>导入图片</span>
       </button>
-      <input type="file" id="importFileInput" accept="image/*" style="display:none" onchange="startImport(event)">
+      <input type="file" id="importFileInput" accept="image/*" style="display:none">
 
-      <button class="btn-primary" onclick="toggleExportDropdown(event)">
+      <button class="btn-primary" id="exportDropdownToggleBtn">
         <svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="9"></circle>
           <path d="m8 12 2.6 2.7L16.5 9"></path>
@@ -152,7 +149,7 @@
           <div class="reference-heading-row">
             <span class="left-control-heading">画布参考图</span>
             <button class="reference-switch" id="overlayToggleBtn" type="button"
-                    role="switch" aria-checked="false" onclick="toggleOverlay()">
+                    role="switch" aria-checked="false">
               <span class="reference-switch-track" aria-hidden="true">
                 <span class="reference-switch-thumb"></span>
               </span>
@@ -162,8 +159,7 @@
           <label class="opacity-control" id="overlayOpacityControl" for="overlayOpacity" hidden>
             <span>透明度</span>
             <input type="range" id="overlayOpacity" min="0" max="100" value="40"
-                   oninput="updateOverlayOpacity(this.value)"
-                   onchange="saveToStorage(true)" disabled>
+                   disabled>
             <span id="overlayOpacityVal">40%</span>
           </label>
         </section>
@@ -176,7 +172,7 @@
                 <path d="M15.5 15.5 21 21"></path>
               </svg>
             </span>
-            <button type="button" class="zoom-reset-btn" onclick="fitCanvasToViewport()"
+            <button type="button" class="zoom-reset-btn" id="zoomResetBtn"
                     aria-label="适应画布" title="适应画布">
               <svg class="zoom-reset-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 4v5h5"></path>
@@ -186,8 +182,7 @@
           </div>
           <div class="zoom-control-body">
             <input type="range" class="zoom-slider" id="zoomSlider"
-                   min="20" max="400" value="100" aria-label="画布缩放"
-                   oninput="setZoom(this.value)">
+                   min="20" max="400" value="100" aria-label="画布缩放">
           </div>
         </section>
       </div>
@@ -209,20 +204,20 @@
       <div class="tool-icons">
         <button class="tool-icon-btn" id="canvasGuidesBtn" type="button"
                 title="隐藏辅助线" aria-label="隐藏画布辅助线"
-                aria-pressed="true" onclick="toggleCanvasGuides()">
+                aria-pressed="true">
           <svg class="canvas-guides-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12z"></path>
             <circle cx="12" cy="12" r="2.7"></circle>
             <path d="M4 3.8 20 20.2"></path>
           </svg>
         </button>
-        <button class="tool-icon-btn" id="undoBtn" title="撤销" aria-label="撤销" onclick="undo()">
+        <button class="tool-icon-btn" id="undoBtn" title="撤销" aria-label="撤销">
           <svg class="history-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 7H4v-5"></path>
             <path d="M4.7 6.3A8.5 8.5 0 1 1 3.6 15"></path>
           </svg>
         </button>
-        <button class="tool-icon-btn" id="redoBtn" title="重做" aria-label="重做" onclick="redo()">
+        <button class="tool-icon-btn" id="redoBtn" title="重做" aria-label="重做">
           <svg class="history-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M15 7h5v-5"></path>
             <path d="M19.3 6.3A8.5 8.5 0 1 0 20.4 15"></path>
@@ -230,7 +225,7 @@
         </button>
         <button class="tool-icon-btn" id="eyedropperBtn" type="button"
                 title="吸管：从画布匹配最近的巡展颜色" aria-label="吸管取色"
-                aria-pressed="false" onclick="toggleEyedropper()">
+                aria-pressed="false">
           <svg class="eyedropper-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="m14.5 5.5 4 4"></path>
             <path d="m13 7 2-2a2.8 2.8 0 0 1 4 4l-2 2"></path>
@@ -239,7 +234,7 @@
         </button>
         <button class="tool-icon-btn" id="moveCanvasBtn" type="button"
                 title="移动画布" aria-label="移动画布"
-                aria-pressed="false" onclick="toggleMoveCanvas()">
+                aria-pressed="false">
           <svg class="move-canvas-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7.5 11V6.8a1.5 1.5 0 0 1 3 0V10"></path>
             <path d="M10.5 10V5.5a1.5 1.5 0 0 1 3 0V10"></path>
@@ -250,15 +245,13 @@
       </div>
 
       <div class="palette-tabs" role="tablist" aria-label="右侧面板">
-        <button class="palette-tab active" id="paletteTab" role="tab" aria-selected="true"
-                onclick="setPalettePanelMode('palette')">
+        <button class="palette-tab active" id="paletteTab" role="tab" aria-selected="true">
           <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="m12 3 8 9-8 9-8-9z"></path>
           </svg>
           <span>颜料</span>
         </button>
-        <button class="palette-tab" id="statisticsTab" role="tab" aria-selected="false"
-                onclick="setPalettePanelMode('statistics')">
+        <button class="palette-tab" id="statisticsTab" role="tab" aria-selected="false">
           <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 4h16v16H4z"></path>
             <path d="M8 4v16M12 4v16M16 4v16"></path>
@@ -280,29 +273,25 @@
       <div class="statistics-panel-view" id="statisticsPanelView" hidden>
         <div class="statistics-hint" id="statisticsHint">选择一种颜色，按高亮格子在游戏内复刻</div>
         <label class="replication-complete-control" id="replicationCompleteControl" hidden>
-          <input type="checkbox" id="replicationCompleteCheckbox"
-                 onchange="setReplicationColorCompleted(this.checked)">
+          <input type="checkbox" id="replicationCompleteCheckbox">
           <span class="replication-checkbox-mark" aria-hidden="true"></span>
           <span id="replicationCompleteLabel">该颜色已在游戏内完成</span>
         </label>
         <div class="replication-preview-control" id="replicationPreviewControl">
           <div class="replication-preview-segments">
             <button type="button" class="active" id="replicationTargetViewBtn"
-                    aria-pressed="true"
-                    onclick="setReplicationPreviewMode('target')">
+                    aria-pressed="true">
               目标图案
             </button>
             <button type="button" id="replicationCompletedViewBtn"
-                    aria-pressed="false"
-                    onclick="setReplicationPreviewMode('completed')">
+                    aria-pressed="false">
               已拼图案
             </button>
           </div>
           <button type="button" class="replication-reset-btn"
                   id="replicationResetBtn"
                   aria-label="清空当前作品复刻进度"
-                  title="清空当前作品复刻进度"
-                  onclick="clearCurrentReplicationProgress()">
+                  title="清空当前作品复刻进度">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h16"></path>
               <path d="m9 7 .6-2h4.8l.6 2"></path>
@@ -313,7 +302,7 @@
         </div>
         <label class="statistics-sort-control" for="statisticsSort">
           <span>排序</span>
-          <select id="statisticsSort" onchange="setStatisticsSortMode(this.value)">
+          <select id="statisticsSort">
             <option value="count-desc" selected>数量：多 → 少</option>
             <option value="count-asc">数量：少 → 多</option>
             <option value="palette-order">色板位置顺序</option>
@@ -331,13 +320,11 @@
   </div>
 </div>
 
-<div class="author-overlay work-share-overlay" id="workShareModal" hidden
-     onclick="closeWorkShareModalFromBackdrop(event)">
+<div class="author-overlay work-share-overlay" id="workShareModal" hidden>
   <section class="author-modal work-share-modal" role="dialog" aria-modal="true"
            aria-labelledby="workShareModalTitle"
            aria-describedby="workShareModalDescription">
-    <button class="author-close-btn" type="button" aria-label="关闭保存与分享"
-            onclick="closeWorkShareModal()">×</button>
+    <button class="author-close-btn" id="closeWorkShareModalBtn" type="button" aria-label="关闭保存与分享">×</button>
 
     <div class="work-share-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24">
@@ -368,14 +355,13 @@
         </label>
       </div>
       <button class="work-share-action primary" id="publishWorkButton"
-              type="button" onclick="publishCurrentWork()">
+              type="button">
         保存并生成分享码
       </button>
       <div class="published-work-result" id="publishedWorkResult" hidden>
         <button id="publishedWorkCode" type="button"
                 aria-label="复制作品分享码"
-                title="单击复制分享码"
-                onclick="copyPublishedWorkCode()"></button>
+                title="单击复制分享码"></button>
         <span class="published-work-hint">单击分享码即可复制</span>
       </div>
     </section>
@@ -386,10 +372,8 @@
       <div class="work-code-row">
         <input id="workCodeInput" type="text" maxlength="12"
                autocomplete="off" spellcheck="false"
-               aria-label="12位作品分享码"
-               onkeydown="if(event.key==='Enter')loadSharedWorkFromInput()">
-        <button class="work-share-action" id="loadWorkButton" type="button"
-                onclick="loadSharedWorkFromInput()">读取</button>
+               aria-label="12位作品分享码">
+        <button class="work-share-action" id="loadWorkButton" type="button">读取</button>
       </div>
     </section>
 
@@ -398,12 +382,11 @@
   </section>
 </div>
 
-<div class="author-overlay announcement-overlay" id="announcementModal" hidden
-     onclick="closeAnnouncementModalFromBackdrop(event)">
+<div class="author-overlay announcement-overlay" id="announcementModal" hidden>
   <section class="author-modal announcement-modal" role="dialog" aria-modal="true"
            aria-labelledby="announcementModalTitle" aria-describedby="announcementModalDescription">
-    <button class="author-close-btn announcement-close-btn" type="button"
-            aria-label="关闭项目公告" onclick="closeAnnouncementModal()">×</button>
+    <button class="author-close-btn announcement-close-btn" id="closeAnnouncementModalBtn" type="button"
+            aria-label="关闭项目公告">×</button>
 
     <div class="announcement-icon-frame" aria-hidden="true">
       <svg viewBox="0 0 24 24">
@@ -488,12 +471,10 @@
   </section>
 </div>
 
-<div class="author-overlay" id="authorModal" hidden
-     onclick="closeAuthorModalFromBackdrop(event)">
+<div class="author-overlay" id="authorModal" hidden>
   <section class="author-modal" role="dialog" aria-modal="true"
            aria-labelledby="authorModalTitle" aria-describedby="authorModalDescription">
-    <button class="author-close-btn" type="button" aria-label="关闭作者与项目弹窗"
-            onclick="closeAuthorModal()">×</button>
+    <button class="author-close-btn" id="closeAuthorModalBtn" type="button" aria-label="关闭作者与项目弹窗">×</button>
 
     <div class="author-kicker">AUTHOR &amp; PROJECT</div>
     <h2 id="authorModalTitle">MiraCeo</h2>
@@ -542,7 +523,7 @@
     </div>
     <div class="crop-controls">
       <span class="crop-zoom-label">缩放</span>
-      <input type="range" class="crop-zoom-slider" id="cropZoomSlider" min="10" max="500" value="100" oninput="updateCropZoom(this.value)">
+      <input type="range" class="crop-zoom-slider" id="cropZoomSlider" min="10" max="500" value="100">
       <span class="crop-zoom-label" id="cropZoomVal">100%</span>
       <span class="crop-zoom-label">输出</span>
       <span class="crop-size-value">24×24</span>
@@ -559,29 +540,29 @@
     <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
       <span class="conversion-spinner"></span>
       <span id="conversionStatusText">正在转换…</span>
-      <button class="conversion-retry-btn" id="conversionRetryBtn" onclick="confirmCrop()">重新尝试</button>
+      <button class="conversion-retry-btn" id="conversionRetryBtn">重新尝试</button>
     </div>
     <div class="crop-btns">
-      <button class="crop-btn crop-btn-cancel" onclick="cancelCrop()">取消</button>
-      <button class="crop-btn crop-btn-confirm" id="confirmCropBtn" onclick="confirmCrop()">确认裁切并转换</button>
+      <button class="crop-btn crop-btn-cancel" id="cancelCropBtn">取消</button>
+      <button class="crop-btn crop-btn-confirm" id="confirmCropBtn">确认裁切并转换</button>
     </div>
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260728-18"></script>
-<script src="/static/js/reference-storage.js?v=20260728-18"></script>
-<script src="/static/js/work-codec.js?v=20260728-18"></script>
-<script src="/static/js/natural-64-v1.js?v=20260728-18"></script>
-<script src="/static/js/state.js?v=20260728-18"></script>
-<script src="/static/js/editor.js?v=20260728-18"></script>
-<script src="/static/js/export.js?v=20260728-18"></script>
-<script src="/static/js/import.js?v=20260728-18"></script>
-<script src="/static/js/works.js?v=20260728-18"></script>
-<script src="/static/js/app.js?v=20260728-18"></script>
+<script src="/static/js/storage.js?v=20260728-19"></script>
+<script src="/static/js/reference-storage.js?v=20260728-19"></script>
+<script src="/static/js/work-codec.js?v=20260728-19"></script>
+<script src="/static/js/natural-64-v1.js?v=20260728-19"></script>
+<script src="/static/js/state.js?v=20260728-19"></script>
+<script src="/static/js/editor.js?v=20260728-19"></script>
+<script src="/static/js/export.js?v=20260728-19"></script>
+<script src="/static/js/import.js?v=20260728-19"></script>
+<script src="/static/js/works.js?v=20260728-19"></script>
+<script src="/static/js/app.js?v=20260728-19"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
-  <button class="export-item" onclick="openWorkShareModal('publish')">
+  <button class="export-item" id="publishWorkMenuBtn">
     <span class="export-item-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24">
         <path d="M7 12.5v6.5h10v-6.5"></path>
@@ -590,7 +571,7 @@
     </span>
     <span class="export-item-label">保存并分享作品</span>
   </button>
-  <button class="export-item" onclick="openWorkShareModal('load')">
+  <button class="export-item" id="loadWorkMenuBtn">
     <span class="export-item-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24">
         <path d="M9.5 14.5 14.5 9.5"></path>
@@ -601,7 +582,7 @@
     <span class="export-item-label">读取分享码</span>
   </button>
   <div class="export-divider"></div>
-  <button class="export-item" onclick="exportRawPixelImage()">
+  <button class="export-item" id="exportRawPixelBtn">
     <span class="export-item-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24">
         <path d="M3 4h18v16H3z"></path>
@@ -611,7 +592,7 @@
     </span>
     <span class="export-item-label">导出原始尺寸 PNG</span>
   </button>
-  <button class="export-item" onclick="exportPixelPreview()">
+  <button class="export-item" id="exportPixelPreviewBtn">
     <span class="export-item-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24">
         <circle cx="10.5" cy="10.5" r="6.5"></circle>
@@ -623,7 +604,7 @@
   </button>
   <div class="export-divider"></div>
   <div id="exportBeadSection">
-    <button class="export-item" id="exportBeadBtn" onclick="exportBeadBlueprint()">
+    <button class="export-item" id="exportBeadBtn">
       <span class="export-item-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24">
           <path d="M4 3h13l3 3v15H4z"></path>

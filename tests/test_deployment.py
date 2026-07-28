@@ -44,7 +44,7 @@ def test_api_is_not_published_directly_and_proxy_routes_same_origin() -> None:
     assert "root * /srv" in caddyfile
     assert "file_server" in caddyfile
     assert "try_files" not in caddyfile
-    assert "script-src 'self' 'unsafe-inline'" in caddyfile
+    assert "script-src 'self'; script-src-attr 'none'" in caddyfile
     assert "health_uri /api/v1/ready" in caddyfile
     assert "http://127.0.0.1:2015" in caddyfile
 
@@ -139,6 +139,8 @@ def test_redis_and_independent_admin_credentials_are_configured() -> None:
     assert "redis:7.4-alpine" in compose
     assert "TOURGRID_REDIS_URL: redis://redis:6379/0" in compose
     assert "TOURGRID_VIEW_DEDUPE_SECONDS" in compose
+    assert "TOURGRID_ADMIN_AUTH_FAILURE_LIMIT" in compose
+    assert "TOURGRID_ADMIN_AUTH_FAILURE_WINDOW_SECONDS" in compose
     assert "TOURGRID_ADMIN_TOKEN=" in production
     assert (
         "TOURGRID_ADMIN_TOKEN=replace-with-a-different-long-random-token"
@@ -181,7 +183,10 @@ def test_project_is_run_from_source_checkout_instead_of_wheel_entrypoint() -> No
     assert "python.exe -m backend" in readme
     assert "from .api.app import run" in module_entrypoint
     assert 'pip install -e ".[dev]"' not in workflow
-    assert "pip install --requirement requirements.lock" in workflow
+    assert (
+        "pip install --require-hashes --requirement requirements.lock"
+        in workflow
+    )
 
 
 def test_production_lock_excludes_server_conversion_dependencies() -> None:
@@ -250,3 +255,35 @@ def test_ci_has_a_database_only_postgres_store_job() -> None:
     assert "playwright" not in job.lower()
     assert "postgres_store:" in project
     assert postgres_tests.count("@pytest.mark.postgres_store") == 2
+
+
+def test_supply_chain_inputs_are_pinned_audited_and_auto_updated() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    api_dockerfile = (ROOT / "docker/api.Dockerfile").read_text(
+        encoding="utf-8"
+    )
+    frontend_dockerfile = (ROOT / "docker/frontend.Dockerfile").read_text(
+        encoding="utf-8"
+    )
+    dependabot = (ROOT / ".github/dependabot.yml").read_text(encoding="utf-8")
+    production_lock = (ROOT / "requirements-prod.lock").read_text(
+        encoding="utf-8"
+    )
+    development_lock = (ROOT / "requirements.lock").read_text(
+        encoding="utf-8"
+    )
+
+    assert workflow.count("actions/checkout@11d5960a326750d5838078e36cf38b85af677262") == 4
+    assert workflow.count("actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065") == 3
+    assert "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25" in workflow
+    assert "python -m pip_audit" in workflow
+    assert "continue-on-error: true" in workflow
+    assert "--require-hashes" in workflow
+    assert "@sha256:" in compose
+    assert "@sha256:" in api_dockerfile
+    assert "@sha256:" in frontend_dockerfile
+    assert "--require-hashes" in api_dockerfile
+    assert "--hash=sha256:" in production_lock
+    assert "--hash=sha256:" in development_lock
+    assert dependabot.count("package-ecosystem:") == 4

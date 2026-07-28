@@ -178,6 +178,46 @@ def test_legacy_admin_delete_hides_and_tombstones_a_work() -> None:
     assert republished.json()["error"]["code"] == "work_blocked"
 
 
+def test_admin_authentication_limits_failures_and_success_resets_them() -> None:
+    token = "b" * 32
+    application = create_app(
+        ApiSettings(
+            admin_token=token,
+            admin_auth_failure_limit=3,
+            admin_auth_failure_window_seconds=60,
+        ),
+        work_store=InMemoryWorkStore(),
+    )
+    with TestClient(application) as admin_client:
+        first = admin_client.get(
+            "/api/v1/admin/session",
+            headers={"Authorization": "Bearer wrong"},
+        )
+        success = admin_client.get(
+            "/api/v1/admin/session",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        second = admin_client.get("/api/v1/admin/session")
+        third = admin_client.get("/api/v1/admin/session")
+        blocked = admin_client.get("/api/v1/admin/session")
+        valid_while_blocked = admin_client.get(
+            "/api/v1/admin/session",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        failure_after_reset = admin_client.get("/api/v1/admin/session")
+
+    assert first.status_code == 401
+    assert success.status_code == 200
+    assert second.status_code == 401
+    assert third.status_code == 401
+    assert blocked.status_code == 429
+    assert blocked.json()["error"]["code"] == "admin_auth_rate_limited"
+    assert blocked.headers["Retry-After"] == "60"
+    assert blocked.headers["X-RateLimit-Limit"] == "3"
+    assert valid_while_blocked.status_code == 200
+    assert failure_after_reset.status_code == 401
+
+
 def test_admin_can_list_preview_and_manage_every_work() -> None:
     token = "c" * 32
     application = create_app(

@@ -81,7 +81,7 @@ wheel/PyPI安装包；运行时需要仓库中的 `backend/`、`frontend/`、`pa
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.lock
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements.lock
 .\.venv\Scripts\python.exe -m playwright install chromium
 ```
 

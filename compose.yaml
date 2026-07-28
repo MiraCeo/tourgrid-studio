@@ -8,7 +8,7 @@ x-logging: &default-logging
 
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: unless-stopped
     environment:
       POSTGRES_DB: tourgrid
@@ -26,7 +26,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: unless-stopped
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     expose:
@@ -56,6 +56,8 @@ services:
       TOURGRID_DATABASE_URL: postgresql://tourgrid:${TOURGRID_DB_PASSWORD:-tourgrid-development}@db:5432/tourgrid
       TOURGRID_REDIS_URL: redis://redis:6379/0
       TOURGRID_ADMIN_TOKEN: ${TOURGRID_ADMIN_TOKEN:-}
+      TOURGRID_ADMIN_AUTH_FAILURE_LIMIT: ${TOURGRID_ADMIN_AUTH_FAILURE_LIMIT:-5}
+      TOURGRID_ADMIN_AUTH_FAILURE_WINDOW_SECONDS: ${TOURGRID_ADMIN_AUTH_FAILURE_WINDOW_SECONDS:-900}
       TOURGRID_VIEW_DEDUPE_SECONDS: ${TOURGRID_VIEW_DEDUPE_SECONDS:-1800}
       TOURGRID_RATE_LIMIT_REQUESTS: ${TOURGRID_RATE_LIMIT_REQUESTS:-10}
       TOURGRID_RATE_LIMIT_WINDOW_SECONDS: ${TOURGRID_RATE_LIMIT_WINDOW_SECONDS:-60}

@@ -101,6 +101,11 @@ def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
     )
     monkeypatch.setenv("TOURGRID_REDIS_URL", "redis://redis:6379/0")
     monkeypatch.setenv("TOURGRID_ADMIN_TOKEN", "a" * 32)
+    monkeypatch.setenv("TOURGRID_ADMIN_AUTH_FAILURE_LIMIT", "6")
+    monkeypatch.setenv(
+        "TOURGRID_ADMIN_AUTH_FAILURE_WINDOW_SECONDS",
+        "120",
+    )
     monkeypatch.setenv("TOURGRID_VIEW_DEDUPE_SECONDS", "900")
 
     settings = ApiSettings.from_env()
@@ -116,6 +121,8 @@ def test_operational_settings_are_loaded_from_environment(monkeypatch) -> None:
     )
     assert settings.redis_url == "redis://redis:6379/0"
     assert settings.admin_token == "a" * 32
+    assert settings.admin_auth_failure_limit == 6
+    assert settings.admin_auth_failure_window_seconds == 120
     assert settings.view_dedupe_seconds == 900
 
 

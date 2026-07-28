@@ -930,6 +930,92 @@ async function toggleFullscreen() {
 document.addEventListener('fullscreenchange', syncFullscreenControl);
 document.addEventListener('webkitfullscreenchange', syncFullscreenControl);
 
+function bindStaticControls() {
+  function on(id, eventName, handler) {
+    var element = document.getElementById(id);
+    if (element) element.addEventListener(eventName, handler);
+  }
+
+  on('authorInfoBtn', 'click', openAuthorModal);
+  on('announcementBtn', 'click', openAnnouncementModal);
+  on('mobileFullscreenBtn', 'click', toggleFullscreen);
+  on('clearCanvasBtn', 'click', clearCanvas);
+  on('manualCheckpointRestoreBtn', 'click', restoreManualCheckpoint);
+  on('manualCheckpointSaveBtn', 'click', manualSave);
+  on('topImportButton', 'click', function() {
+    document.getElementById('importFileInput').click();
+  });
+  on('importFileInput', 'change', startImport);
+  on('exportDropdownToggleBtn', 'click', toggleExportDropdown);
+
+  on('overlayToggleBtn', 'click', toggleOverlay);
+  on('overlayOpacity', 'input', function(event) {
+    updateOverlayOpacity(event.currentTarget.value);
+  });
+  on('overlayOpacity', 'change', function() {
+    saveToStorage(true);
+  });
+  on('zoomResetBtn', 'click', fitCanvasToViewport);
+  on('zoomSlider', 'input', function(event) {
+    setZoom(event.currentTarget.value);
+  });
+
+  on('canvasGuidesBtn', 'click', toggleCanvasGuides);
+  on('undoBtn', 'click', undo);
+  on('redoBtn', 'click', redo);
+  on('eyedropperBtn', 'click', toggleEyedropper);
+  on('moveCanvasBtn', 'click', toggleMoveCanvas);
+  on('paletteTab', 'click', function() {
+    setPalettePanelMode('palette');
+  });
+  on('statisticsTab', 'click', function() {
+    setPalettePanelMode('statistics');
+  });
+  on('replicationCompleteCheckbox', 'change', function(event) {
+    setReplicationColorCompleted(event.currentTarget.checked);
+  });
+  on('replicationTargetViewBtn', 'click', function() {
+    setReplicationPreviewMode('target');
+  });
+  on('replicationCompletedViewBtn', 'click', function() {
+    setReplicationPreviewMode('completed');
+  });
+  on('replicationResetBtn', 'click', clearCurrentReplicationProgress);
+  on('statisticsSort', 'change', function(event) {
+    setStatisticsSortMode(event.currentTarget.value);
+  });
+
+  on('workShareModal', 'click', closeWorkShareModalFromBackdrop);
+  on('closeWorkShareModalBtn', 'click', closeWorkShareModal);
+  on('publishWorkButton', 'click', publishCurrentWork);
+  on('publishedWorkCode', 'click', copyPublishedWorkCode);
+  on('workCodeInput', 'keydown', function(event) {
+    if (event.key === 'Enter') loadSharedWorkFromInput();
+  });
+  on('loadWorkButton', 'click', loadSharedWorkFromInput);
+  on('announcementModal', 'click', closeAnnouncementModalFromBackdrop);
+  on('closeAnnouncementModalBtn', 'click', closeAnnouncementModal);
+  on('authorModal', 'click', closeAuthorModalFromBackdrop);
+  on('closeAuthorModalBtn', 'click', closeAuthorModal);
+
+  on('cropZoomSlider', 'input', function(event) {
+    updateCropZoom(event.currentTarget.value);
+  });
+  on('conversionRetryBtn', 'click', confirmCrop);
+  on('cancelCropBtn', 'click', cancelCrop);
+  on('confirmCropBtn', 'click', confirmCrop);
+
+  on('publishWorkMenuBtn', 'click', function() {
+    openWorkShareModal('publish');
+  });
+  on('loadWorkMenuBtn', 'click', function() {
+    openWorkShareModal('load');
+  });
+  on('exportRawPixelBtn', 'click', exportRawPixelImage);
+  on('exportPixelPreviewBtn', 'click', exportPixelPreview);
+  on('exportBeadBtn', 'click', exportBeadBlueprint);
+}
+
 // --- 启动 ---
 function installTourgridTestApi() {
   var params = new URLSearchParams(window.location.search);
@@ -974,6 +1060,7 @@ function installTourgridTestApi() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  bindStaticControls();
   init();
   installTourgridTestApi();
   loadSharedWorkFromQuery();

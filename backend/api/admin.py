@@ -34,7 +34,27 @@ SHARE_CODE_PATTERN = rf"^[{SHARE_CODE_ALPHABET}]{{12}}$"
 AuthorizationHeader = Annotated[str | None, Header()]
 
 
-def _require_admin(request: Request, authorization: str | None) -> None:
+def _admin_auth_rate_limit_error(
+    retry_after_seconds: int,
+    limit: int,
+) -> ApiError:
+    return ApiError(
+        429,
+        "admin_auth_rate_limited",
+        "Too many failed administrator authentication attempts. "
+        "Please retry later.",
+        headers={
+            "Retry-After": str(retry_after_seconds),
+            "X-RateLimit-Limit": str(limit),
+            "X-RateLimit-Remaining": "0",
+        },
+    )
+
+
+async def _require_admin(
+    request: Request,
+    authorization: str | None,
+) -> None:
     configured = request.app.state.settings.admin_token
     if configured is None:
         raise ApiError(
@@ -42,17 +62,64 @@ def _require_admin(request: Request, authorization: str | None) -> None:
             "admin_not_configured",
             "Administrative access is not configured.",
         )
+    settings = request.app.state.settings
+    client_ip = _administrator_ip(request)
+    shared_state: SharedState = request.app.state.shared_state
     scheme, separator, supplied = (authorization or "").partition(" ")
-    if (
-        separator != " "
-        or scheme.lower() != "bearer"
-        or not secrets.compare_digest(supplied, configured)
-    ):
-        raise ApiError(
-            401,
-            "admin_authentication_required",
-            "A valid administrator bearer token is required.",
+    authenticated = (
+        separator == " "
+        and scheme.lower() == "bearer"
+        and secrets.compare_digest(supplied, configured)
+    )
+    if authenticated:
+        try:
+            await shared_state.clear_admin_auth_failures(client_ip)
+        except SharedStateUnavailable as error:
+            raise ApiError(
+                503,
+                "shared_state_unavailable",
+                "Shared abuse protection is temporarily unavailable.",
+            ) from error
+        return
+    try:
+        rate = await shared_state.check_admin_auth_failures(
+            client_ip,
+            limit=settings.admin_auth_failure_limit,
+            window_seconds=settings.admin_auth_failure_window_seconds,
         )
+    except SharedStateUnavailable as error:
+        raise ApiError(
+            503,
+            "shared_state_unavailable",
+            "Shared abuse protection is temporarily unavailable.",
+        ) from error
+    if not rate.allowed:
+        raise _admin_auth_rate_limit_error(
+            rate.retry_after_seconds,
+            settings.admin_auth_failure_limit,
+        )
+    try:
+        rate = await shared_state.record_admin_auth_failure(
+            client_ip,
+            limit=settings.admin_auth_failure_limit,
+            window_seconds=settings.admin_auth_failure_window_seconds,
+        )
+    except SharedStateUnavailable as error:
+        raise ApiError(
+            503,
+            "shared_state_unavailable",
+            "Shared abuse protection is temporarily unavailable.",
+        ) from error
+    if not rate.allowed:
+        raise _admin_auth_rate_limit_error(
+            rate.retry_after_seconds,
+            settings.admin_auth_failure_limit,
+        )
+    raise ApiError(
+        401,
+        "admin_authentication_required",
+        "A valid administrator bearer token is required.",
+    )
 
 
 def _administrator_ip(request: Request) -> str:
@@ -106,7 +173,7 @@ def create_admin_router() -> APIRouter:
         request: Request,
         authorization: AuthorizationHeader = None,
     ) -> AdminSessionResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         return AdminSessionResponse(authenticated=True)
 
     @router.get("/works", response_model=AdminWorkListResponse)
@@ -120,7 +187,7 @@ def create_admin_router() -> APIRouter:
         limit: Annotated[int, Query(ge=1, le=100)] = 48,
         cursor: Annotated[int | None, Query(ge=1)] = None,
     ) -> AdminWorkListResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         store: WorkStore = request.app.state.work_store
         try:
             records, next_cursor = await store.list_admin_works(
@@ -145,7 +212,7 @@ def create_admin_router() -> APIRouter:
         code: Annotated[str, Path(pattern=SHARE_CODE_PATTERN)],
         authorization: AuthorizationHeader = None,
     ) -> AdminWorkResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         store: WorkStore = request.app.state.work_store
         try:
             record = await store.get_admin_work(code)
@@ -166,7 +233,7 @@ def create_admin_router() -> APIRouter:
         code: Annotated[str, Path(pattern=SHARE_CODE_PATTERN)],
         authorization: AuthorizationHeader = None,
     ) -> AdminWorkResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         store: WorkStore = request.app.state.work_store
         try:
             record = await store.hide_work(
@@ -194,7 +261,7 @@ def create_admin_router() -> APIRouter:
         code: Annotated[str, Path(pattern=SHARE_CODE_PATTERN)],
         authorization: AuthorizationHeader = None,
     ) -> AdminWorkResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         store: WorkStore = request.app.state.work_store
         try:
             record = await store.restore_work(
@@ -222,7 +289,7 @@ def create_admin_router() -> APIRouter:
         code: Annotated[str, Path(pattern=SHARE_CODE_PATTERN)],
         authorization: AuthorizationHeader = None,
     ) -> AdminWorkResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         if not secrets.compare_digest(payload.confirmation_code, code):
             raise ApiError(
                 409,
@@ -255,7 +322,7 @@ def create_admin_router() -> APIRouter:
         authorization: AuthorizationHeader = None,
         reason: Annotated[str | None, Query(max_length=200)] = None,
     ) -> ModerationResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         store: WorkStore = request.app.state.work_store
         try:
             record = await store.hide_work(
@@ -282,7 +349,7 @@ def create_admin_router() -> APIRouter:
         limit: Annotated[int, Query(ge=1, le=100)] = 50,
         cursor: Annotated[int | None, Query(ge=1)] = None,
     ) -> ModerationEventListResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         store: WorkStore = request.app.state.work_store
         try:
             events, next_cursor = await store.list_moderation_events(
@@ -319,7 +386,7 @@ def create_admin_router() -> APIRouter:
         payload: BanClientRequest,
         authorization: AuthorizationHeader = None,
     ) -> ModerationResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         client_ip = str(payload.client_ip)
         if payload.ttl_seconds is not None:
             shared_state: SharedState = request.app.state.shared_state
@@ -358,7 +425,7 @@ def create_admin_router() -> APIRouter:
         client_ip: Annotated[str, Query(alias="clientIp")],
         authorization: AuthorizationHeader = None,
     ) -> ModerationResponse:
-        _require_admin(request, authorization)
+        await _require_admin(request, authorization)
         try:
             normalized_ip = str(ip_address(client_ip))
         except ValueError as error:

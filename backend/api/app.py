@@ -211,6 +211,7 @@ def create_app(
         return JSONResponse(
             status_code=error.status_code,
             content=body.model_dump(by_alias=True, exclude_none=True),
+            headers=error.headers,
         )
 
     @application.exception_handler(RequestValidationError)

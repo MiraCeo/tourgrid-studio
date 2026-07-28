@@ -15,6 +15,8 @@ class ApiSettings:
     database_url: str | None = None
     redis_url: str | None = None
     admin_token: str | None = None
+    admin_auth_failure_limit: int = 5
+    admin_auth_failure_window_seconds: float = 900.0
     view_dedupe_seconds: int = 1_800
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.0
@@ -43,6 +45,14 @@ class ApiSettings:
             database_url=os.getenv("TOURGRID_DATABASE_URL") or None,
             redis_url=os.getenv("TOURGRID_REDIS_URL") or None,
             admin_token=os.getenv("TOURGRID_ADMIN_TOKEN") or None,
+            admin_auth_failure_limit=_env_int(
+                "TOURGRID_ADMIN_AUTH_FAILURE_LIMIT",
+                defaults.admin_auth_failure_limit,
+            ),
+            admin_auth_failure_window_seconds=_env_float(
+                "TOURGRID_ADMIN_AUTH_FAILURE_WINDOW_SECONDS",
+                defaults.admin_auth_failure_window_seconds,
+            ),
             view_dedupe_seconds=_env_int(
                 "TOURGRID_VIEW_DEDUPE_SECONDS",
                 defaults.view_dedupe_seconds,
@@ -59,6 +69,10 @@ class ApiSettings:
             "rate_limit_requests": self.rate_limit_requests,
             "rate_limit_window_seconds": self.rate_limit_window_seconds,
             "rate_limit_max_clients": self.rate_limit_max_clients,
+            "admin_auth_failure_limit": self.admin_auth_failure_limit,
+            "admin_auth_failure_window_seconds": (
+                self.admin_auth_failure_window_seconds
+            ),
             "view_dedupe_seconds": self.view_dedupe_seconds,
         }
         for name, value in positive_values.items():

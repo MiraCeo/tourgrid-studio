@@ -446,9 +446,7 @@ def test_raw_png_export_is_24_by_24_and_palette_limited(
 
     editor_page.locator(".btn-primary").click()
     with editor_page.expect_download() as download_info:
-        editor_page.locator(
-            '#exportDropdown .export-item[onclick="exportRawPixelImage()"]'
-        ).click()
+        editor_page.locator("#exportRawPixelBtn").click()
     download = download_info.value
     output = tmp_path / download.suggested_filename
     download.save_as(output)

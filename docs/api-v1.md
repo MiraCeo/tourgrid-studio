@@ -139,6 +139,9 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 `Authorization: Bearer <TOURGRID_ADMIN_TOKEN>`。管理员令牌必须
 是至少32字符的独立随机值，不得与 `TOURGRID_DB_PASSWORD` 复用，也不要写入仓库。
 后台只在当前页面内存中保存令牌，刷新或退出后需要重新输入。
+管理员认证失败按客户端IP记录在Redis临时键中：默认15分钟内累计5次失败后返回
+`429 admin_auth_rate_limited` 和 `Retry-After`。正确令牌会清除该IP的失败记录，
+避免同一出口IP中的恶意请求把持有正确令牌的管理员永久锁在后台外。
 
 - `GET /api/v1/admin/session`：验证管理员令牌。
 - `GET /api/v1/admin/works?status=...&limit=48&cursor=...`：按创建顺序分页读取
@@ -177,6 +180,8 @@ TOURGRID_RATE_LIMIT_MAX_CLIENTS
 TOURGRID_DATABASE_URL
 TOURGRID_REDIS_URL
 TOURGRID_ADMIN_TOKEN
+TOURGRID_ADMIN_AUTH_FAILURE_LIMIT
+TOURGRID_ADMIN_AUTH_FAILURE_WINDOW_SECONDS
 TOURGRID_VIEW_DEDUPE_SECONDS
 TOURGRID_ENVIRONMENT
 TOURGRID_RELEASE

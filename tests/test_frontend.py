@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260728-18"
+    asset_version = "20260728-19"
 
     assert (
         f'<link rel="stylesheet" '
@@ -67,6 +67,16 @@ def test_frontend_is_split_into_ordered_assets() -> None:
     ]
     assert positions == sorted(positions)
     assert not (PROJECT_ROOT / "像素画编辑器.html").exists()
+
+
+def test_editor_uses_external_event_listeners_instead_of_inline_handlers() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
+
+    for attribute in ("onclick=", "onchange=", "oninput=", "onkeydown="):
+        assert attribute not in html
+    assert "function bindStaticControls()" in app
+    assert "bindStaticControls();" in app
 
 
 def test_frontend_and_admin_reference_the_project_favicon() -> None:
@@ -505,7 +515,9 @@ def test_reference_image_is_encoded_as_webp_and_persisted_in_indexeddb() -> None
     assert "root.indexedDB.open(DATABASE_NAME, DATABASE_VERSION)" in reference_storage
     assert "database.createObjectStore(STORE_NAME, { keyPath: 'id' })" in reference_storage
     assert "store.put(record)" in reference_storage
-    assert 'onchange="saveToStorage(true)"' in html
+    assert "on('overlayOpacity', 'change'" in (
+        JAVASCRIPT_ROOT / "app.js"
+    ).read_text(encoding="utf-8")
 
 
 def test_document_history_restores_reference_assets_and_keeps_100_steps() -> None:
@@ -734,7 +746,7 @@ def test_left_navigator_groups_reference_and_zoom_controls() -> None:
     assert "缩略图显示" not in html
     assert 'role="switch" aria-checked="false"' in html
     assert 'id="overlayOpacity" min="0" max="100" value="40"' in html
-    assert "fitCanvasToViewport()" in html
+    assert "on('zoomResetBtn', 'click', fitCanvasToViewport)" in app
     assert 'class="zoom-reset-btn"' in html
     assert 'aria-label="适应画布" title="适应画布"' in html
     assert 'class="zoom-reset-icon"' in html
@@ -803,7 +815,7 @@ def test_mobile_fullscreen_control_uses_browser_fullscreen_api() -> None:
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
     assert 'id="mobileFullscreenBtn"' in html
-    assert 'onclick="toggleFullscreen()"' in html
+    assert "on('mobileFullscreenBtn', 'click', toggleFullscreen)" in app
     assert 'class="fullscreen-enter-icon"' in html
     assert 'class="fullscreen-exit-icon"' in html
     assert ".btn-fullscreen {" in css
@@ -824,7 +836,7 @@ def test_author_project_modal_uses_no_unlicensed_avatar_and_safe_github_links() 
     assert not avatar.exists()
     assert not (PROJECT_ROOT / "input1.jpg").exists()
     assert 'class="icon-btn btn-github"' in html
-    assert 'onclick="openAuthorModal()"' in html
+    assert "on('authorInfoBtn', 'click', openAuthorModal)" in app
     assert 'id="authorModal" hidden' in html
     assert "miraceo-avatar" not in html
     assert "author-avatar-frame" not in html
@@ -848,7 +860,7 @@ def test_announcement_is_opened_on_entry_and_includes_project_policies() -> None
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
     assert 'class="icon-btn btn-announcement"' in html
-    assert 'onclick="openAnnouncementModal()"' in html
+    assert "on('announcementBtn', 'click', openAnnouncementModal)" in app
     assert 'id="announcementModal" hidden' in html
     assert 'aria-labelledby="announcementModalTitle"' in html
     assert '<h2 id="announcementModalTitle">项目公告</h2>' in html
