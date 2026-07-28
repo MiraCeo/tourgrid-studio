@@ -24,6 +24,7 @@ function init() {
     overlayVisible = referenceState.visible;
     overlayOpacity = referenceState.opacity;
     restorePaletteSelection(documentMetadata.editorPaletteId);
+    updateLocalSaveStatus(saved.savedAt, 'saved');
   } else {
     documentMetadata = TourgridStorage.defaultMetadata();
     saveToStorage(true);

@@ -192,6 +192,32 @@ var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';
 var CANVAS_GUIDES_STORAGE_KEY = 'tourgrid_canvas_guides_visible';
 var REPLICATION_PROGRESS_STORAGE_KEY = 'tourgrid_replication_progress_v1';
 
+function updateLocalSaveStatus(savedAt, state) {
+  var status = document.getElementById('saveStatus');
+  if (!status) return;
+  if (state === 'error') {
+    status.textContent = '本地存储不可用';
+    status.dataset.state = 'error';
+    status.title = '浏览器未能保存当前作品';
+    return;
+  }
+  var savedDate = savedAt ? new Date(savedAt) : new Date();
+  var time = Number.isNaN(savedDate.getTime())
+    ? ''
+    : savedDate.toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+  var checkpoint = loadManualCheckpoint();
+  status.textContent =
+    '已自动保存' + (time ? ' ' + time : '') +
+    (checkpoint ? ' · 有手动保存点' : '');
+  status.dataset.state = 'saved';
+  status.title = checkpoint
+    ? '当前作品已自动保存，并存在可恢复的手动保存点'
+    : '当前作品已自动保存';
+}
+
 function serializeCurrentDocument() {
   return TourgridStorage.serialize({
     gridSize: GRID_SIZE,
@@ -210,9 +236,13 @@ function saveToStorage(silent) {
   try {
     var data = serializeCurrentDocument();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    updateLocalSaveStatus(data.savedAt, 'saved');
     if (!silent) showToast('已存档（' + GRID_SIZE + '×' + GRID_SIZE + '）');
+    return true;
   } catch(e) {
-    // localStorage满或不可用，静默忽略
+    updateLocalSaveStatus(null, 'error');
+    if (!silent) showToast('本地存储不可用');
+    return false;
   }
 }
 
@@ -224,6 +254,7 @@ function manualSave() {
     if (typeof scheduleReferenceAssetPrune === 'function') {
       scheduleReferenceAssetPrune();
     }
+    updateLocalSaveStatus(data.savedAt, 'saved');
     showToast('已创建手动保存点');
     return true;
   } catch(e) {

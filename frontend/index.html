@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-19">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260728-20">
 </head>
 <body>
 
@@ -69,6 +69,8 @@
     </div>
 
     <div class="btn-group">
+      <span class="save-status" id="saveStatus" role="status"
+            aria-live="polite">等待本地保存</span>
       <button class="icon-btn btn-delete" id="clearCanvasBtn" title="删除画布"
               aria-label="删除画布">
         <svg class="top-action-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -358,22 +360,62 @@
               type="button">
         保存并生成分享码
       </button>
+      <div class="publish-confirmation" id="publishConfirmation" hidden>
+        <h4>确认永久发布</h4>
+        <canvas id="publishConfirmationCanvas" width="192" height="192"
+                aria-label="即将发布的24×24作品预览"></canvas>
+        <dl class="publish-confirmation-metadata">
+          <dt>作品标题</dt>
+          <dd id="publishConfirmationTitle"></dd>
+          <dt>作者名称</dt>
+          <dd id="publishConfirmationAuthor"></dd>
+          <dt>色板版本</dt>
+          <dd id="publishConfirmationPalette"></dd>
+        </dl>
+        <p class="publish-confirmation-warning">
+          发布后作品画面、标题和作者不可修改或覆盖，请确认以上信息无误。
+        </p>
+        <div class="work-share-confirm-actions">
+          <button class="work-share-action" id="cancelPublishConfirmationButton"
+                  type="button">返回修改</button>
+          <button class="work-share-action primary" id="confirmPublishButton"
+                  type="button">确认永久发布</button>
+        </div>
+      </div>
       <div class="published-work-result" id="publishedWorkResult" hidden>
         <button id="publishedWorkCode" type="button"
                 aria-label="复制作品分享码"
                 title="单击复制分享码"></button>
         <span class="published-work-hint">单击分享码即可复制</span>
+        <button class="published-work-link" id="publishedWorkLink" type="button"
+                aria-label="复制完整作品分享链接"></button>
+        <span class="published-work-hint">单击链接即可复制完整访问地址</span>
       </div>
     </section>
 
     <section class="work-share-section">
       <h3>读取分享作品</h3>
-      <p>输入区分大小写的12位Base58分享码。</p>
+      <p>输入区分大小写的12位Base58分享码，或粘贴包含 work= 的完整分享链接。</p>
       <div class="work-code-row">
-        <input id="workCodeInput" type="text" maxlength="12"
+        <input id="workCodeInput" type="text" maxlength="2048"
                autocomplete="off" spellcheck="false"
-               aria-label="12位作品分享码">
+               aria-label="12位作品分享码或完整分享链接"
+               placeholder="输入分享码或包含 work= 的完整链接">
         <button class="work-share-action" id="loadWorkButton" type="button">读取</button>
+      </div>
+      <div class="read-replace-confirmation" id="readReplaceConfirmation" hidden>
+        <p>
+          当前画布包含内容。读取分享作品会替换画布并更新自动存档，
+          你可以先创建一个可由顶部恢复按钮读取的保存点。
+        </p>
+        <div class="work-share-confirm-actions">
+          <button class="work-share-action primary" id="checkpointAndLoadButton"
+                  type="button">创建恢复点并读取</button>
+          <button class="work-share-action" id="loadWithoutCheckpointButton"
+                  type="button">直接读取</button>
+          <button class="work-share-action" id="cancelReadConfirmationButton"
+                  type="button">取消</button>
+        </div>
       </div>
     </section>
 
@@ -549,16 +591,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260728-19"></script>
-<script src="/static/js/reference-storage.js?v=20260728-19"></script>
-<script src="/static/js/work-codec.js?v=20260728-19"></script>
-<script src="/static/js/natural-64-v1.js?v=20260728-19"></script>
-<script src="/static/js/state.js?v=20260728-19"></script>
-<script src="/static/js/editor.js?v=20260728-19"></script>
-<script src="/static/js/export.js?v=20260728-19"></script>
-<script src="/static/js/import.js?v=20260728-19"></script>
-<script src="/static/js/works.js?v=20260728-19"></script>
-<script src="/static/js/app.js?v=20260728-19"></script>
+<script src="/static/js/storage.js?v=20260728-20"></script>
+<script src="/static/js/reference-storage.js?v=20260728-20"></script>
+<script src="/static/js/work-codec.js?v=20260728-20"></script>
+<script src="/static/js/natural-64-v1.js?v=20260728-20"></script>
+<script src="/static/js/state.js?v=20260728-20"></script>
+<script src="/static/js/editor.js?v=20260728-20"></script>
+<script src="/static/js/export.js?v=20260728-20"></script>
+<script src="/static/js/import.js?v=20260728-20"></script>
+<script src="/static/js/works.js?v=20260728-20"></script>
+<script src="/static/js/app.js?v=20260728-20"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

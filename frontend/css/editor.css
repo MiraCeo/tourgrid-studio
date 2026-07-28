@@ -266,6 +266,22 @@ body {
   flex-shrink: 0;
   position: relative;
 }
+.save-status {
+  max-width: 150px;
+  overflow: hidden;
+  color: #868a90;
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.save-status[data-state="saved"] {
+  color: #76b995;
+}
+.save-status[data-state="error"] {
+  color: #ff8c8c;
+}
 
 .btn-delete { background: #C82828; }
 .btn-undo,
@@ -1445,6 +1461,67 @@ body {
   cursor: wait;
   opacity: 0.55;
 }
+.publish-confirmation[hidden],
+.read-replace-confirmation[hidden] {
+  display: none;
+}
+.publish-confirmation {
+  display: grid;
+  gap: 12px;
+  margin-top: 13px;
+}
+.publish-confirmation h4 {
+  color: #f2f2f4;
+  font-size: 14px;
+  text-align: center;
+}
+#publishConfirmationCanvas {
+  width: 192px;
+  height: 192px;
+  margin: 0 auto;
+  border: 1px solid #55555d;
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+.publish-confirmation-metadata {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 11px;
+}
+.publish-confirmation-metadata dt {
+  color: #85858b;
+}
+.publish-confirmation-metadata dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #efeff1;
+}
+.work-share-section .publish-confirmation-warning {
+  margin: 0;
+  color: #ffbd78;
+}
+.work-share-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.work-share-confirm-actions .primary {
+  width: auto;
+}
+.read-replace-confirmation {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #70583f;
+  border-radius: 8px;
+  background: #352e27;
+}
+.read-replace-confirmation p {
+  margin-top: 0;
+  color: #d6c2aa;
+}
 .work-metadata-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1491,6 +1568,16 @@ body {
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
+.published-work-result .published-work-link {
+  width: 100%;
+  margin-top: 8px;
+  overflow: hidden;
+  color: #b7dad9;
+  font: 600 11px/1.4 system-ui, sans-serif;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .published-work-result button:hover,
 .published-work-result button:focus-visible {
   outline: none;
@@ -1531,6 +1618,13 @@ body {
 @media (max-width: 560px) {
   .work-metadata-grid {
     grid-template-columns: 1fr;
+  }
+  .work-share-confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .work-share-confirm-actions .work-share-action {
+    width: 100%;
   }
 }
 .work-share-status {
@@ -2026,6 +2120,9 @@ body {
     gap: 6px;
   }
   .top-bar .work-identity {
+    display: none;
+  }
+  .top-bar .save-status {
     display: none;
   }
   .top-bar .btn-group {

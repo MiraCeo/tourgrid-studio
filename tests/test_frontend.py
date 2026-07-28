@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260728-19"
+    asset_version = "20260728-20"
 
     assert (
         f'<link rel="stylesheet" '
@@ -428,7 +428,7 @@ def test_frontend_can_publish_and_load_immutable_shared_works() -> None:
     assert "作品标题（默认为" not in html
     assert "作者名称（默认为" not in html
     assert html.count('maxlength="10"') >= 2
-    assert 'id="publishedWorkLink"' not in html
+    assert 'id="publishedWorkLink"' in html
     assert 'id="workCodeInput"' in html
     assert "TourgridWorkCodec.packPixels" in works
     assert "TourgridWorkCodec.unpackPixels" in works
@@ -436,9 +436,15 @@ def test_frontend_can_publish_and_load_immutable_shared_works() -> None:
     assert "'/api/v1/works'" in works
     assert "'/api/v1/works/'" in works
     assert "copyPublishedWorkCode()" in works
-    assert "copyPublishedWorkLink" not in works
-    assert "authorName: authorName" in works
-    assert "title: title" in works
+    assert "copyPublishedWorkLink()" in works
+    assert "buildSharedWorkLink(code)" in works
+    assert "publishConfirmationCanvas" in html
+    assert "confirmPublishCurrentWork()" in works
+    assert "readReplaceConfirmation" in html
+    assert "checkpointAndLoadSharedWork()" in works
+    assert "SHARE_CODE_PATTERN" in works
+    assert "authorName: pendingPublish.authorName" in works
+    assert "title: pendingPublish.title" in works
     assert "已读取《" in works
     assert "作者：" in works
     assert "body.title || '很糊的画'" in works

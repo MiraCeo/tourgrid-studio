@@ -988,11 +988,19 @@ function bindStaticControls() {
   on('workShareModal', 'click', closeWorkShareModalFromBackdrop);
   on('closeWorkShareModalBtn', 'click', closeWorkShareModal);
   on('publishWorkButton', 'click', publishCurrentWork);
+  on('cancelPublishConfirmationButton', 'click', function() {
+    cancelPublishConfirmation(false);
+  });
+  on('confirmPublishButton', 'click', confirmPublishCurrentWork);
   on('publishedWorkCode', 'click', copyPublishedWorkCode);
+  on('publishedWorkLink', 'click', copyPublishedWorkLink);
   on('workCodeInput', 'keydown', function(event) {
     if (event.key === 'Enter') loadSharedWorkFromInput();
   });
   on('loadWorkButton', 'click', loadSharedWorkFromInput);
+  on('checkpointAndLoadButton', 'click', checkpointAndLoadSharedWork);
+  on('loadWithoutCheckpointButton', 'click', loadSharedWorkWithoutCheckpoint);
+  on('cancelReadConfirmationButton', 'click', cancelReadReplaceConfirmation);
   on('announcementModal', 'click', closeAnnouncementModalFromBackdrop);
   on('closeAnnouncementModalBtn', 'click', closeAnnouncementModal);
   on('authorModal', 'click', closeAuthorModalFromBackdrop);

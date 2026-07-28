@@ -520,6 +520,19 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     expect(editor_page.locator("#workTitleInput")).to_have_value("很糊的画")
     expect(editor_page.locator("#workAuthorInput")).to_have_value("博士")
     editor_page.locator("#publishWorkButton").click()
+    expect(editor_page.locator("#publishConfirmation")).to_be_visible()
+    expect(editor_page.locator("#publishConfirmationTitle")).to_have_text(
+        "很糊的画"
+    )
+    expect(editor_page.locator("#publishConfirmationAuthor")).to_have_text(
+        "博士"
+    )
+    assert published_payload == {}
+    editor_page.locator("#cancelPublishConfirmationButton").click()
+    expect(editor_page.locator("#publishConfirmation")).to_be_hidden()
+    expect(editor_page.locator("#workTitleInput")).to_be_visible()
+    editor_page.locator("#publishWorkButton").click()
+    editor_page.locator("#confirmPublishButton").click()
     expect(editor_page.locator("#publishedWorkCode")).to_have_text(code)
     editor_page.context.grant_permissions(
         ["clipboard-read", "clipboard-write"],
@@ -527,6 +540,11 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     )
     editor_page.locator("#publishedWorkCode").click()
     assert editor_page.evaluate("navigator.clipboard.readText()") == code
+    share_link = editor_page.locator("#publishedWorkLink").text_content()
+    assert share_link is not None
+    assert share_link.endswith("/?work=" + code)
+    editor_page.locator("#publishedWorkLink").click()
+    assert editor_page.evaluate("navigator.clipboard.readText()") == share_link
 
     assert published_payload["schemaVersion"] == 1
     assert published_payload["paletteId"] == "natural-64-v1"
@@ -536,8 +554,15 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     assert len(encoded) == 576
     assert len(base64.b64decode(encoded)) == 432
 
-    editor_page.locator("#workCodeInput").fill(code)
+    editor_page.locator("#workCodeInput").fill(share_link + "A")
     editor_page.locator("#loadWorkButton").click()
+    expect(editor_page.locator("#workShareStatus")).to_contain_text(
+        "有效的12位Base58"
+    )
+    editor_page.locator("#workCodeInput").fill(share_link)
+    editor_page.locator("#loadWorkButton").click()
+    expect(editor_page.locator("#readReplaceConfirmation")).to_be_visible()
+    editor_page.locator("#checkpointAndLoadButton").click()
     expect(editor_page.locator("#toast")).to_contain_text(
         "已读取《很糊的画》 · 作者：博士"
     )
@@ -548,6 +573,9 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     expect(editor_page.locator("#topWorkMeta")).to_contain_text("作者：博士")
     expect(editor_page.locator("#topWorkMeta")).to_contain_text("浏览次数：1")
     expect(editor_page.locator("#topWorkMeta")).to_contain_text(code)
+    expect(editor_page.locator("#saveStatus")).to_contain_text(
+        "有手动保存点"
+    )
 
     select_color(editor_page, RED)
     paint_cells(editor_page, [(0, 0)])
