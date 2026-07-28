@@ -155,7 +155,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert '<option value="count-desc" selected>' in html
     assert '<option value="count-asc">' in html
     assert '<option value="palette-order">' in html
-    assert "巡展像素 · 64色" in html
+    assert "临时色板 · 64色" in html
     assert html.index('id="statisticsGrid"') < html.index('id="colorUsageSummary"')
 
     assert "const MARD_DATA" not in state
@@ -555,7 +555,7 @@ def test_top_bar_uses_dynamic_shared_work_identity_and_unified_svg_icons() -> No
     )[0]
     assert 'id="topWorkTitle"' in top_bar
     assert 'id="topWorkMeta"' in top_bar
-    assert "《巡展像素》非官方编辑器" in top_bar
+    assert "Tourgrid Studio｜24×24 像素画编辑器" in top_bar
     assert "Exhibition Gallery.indd" not in top_bar
     assert "🗑" not in top_bar
     assert "↻" not in top_bar
@@ -799,26 +799,26 @@ def test_mobile_fullscreen_control_uses_browser_fullscreen_api() -> None:
     assert "function syncFullscreenControl()" in app
 
 
-def test_author_project_modal_uses_local_avatar_and_safe_github_links() -> None:
+def test_author_project_modal_uses_no_unlicensed_avatar_and_safe_github_links() -> None:
     html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
     css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
     avatar = FRONTEND_ROOT / "assets" / "images" / "miraceo-avatar.jpg"
 
-    assert avatar.is_file()
-    assert avatar.stat().st_size > 0
+    assert not avatar.exists()
     assert not (PROJECT_ROOT / "input1.jpg").exists()
     assert 'class="icon-btn btn-github"' in html
     assert 'onclick="openAuthorModal()"' in html
     assert 'id="authorModal" hidden' in html
-    assert '/static/assets/images/miraceo-avatar.jpg' in html
+    assert "miraceo-avatar" not in html
+    assert "author-avatar-frame" not in html
     assert 'href="https://github.com/MiraCeo"' in html
     assert 'href="https://github.com/MiraCeo/tourgrid-studio"' in html
     assert html.count('target="_blank"') >= 2
     assert html.count('rel="noopener noreferrer"') >= 2
     assert 'title="重新导入"' not in html
     assert ".author-overlay {" in css
-    assert ".author-avatar-frame {" in css
+    assert ".author-avatar-frame {" not in css
     assert ".author-link {" in css
     assert "function openAuthorModal()" in app
     assert "function closeAuthorModal()" in app

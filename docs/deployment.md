@@ -38,7 +38,7 @@ docker compose --env-file deploy/local.env down
 ## 测试环境
 
 1. 将 `deploy/staging.env.example` 复制为不提交的 `deploy/staging.env`。
-2. 设置测试域名、数据库强密码和不可变版本标签，例如 `0.3.0-rc.1`。
+2. 设置测试域名、数据库强密码和不可变版本标签，例如 `0.3.1-rc.1`。
 3. 将域名A/AAAA记录指向服务器并开放TCP 80和443。
 4. 运行完整测试并启动Compose。
 

@@ -10,7 +10,7 @@ class ApiSettings:
     rate_limit_window_seconds: float = 60.0
     rate_limit_max_clients: int = 10_000
     environment: str = "development"
-    release: str = "0.3.0"
+    release: str = "0.3.1"
     database_url: str | None = None
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.0

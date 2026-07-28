@@ -1,12 +1,19 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "tourgrid-studio"
-version = "0.3.0"
-description = "Unofficial browser-based editor and immutable work sharing service for Arknights exhibition pixel art."
+version = "0.3.1"
+description = "Browser-based 24x24 pixel art editor and immutable work sharing service."
 readme = "README.md"
+license = "Apache-2.0"
+license-files = [
+  "LICENSE",
+  "NOTICE",
+  "LICENSE_SCOPE.md",
+  "THIRD_PARTY_NOTICES.md",
+]
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "fastapi>=0.115,<1",

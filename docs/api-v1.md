@@ -28,7 +28,7 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 ```json
 {
   "status": "ok",
-  "appVersion": "0.3.0",
+  "appVersion": "0.3.1",
   "defaultPaletteId": "natural-64-v1"
 }
 ```

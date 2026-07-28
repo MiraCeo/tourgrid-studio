@@ -19,6 +19,10 @@ def test_container_and_compose_delivery_files_exist() -> None:
         "deploy/staging.env.example",
         "deploy/production.env.example",
         "docs/deployment.md",
+        "LICENSE",
+        "NOTICE",
+        "LICENSE_SCOPE.md",
+        "THIRD_PARTY_NOTICES.md",
     ]
     assert all((ROOT / path).is_file() for path in expected)
 
@@ -56,10 +60,26 @@ def test_postgres_is_persistent_and_only_bound_to_loopback() -> None:
     assert "TOURGRID_DB_PASSWORD=" in production
 
 
-def test_frontend_image_includes_static_assets() -> None:
+def test_frontend_image_includes_only_versioned_frontend_sources() -> None:
     dockerfile = (ROOT / "docker/frontend.Dockerfile").read_text(encoding="utf-8")
 
-    assert "COPY frontend/assets /srv/static/assets" in dockerfile
+    assert "COPY frontend/css /srv/static/css" in dockerfile
+    assert "COPY frontend/js /srv/static/js" in dockerfile
+    assert "COPY frontend/assets" not in dockerfile
+
+
+def test_license_scope_excludes_palette_data_and_starts_at_v031() -> None:
+    project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    scope = (ROOT / "LICENSE_SCOPE.md").read_text(encoding="utf-8")
+    notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+
+    assert 'version = "0.3.1"' in project
+    assert 'license = "Apache-2.0"' in project
+    assert "`v0.3.1`" in scope
+    assert "`palettes/`" in scope
+    assert "`frontend/js/natural-64-v1.js`" in scope
+    assert "official promotional" in notices
+    assert "broadcast footage" in notices
 
 
 def test_rate_limiter_client_cap_is_configured_for_deployment() -> None:

@@ -173,7 +173,7 @@ function currentPaletteLabel() {
   var definition = PALETTE_DEFS.find(function(item) {
     return item.id === currentPaletteId;
   });
-  return definition ? definition.label : '巡展像素';
+  return definition ? definition.label : '临时64色色板';
 }
 
 function exportBeadBlueprint() {

@@ -1,6 +1,6 @@
 # Tourgrid Studio
 
-《明日方舟》“巡展像素”非官方在线编辑器。
+Tourgrid Studio 是一款非官方的 24×24 像素画编辑器。
 
 用户可以在浏览器中导入并裁切图片，将其转换为严格 24×24、限定
 `natural-64-v1` 64色色板的像素画。原图和裁切参考图只保存在浏览器本地；
@@ -169,4 +169,21 @@ PostgreSQL集成测试需要设置 `TOURGRID_TEST_DATABASE_URL`，未设置时�
 
 ## 声明
 
-Tourgrid Studio是非官方项目，与鹰角网络或《明日方舟》官方无隶属关系。
+Tourgrid Studio 是非官方项目，与相关游戏、活动及其权利人不存在隶属、合作、
+授权、赞助或背书关系。相关名称、活动名称、商标、美术和其他官方内容的权利归
+各自权利人所有。
+
+## 许可证
+
+除特别说明外，Tourgrid Studio 中由 MiraCeo 原创的程序代码和原创文档自
+`v0.3.1` 起采用 Apache License 2.0。
+
+具体色板数据、官方来源内容、第三方素材和用户提交作品不属于 Apache-2.0
+授权范围。正式英文说明及中文参考说明见：
+
+- [Apache License 2.0](LICENSE)
+- [License Scope / 许可范围](LICENSE_SCOPE.md)
+- [Third-Party and Excluded Materials / 第三方与排除内容](THIRD_PARTY_NOTICES.md)
+- [Palette Provenance / 色板来源](docs/legal/palette-provenance.md)
+
+构建过程中下载的 Python 依赖和容器基础镜像继续适用其各自许可条款。

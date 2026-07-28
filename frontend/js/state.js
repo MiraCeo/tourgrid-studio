@@ -80,7 +80,7 @@ function updateTopWorkIdentity() {
     documentMetadata.sharedCode
   );
   if (!isShared) {
-    titleElement.textContent = '《巡展像素》非官方编辑器';
+    titleElement.textContent = 'Tourgrid Studio｜24×24 像素画编辑器';
     metaElement.textContent = '';
     metaElement.hidden = true;
     return;
@@ -132,17 +132,17 @@ let paletteColorBeforeReplication = null;
 let replicationSelectionChanged = false;
 let canvasGuidesVisible = true;
 
-// 巡展像素官方色板(待填入)
+// 当前临时64色色板。
 const EXHIBITION_DATA = TOURGRID_NATURAL_64_V1.colors.map(function(color) {
   return {code: color.code, hex: color.hex, name: color.name};
 });
 
-// 编辑器只使用巡展像素色板。
+// 编辑器只使用当前版本化色板。
 let OFFICIAL_COLORS = EXHIBITION_DATA;
 
-// 保留单项定义以兼容旧存档恢复流程；旧色板 ID 会回落到巡展像素。
+// 保留单项定义以兼容旧存档恢复流程；旧色板 ID 会回落到当前色板。
 const PALETTE_DEFS = [
-  { id: 'exhibition', label: '巡展像素', colors: EXHIBITION_DATA, color: '#80D8F0' }
+  { id: 'exhibition', label: '临时64色色板', colors: EXHIBITION_DATA, color: '#80D8F0' }
 ];
 let currentPaletteId = 'exhibition';
 

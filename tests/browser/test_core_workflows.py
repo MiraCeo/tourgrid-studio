@@ -554,7 +554,7 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     select_color(editor_page, RED)
     paint_cells(editor_page, [(0, 0)])
     expect(editor_page.locator("#topWorkTitle")).to_have_text(
-        "《巡展像素》非官方编辑器"
+        "Tourgrid Studio｜24×24 像素画编辑器"
     )
     expect(editor_page.locator("#topWorkMeta")).to_be_hidden()
 
@@ -566,5 +566,5 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     wait_for_history(editor_page)
     assert pixel_signature(editor_state(editor_page)) == before_load
     expect(editor_page.locator("#topWorkTitle")).to_have_text(
-        "《巡展像素》非官方编辑器"
+        "Tourgrid Studio｜24×24 像素画编辑器"
     )
