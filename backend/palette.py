@@ -10,7 +10,7 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PALETTES_DIR = PROJECT_ROOT / "palettes"
-DEFAULT_PALETTE_ID = "natural-64-v1"
+DEFAULT_PALETTE_ID = "natural-64-v2"
 HEX_PATTERN = re.compile(r"^#[0-9A-F]{6}$")
 
 

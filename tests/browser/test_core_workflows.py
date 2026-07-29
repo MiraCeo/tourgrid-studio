@@ -21,9 +21,9 @@ from .helpers import (
 
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-BLACK = "#222222"
+BLACK = "#242424"
 WHITE = "#FFFFFF"
-RED = "#D42F37"
+RED = "#D22F34"
 
 
 pytestmark = pytest.mark.browser
@@ -191,7 +191,7 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
           };
         }"""
     )
-    assert overlay_feedback["sourcePreview"] == [212, 47, 55, 255]
+    assert overlay_feedback["sourcePreview"] == [210, 47, 52, 255]
     assert overlay_feedback["existingTargetCenter"][3] == 0
     assert overlay_feedback["existingTargetEdge"][3] == 0
 
@@ -540,7 +540,7 @@ def test_legacy_completed_color_progress_migrates_to_completed_cells(
             }
           }));
         }""",
-        ["tourgrid_replication_progress_v1", fingerprint, BLACK],
+        ["tourgrid_replication_progress_v2", fingerprint, BLACK],
     )
 
     editor_page.reload(wait_until="domcontentloaded")
@@ -558,7 +558,7 @@ def test_legacy_completed_color_progress_migrates_to_completed_cells(
             record: store.works[fingerprint]
           };
         }""",
-        ["tourgrid_replication_progress_v1", fingerprint],
+        ["tourgrid_replication_progress_v2", fingerprint],
     )
     assert stored["version"] == 2
     assert stored["record"]["completedCells"] == [25, 27]
@@ -662,7 +662,7 @@ def test_canvas_cell_hover_preview_and_outline_follow_editor_mode(
           1
         ).data"""
     )
-    assert preview_pixel == [34, 34, 34, 255]
+    assert preview_pixel == [36, 36, 36, 255]
 
     editor_page.evaluate(
         """
@@ -1705,7 +1705,17 @@ def test_mobile_landscape_crop_keeps_large_image_zoom_and_actions_visible(
 
 def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     code = "7Kp3mXqB4NzR"
-    all_black_payload = base64.b64encode(bytes(432)).decode("ascii")
+    black_palette_index = 0
+    packed_black_group = bytes(
+        [
+            (black_palette_index << 2) | (black_palette_index >> 4),
+            ((black_palette_index & 0x0F) << 4) | (black_palette_index >> 2),
+            ((black_palette_index & 0x03) << 6) | black_palette_index,
+        ]
+    )
+    all_black_payload = base64.b64encode(
+        packed_black_group * (24 * 24 // 4)
+    ).decode("ascii")
     published_payload: dict[str, object] = {}
 
     def handle_publish(route) -> None:
@@ -1715,7 +1725,7 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
             content_type="application/json",
             body=(
                 '{"code":"' + code + '","schemaVersion":1,'
-                '"paletteId":"natural-64-v1","paletteVersion":1,'
+                '"paletteId":"natural-64-v2","paletteVersion":2,'
                 '"pixels":"' + published_payload["pixels"] + '",'
                 '"authorName":"博士","title":"很糊的画","viewCount":0,'
                 '"createdAt":"2026-07-27T00:00:00Z"}'
@@ -1728,7 +1738,7 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
             content_type="application/json",
             body=(
                 '{"code":"' + code + '","schemaVersion":1,'
-                '"paletteId":"natural-64-v1","paletteVersion":1,'
+                '"paletteId":"natural-64-v2","paletteVersion":2,'
                 '"pixels":"' + all_black_payload + '",'
                 '"authorName":"博士","title":"很糊的画","viewCount":1,'
                 '"createdAt":"2026-07-27T00:00:00Z"}'
@@ -1774,7 +1784,8 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     assert editor_page.evaluate("navigator.clipboard.readText()") == share_link
 
     assert published_payload["schemaVersion"] == 1
-    assert published_payload["paletteId"] == "natural-64-v1"
+    assert published_payload["paletteId"] == "natural-64-v2"
+    assert published_payload["paletteVersion"] == 2
     assert published_payload["title"] == "很糊的画"
     assert published_payload["authorName"] == "博士"
     encoded = str(published_payload["pixels"])

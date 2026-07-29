@@ -38,8 +38,8 @@ def work_payload(
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "schemaVersion": 1,
-        "paletteId": "natural-64-v1",
-        "paletteVersion": 1,
+        "paletteId": "natural-64-v2",
+        "paletteVersion": 2,
         "pixels": packed_pixels(fill),
     }
     if title is not None:
@@ -56,7 +56,7 @@ def test_health_reports_application_version(client: TestClient) -> None:
     assert response.json() == {
         "status": "ok",
         "appVersion": APP_VERSION,
-        "defaultPaletteId": "natural-64-v1",
+        "defaultPaletteId": "natural-64-v2",
     }
 
 
@@ -435,7 +435,7 @@ def test_shared_work_rejects_invalid_payload_and_palette_version(
     invalid_length = client.post("/api/v1/works", json=short_payload)
 
     wrong_palette = work_payload()
-    wrong_palette["paletteVersion"] = 2
+    wrong_palette["paletteVersion"] = 1
     palette_mismatch = client.post("/api/v1/works", json=wrong_palette)
 
     assert invalid_length.status_code == 422
@@ -499,14 +499,14 @@ def test_admin_interface_is_served_without_embedding_credentials(
 
 def test_palette_list_and_detail(client: TestClient) -> None:
     list_response = client.get("/api/v1/palettes")
-    detail_response = client.get("/api/v1/palettes/natural-64-v1")
+    detail_response = client.get("/api/v1/palettes/natural-64-v2")
 
     assert list_response.status_code == 200
     assert list_response.json() == [
         {
-            "id": "natural-64-v1",
-            "name": "Natural 64 v1",
-            "version": 1,
+            "id": "natural-64-v2",
+            "name": "Natural 64 v2",
+            "version": 2,
             "status": "provisional",
             "colorCount": 64,
         }
@@ -514,14 +514,14 @@ def test_palette_list_and_detail(client: TestClient) -> None:
 
     detail = detail_response.json()
     assert detail_response.status_code == 200
-    assert detail["sampledColorCount"] == 24
-    assert detail["predictedColorCount"] == 40
+    assert detail["sampledColorCount"] == 32
+    assert detail["predictedColorCount"] == 32
     assert len(detail["colors"]) == 64
     assert detail["colors"][0] == {
-        "id": "N01",
-        "name": "Black",
-        "rgb": [34, 34, 34],
-        "hex": "#222222",
+        "id": "C15",
+        "name": "Color 15",
+        "rgb": [36, 36, 36],
+        "hex": "#242424",
         "confirmed": True,
     }
 

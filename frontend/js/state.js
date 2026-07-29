@@ -7,8 +7,8 @@ const GRID_SIZE = 24;
 const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，400% 为 1600px
 const NAV_CELL_SIZE = 4;   // 鐎佃壈鍩呴崳銊︾槨娑擃亜鍎氱槐鐘崇壐閻ㄥ嫬鏄傜€?
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
-const DEFAULT_PALETTE_ID = 'natural-64-v1';
-const DEFAULT_PALETTE_VERSION = TOURGRID_NATURAL_64_V1.version;
+const DEFAULT_PALETTE_ID = 'natural-64-v2';
+const DEFAULT_PALETTE_VERSION = TOURGRID_NATURAL_64_V2.version;
 let documentMetadata = TourgridStorage.defaultMetadata();
 
 // --- 閼瑰弶婢橀弫鐗堝祦閿涘牆濮╅幀浣瑰絹閸欐牜鏁剧敮鍐ц厬娴ｈ法鏁ゆ０婊嗗閿?--
@@ -118,7 +118,7 @@ function markSharedWorkAsEdited() {
 let overlayVisible = false;   // overlay toggle state
 let overlayOpacity = 0.4;      // overlay opacity
 let referenceState = TourgridStorage.defaultReference();
-let currentColor = '#222222';
+let currentColor = '#242424';
 let currentTool = 'brush';
 let eyedropperActive = false;
 let moveCanvasActive = false;
@@ -145,7 +145,7 @@ let replicationSelectionChanged = false;
 let canvasGuidesVisible = true;
 
 // 当前临时64色色板。
-const EXHIBITION_DATA = TOURGRID_NATURAL_64_V1.colors.map(function(color) {
+const EXHIBITION_DATA = TOURGRID_NATURAL_64_V2.colors.map(function(color) {
   return {code: color.code, hex: color.hex, name: color.name};
 });
 
@@ -199,11 +199,11 @@ let lastPaintedX = -1;
 let lastPaintedY = -1;
 
 // --- 本地存储：自动保存/加载像素数据 ---
-var STORAGE_KEY = 'pixel_editor_save';
-var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';
+var STORAGE_KEY = 'pixel_editor_save_v2';
+var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint_v2';
 var CANVAS_GUIDES_STORAGE_KEY = 'tourgrid_canvas_guides_visible';
 // 保留原键名以便原有整色完成记录在读取时迁移为逐格进度。
-var REPLICATION_PROGRESS_STORAGE_KEY = 'tourgrid_replication_progress_v1';
+var REPLICATION_PROGRESS_STORAGE_KEY = 'tourgrid_replication_progress_v2';
 
 function updateLocalSaveStatus(savedAt, state) {
   var status = document.getElementById('saveStatus');

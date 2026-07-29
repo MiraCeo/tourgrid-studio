@@ -110,7 +110,7 @@ jobs:
           curl --fail --show-error http://127.0.0.1:8080/api/v1/health | grep -q '"status":"ok"'
           curl --fail --show-error http://127.0.0.1:8080/api/v1/ready | grep -q '"status":"ready"'
           curl --fail --show-error http://127.0.0.1:8080/ | grep -q 'pixelCanvas'
-          python -c "import base64,json; print(json.dumps({'schemaVersion':1,'paletteId':'natural-64-v1','paletteVersion':1,'pixels':base64.b64encode(bytes(432)).decode()}))" > /tmp/work.json
+          python -c "import base64,json; print(json.dumps({'schemaVersion':1,'paletteId':'natural-64-v2','paletteVersion':2,'pixels':base64.b64encode(bytes(432)).decode()}))" > /tmp/work.json
           curl --fail --show-error \
             -H "Content-Type: application/json" \
             --data-binary @/tmp/work.json \

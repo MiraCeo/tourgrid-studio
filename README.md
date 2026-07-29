@@ -3,7 +3,7 @@
 Tourgrid Studio 是一款非官方的 24×24 像素画编辑器。
 
 用户可以在浏览器中导入并裁切图片，将其转换为严格 24×24、限定
-`natural-64-v1` 64色色板的像素画。原图和裁切参考图只保存在浏览器本地；
+`natural-64-v2` 64色色板的像素画。原图和裁切参考图只保存在浏览器本地；
 服务器只负责静态页面、版本化色板查询，以及不可变作品的保存与凭码读取。
 
 ## 当前能力
@@ -23,8 +23,10 @@ Tourgrid Studio 是一款非官方的 24×24 像素画编辑器。
 - 支持复制完整分享链接，并可从纯分享码或包含 `work=` 的链接读取作品。
 - Caddy、FastAPI、PostgreSQL和Redis组成同源Docker Compose部署。
 
-当前默认色板 `natural-64-v1` 是临时预测色板。未来色板必须使用新的ID，例如
-`official-v1`，不能覆盖已经发布的色板。
+当前默认候选色板是 `natural-64-v2`：其中32色来自官方作品下载结果和官方前瞻
+直播截图的观测与去重，另外32色由项目作者为补足基础RGB色系而预测。预测色不代表
+官方已经公布或确认的颜料颜色。旧 `natural-64-v1` 仅作为早期探索记录保存在
+`palettes/archive/` 和 `frontend/js/archive/`，运行时不会读取。
 
 ## 架构边界
 
@@ -59,7 +61,7 @@ tourgrid-studio/
 │  ├─ index.html
 │  ├─ css/editor.css
 │  └─ js/
-│     ├─ natural-64-v1.js   # 浏览器固定64色色板
+│     ├─ natural-64-v2.js   # 浏览器当前候选64色色板
 │     ├─ import.js          # 裁切与浏览器本地转换
 │     ├─ editor.js          # Canvas、历史与导航器
 │     ├─ app.js             # 工具、上色、替换与复刻面板
@@ -68,7 +70,7 @@ tourgrid-studio/
 │     ├─ reference-storage.js
 │     ├─ work-codec.js
 │     └─ works.js
-├─ palettes/                # 版本化色板JSON
+├─ palettes/                # 运行时版本化色板JSON（archive/不参与读取）
 ├─ tests/                   # API、存储、前端契约与浏览器回归
 ├─ docs/                    # API、部署与阶段文档
 ├─ docker/

@@ -115,7 +115,7 @@ def test_license_scope_excludes_palette_data_and_starts_at_v031() -> None:
     assert 'license = "Apache-2.0"' in project
     assert "`v0.3.1`" in scope
     assert "`palettes/`" in scope
-    assert "`frontend/js/natural-64-v1.js`" in scope
+    assert "`frontend/js/natural-64-v2.js`" in scope
     assert "official promotional" in notices
     assert "broadcast footage" in notices
 
@@ -237,12 +237,13 @@ def test_production_lock_excludes_server_conversion_dependencies() -> None:
     assert all(package not in lock.lower() for package in forbidden)
 
 
-def test_palette_examples_never_replace_the_provisional_palette() -> None:
+def test_archived_palette_is_not_a_runtime_palette() -> None:
     deployment = (ROOT / "docs/deployment.md").read_text(encoding="utf-8")
 
+    assert "natural-64-v2" in deployment
     assert "natural-64-v1" in deployment
-    assert "official-v1" in deployment
-    assert "不能覆盖" in deployment
+    assert "仅保存在" in deployment
+    assert "预测色" in deployment
 
 
 def test_server_converter_removal_is_documented_as_complete() -> None:

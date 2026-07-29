@@ -42,7 +42,7 @@ async function loadExhibitionPalette() {
       data.colors.length !== 64
     ) return;
     var matchesEmbeddedPalette = data.colors.every(function(color, index) {
-      var embedded = TOURGRID_NATURAL_64_V1.colors[index];
+      var embedded = TOURGRID_NATURAL_64_V2.colors[index];
       return color.id === embedded.code &&
         String(color.hex).toUpperCase() === embedded.hex.toUpperCase();
     });
@@ -264,7 +264,7 @@ function selectImportPalette(rawR, rawG, rawB, targetCount) {
     };
   });
   if (fullPalette.length !== 64) {
-    throw new Error('本地 natural-64-v1 色板加载失败。');
+    throw new Error('本地 natural-64-v2 色板加载失败。');
   }
   if (targetCount >= fullPalette.length) return fullPalette;
 

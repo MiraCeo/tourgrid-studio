@@ -27,22 +27,22 @@ def test_content_digest_includes_palette_and_schema_versions() -> None:
     pixels = bytes(432)
     baseline = content_digest(
         schema_version=1,
-        palette_id="natural-64-v1",
-        palette_version=1,
+        palette_id="natural-64-v2",
+        palette_version=2,
         pixel_data=pixels,
     )
 
     assert len(baseline) == 32
     assert baseline != content_digest(
         schema_version=1,
-        palette_id="natural-64-v1",
-        palette_version=2,
+        palette_id="natural-64-v2",
+        palette_version=1,
         pixel_data=pixels,
     )
     assert baseline != content_digest(
         schema_version=2,
-        palette_id="natural-64-v1",
-        palette_version=1,
+        palette_id="natural-64-v2",
+        palette_version=2,
         pixel_data=pixels,
     )
 
@@ -61,8 +61,8 @@ def test_memory_store_deduplicates_and_increments_views() -> None:
     store = InMemoryWorkStore()
     values = {
         "schema_version": 1,
-        "palette_id": "natural-64-v1",
-        "palette_version": 1,
+        "palette_id": "natural-64-v2",
+        "palette_version": 2,
         "pixel_data": bytes(432),
         "content_hash": bytes(32),
         "author_name": None,

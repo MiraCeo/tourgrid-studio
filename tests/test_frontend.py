@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-19"
+    asset_version = "20260729-20"
 
     assert (
         f'<link rel="stylesheet" '
@@ -51,7 +51,7 @@ def test_frontend_is_split_into_ordered_assets() -> None:
         "storage.js",
         "reference-storage.js",
         "work-codec.js",
-        "natural-64-v1.js",
+        "natural-64-v2.js",
         "state.js",
         "editor.js",
         "export.js",
@@ -121,6 +121,16 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert '<option value="bayer2">Bayer 2×2</option>' in source
     assert '<option value="bayer4">Bayer 4×4</option>' in source
     assert "const GRID_SIZE = 24" in source
+
+
+def test_v2_palette_uses_isolated_local_storage_keys() -> None:
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+
+    assert "var STORAGE_KEY = 'pixel_editor_save_v2';" in state
+    assert "var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint_v2';" in state
+    assert "var REPLICATION_PROGRESS_STORAGE_KEY = 'tourgrid_replication_progress_v2';" in state
+    assert "var STORAGE_KEY = 'pixel_editor_save';" not in state
+    assert "var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';" not in state
 
 
 def test_first_run_canvas_is_blank_white_instead_of_a_demo_pattern() -> None:
@@ -285,7 +295,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "sampleCanvasColor(samplePos.x, samplePos.y)" in editor
     assert "if (!currentColor)" in editor
     assert "请先从上色中选择一种颜色" in editor
-    assert "let currentColor = '#222222'" in state
+    assert "let currentColor = '#242424'" in state
     assert "mainCtx.fillText" not in editor
     assert "markReplicationCellCompleted(replicationPos.x, replicationPos.y)" in editor
     assert "复刻模式下画布为只读" in editor
@@ -316,8 +326,8 @@ assert.deepEqual(
 """
     run_node(
         script,
-        JAVASCRIPT_ROOT / "natural-64-v1.js",
-        PROJECT_ROOT / "palettes" / "natural-64-v1.json",
+        JAVASCRIPT_ROOT / "natural-64-v2.js",
+        PROJECT_ROOT / "palettes" / "natural-64-v2.json",
     )
 
 
@@ -448,7 +458,7 @@ assert.throws(
     run_node(
         script,
         JAVASCRIPT_ROOT / "work-codec.js",
-        JAVASCRIPT_ROOT / "natural-64-v1.js",
+        JAVASCRIPT_ROOT / "natural-64-v2.js",
     )
 
 
@@ -520,7 +530,7 @@ assert.equal(storage.migrate({gridSize: 2, pixels: [['#FFFFFF', '#000000'], ['#F
 const serialized = storage.serialize({
   gridSize: 24,
   pixels,
-  metadata: {sourceMode: 'server', paletteId: 'natural-64-v1'},
+  metadata: {sourceMode: 'server', paletteId: 'natural-64-v2'},
   reference: {
     assetId: 'active-reference',
     mimeType: 'image/webp',
@@ -531,7 +541,7 @@ const serialized = storage.serialize({
   }
 });
 assert.equal(serialized.metadata.sourceMode, 'server');
-assert.equal(serialized.metadata.paletteId, 'natural-64-v1');
+assert.equal(serialized.metadata.paletteId, 'natural-64-v2');
 assert.equal(serialized.reference.assetId, 'active-reference');
 assert.equal(serialized.reference.visible, true);
 assert.equal(serialized.reference.opacity, 0.75);

@@ -31,8 +31,8 @@ def test_postgres_store_saves_deduplicates_and_counts_views() -> None:
         try:
             values = {
                 "schema_version": 1,
-                "palette_id": "natural-64-v1",
-                "palette_version": 1,
+                "palette_id": "natural-64-v2",
+                "palette_version": 2,
                 "pixel_data": pixel_data,
                 "content_hash": content_hash,
                 "author_name": None,
@@ -74,8 +74,8 @@ def test_work_api_round_trips_through_postgres() -> None:
     pixel_data = secrets.token_bytes(432)
     request_body = {
         "schemaVersion": 1,
-        "paletteId": "natural-64-v1",
-        "paletteVersion": 1,
+        "paletteId": "natural-64-v2",
+        "paletteVersion": 2,
         "pixels": base64.b64encode(pixel_data).decode("ascii"),
         "authorName": "Mira",
         "title": "巡展作品",
@@ -125,8 +125,8 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
     pixel_data = secrets.token_bytes(432)
     content_hash = content_digest(
         schema_version=1,
-        palette_id="natural-64-v1",
-        palette_version=1,
+        palette_id="natural-64-v2",
+        palette_version=2,
         pixel_data=pixel_data,
     )
 
@@ -137,8 +137,8 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
         try:
             record = await store.save(
                 schema_version=1,
-                palette_id="natural-64-v1",
-                palette_version=1,
+                palette_id="natural-64-v2",
+                palette_version=2,
                 pixel_data=pixel_data,
                 content_hash=content_hash,
                 author_name="Mira",
@@ -191,8 +191,8 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             with pytest.raises(WorkModerated):
                 await store.save(
                     schema_version=1,
-                    palette_id="natural-64-v1",
-                    palette_version=1,
+                    palette_id="natural-64-v2",
+                    palette_version=2,
                     pixel_data=pixel_data,
                     content_hash=content_hash,
                     author_name=None,

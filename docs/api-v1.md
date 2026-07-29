@@ -31,7 +31,7 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 {
   "status": "ok",
   "appVersion": "0.3.1",
-  "defaultPaletteId": "natural-64-v1"
+  "defaultPaletteId": "natural-64-v2"
 }
 ```
 
@@ -71,8 +71,8 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 ```json
 {
   "schemaVersion": 1,
-  "paletteId": "natural-64-v1",
-  "paletteVersion": 1,
+  "paletteId": "natural-64-v2",
+  "paletteVersion": 2,
   "pixels": "<长度576的Base64字符串>",
   "title": "作品标题",
   "authorName": "作者名称"
@@ -97,8 +97,8 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 {
   "code": "7Kp3mXqB4NzR",
   "schemaVersion": 1,
-  "paletteId": "natural-64-v1",
-  "paletteVersion": 1,
+  "paletteId": "natural-64-v2",
+  "paletteVersion": 2,
   "pixels": "<长度576的Base64字符串>",
   "authorName": "博士",
   "title": "很糊的画",
