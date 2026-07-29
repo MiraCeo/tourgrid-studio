@@ -553,6 +553,9 @@ var touchPinchZoom = 0;   // 双指缩放起始zoom值
 function onTouchStart(e) {
   if (historyOperationInProgress) return;
   e.preventDefault();
+  // Touch screens have no persistent hover state. Clear any cell preview left
+  // by a compatibility mouse event before drawing, panning, or pinching.
+  clearCanvasCellHighlight();
   if (e.touches.length === 1) {
     if (moveCanvasActive) {
       isDrawing = false;

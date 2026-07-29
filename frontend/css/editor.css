@@ -409,8 +409,7 @@ body {
 }
 
 .mobile-toolbar-handle,
-.mobile-panel-toggle,
-.workspace-drawer-backdrop {
+.mobile-panel-toggle {
   display: none;
 }
 
@@ -2296,6 +2295,8 @@ body {
     pointer-events: none;
   }
   body.mobile-focus-mode .editor-body {
+    --mobile-left-panel-width: min(48vw, 320px);
+    --mobile-right-panel-width: min(56vw, 360px);
     position: relative;
     isolation: isolate;
   }
@@ -2305,6 +2306,15 @@ body {
     min-width: 0;
     padding: 8px;
     touch-action: none;
+    transition:
+      margin-left 0.2s ease,
+      margin-right 0.2s ease;
+  }
+  body.mobile-focus-mode.mobile-left-drawer-open .center-panel {
+    margin-left: var(--mobile-left-panel-width);
+  }
+  body.mobile-focus-mode.mobile-right-drawer-open .center-panel {
+    margin-right: var(--mobile-right-panel-width);
   }
   body.mobile-focus-mode .canvas-container {
     width: min(100%, calc(100dvh - 82px));
@@ -2327,12 +2337,12 @@ body {
   }
   body.mobile-focus-mode .left-panel {
     left: 0;
-    width: min(82vw, 320px);
+    width: var(--mobile-left-panel-width);
     transform: translateX(-105%);
   }
   body.mobile-focus-mode .right-panel {
     right: 0;
-    width: min(82vw, 360px);
+    width: var(--mobile-right-panel-width);
     transform: translateX(105%);
   }
   body.mobile-focus-mode.mobile-left-drawer-open .left-panel,
@@ -2372,7 +2382,7 @@ body {
   body.mobile-focus-mode .mobile-panel-toggle {
     position: absolute;
     top: 50%;
-    z-index: 18;
+    z-index: 24;
     display: grid;
     width: 38px;
     height: 56px;
@@ -2382,6 +2392,10 @@ body {
     color: #72F5F2;
     transform: translateY(-50%);
     box-shadow: 0 4px 14px rgba(0,0,0,0.34);
+    transition:
+      left 0.2s ease,
+      right 0.2s ease,
+      transform 0.2s ease;
   }
   body.mobile-focus-mode .mobile-panel-toggle svg {
     width: 21px;
@@ -2402,18 +2416,151 @@ body {
     border-right: none;
     border-radius: 16px 0 0 16px;
   }
-  body.mobile-focus-mode .workspace-drawer-backdrop {
-    position: absolute;
-    inset: 0;
-    z-index: 15;
-    display: block;
+  body.mobile-focus-mode.mobile-left-drawer-open
+  .mobile-panel-toggle-left {
+    left: var(--mobile-left-panel-width);
+    border-left: 1px solid rgba(114,245,242,0.45);
+    border-radius: 16px;
+    transform: translate(-50%, -50%);
+  }
+  body.mobile-focus-mode.mobile-right-drawer-open
+  .mobile-panel-toggle-right {
+    right: var(--mobile-right-panel-width);
+    border-right: 1px solid rgba(114,245,242,0.45);
+    border-radius: 16px;
+    transform: translate(50%, -50%);
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  /*
+   * The navigation drawer is height-constrained in landscape. Keep the
+   * reference and zoom controls available, and let the preview use the
+   * remaining secondary space instead of forcing a panel-width square.
+   */
+  body.mobile-focus-mode .left-panel {
+    display: grid;
+    grid-template-columns: minmax(104px, 42%) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: start;
+    column-gap: 10px;
+    row-gap: 8px;
+  }
+  body.mobile-focus-mode .left-panel .nav-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  body.mobile-focus-mode .left-panel .nav-preview-wrap {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    width: min(100%, calc(100dvh - 104px));
+    max-width: 100%;
+  }
+  body.mobile-focus-mode .left-panel .left-controls {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: stretch;
     width: 100%;
     height: 100%;
-    border: none;
-    background: rgba(7,10,12,0.46);
+    overflow-y: auto;
   }
-  body.mobile-focus-mode .workspace-drawer-backdrop[hidden] {
+  body.mobile-focus-mode .left-panel .zoom-section {
+    min-height: 0;
+  }
+  body.mobile-focus-mode .left-panel .zoom-slider {
+    min-height: 64px;
+  }
+
+  /*
+   * Keep the color choices dominant in the short landscape right column.
+   * Decorative and secondary controls stay available, but consume fewer rows.
+   */
+  body.mobile-focus-mode .right-panel {
+    padding: 0 6px 6px;
+    gap: 5px;
+  }
+  body.mobile-focus-mode .right-panel .editorial-area-label {
     display: none;
+  }
+  body.mobile-focus-mode .right-panel .tool-icons {
+    min-height: 36px;
+    padding: 0 0 4px;
+  }
+  body.mobile-focus-mode .right-panel .tool-icon-btn {
+    width: 44px;
+    height: 36px;
+  }
+  body.mobile-focus-mode .right-panel .eyedropper-icon,
+  body.mobile-focus-mode .right-panel .canvas-guides-icon,
+  body.mobile-focus-mode .right-panel .move-canvas-icon,
+  body.mobile-focus-mode .right-panel .history-icon {
+    width: 22px;
+    height: 22px;
+  }
+  body.mobile-focus-mode .right-panel .palette-tabs {
+    margin: 0 -6px;
+  }
+  body.mobile-focus-mode .right-panel .palette-tab {
+    gap: 5px;
+    padding: 6px;
+    font-size: 12px;
+  }
+  body.mobile-focus-mode .right-panel .palette-tab-icon {
+    width: 16px;
+    height: 16px;
+  }
+  body.mobile-focus-mode .right-panel .palette-view-caption {
+    margin-bottom: 3px;
+    font-size: 8px;
+  }
+  body.mobile-focus-mode .right-panel .statistics-hint {
+    margin-bottom: 4px;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  body.mobile-focus-mode .right-panel .replication-complete-control {
+    gap: 5px;
+    margin-bottom: 4px;
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  body.mobile-focus-mode .right-panel .replication-preview-control {
+    grid-template-columns: minmax(0, 1fr) 28px;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  body.mobile-focus-mode .right-panel .replication-preview-segments {
+    gap: 2px;
+    padding: 2px;
+  }
+  body.mobile-focus-mode .right-panel
+  .replication-preview-segments button {
+    padding: 3px 4px;
+    font-size: 10px;
+  }
+  body.mobile-focus-mode .right-panel .replication-reset-btn {
+    width: 28px;
+    height: 28px;
+  }
+  body.mobile-focus-mode .right-panel .replication-reset-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  body.mobile-focus-mode .right-panel .statistics-sort-control {
+    gap: 4px;
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+  body.mobile-focus-mode .right-panel .statistics-sort-control select {
+    padding: 3px 20px 3px 6px;
+    font-size: 10px;
+  }
+  body.mobile-focus-mode .right-panel .statistics-color-scroll {
+    min-height: 72px;
   }
 }
 

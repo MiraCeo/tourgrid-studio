@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-01"
+    asset_version = "20260729-05"
 
     assert (
         f'<link rel="stylesheet" '
@@ -845,7 +845,7 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     assert 'id="mobileToolbarHandle"' in html
     assert 'id="mobileLeftPanelBtn"' in html
     assert 'id="mobileRightPanelBtn"' in html
-    assert 'id="workspaceDrawerBackdrop"' in html
+    assert 'id="workspaceDrawerBackdrop"' not in html
     assert 'id="leftPanel"' in html
     assert 'id="rightPanel"' in html
     assert ".btn-workspace-mode {" in css
@@ -855,6 +855,7 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     assert "body.mobile-focus-mode.mobile-toolbar-collapsed .top-bar" in css
     assert "function setMobileWorkspaceMode(active, announce)" in app
     assert "function setMobileWorkspaceDrawer(side)" in app
+    assert "on('workspaceDrawerBackdrop', 'click'" not in app
     assert "function setMobileToolbarCollapsed(collapsed)" in app
     assert "function onMobileWorkspacePointerDown(event)" in app
     assert "MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40" in app

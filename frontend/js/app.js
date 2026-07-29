@@ -1166,7 +1166,6 @@ function syncMobileWorkspaceControls() {
   var toolbarHandle = document.getElementById('mobileToolbarHandle');
   var leftButton = document.getElementById('mobileLeftPanelBtn');
   var rightButton = document.getElementById('mobileRightPanelBtn');
-  var backdrop = document.getElementById('workspaceDrawerBackdrop');
   var body = document.body;
   var toolbarCollapsed = body.classList.contains('mobile-toolbar-collapsed');
   var leftOpen = body.classList.contains('mobile-left-drawer-open');
@@ -1209,7 +1208,6 @@ function syncMobileWorkspaceControls() {
       rightOpen ? '关闭工具与颜料面板' : '打开工具与颜料面板'
     );
   }
-  if (backdrop) backdrop.hidden = !(leftOpen || rightOpen);
 }
 
 function closeMobileWorkspaceDrawers() {
@@ -1386,7 +1384,6 @@ function bindStaticControls() {
   on('mobileRightPanelBtn', 'click', function() {
     setMobileWorkspaceDrawer('right');
   });
-  on('workspaceDrawerBackdrop', 'click', closeMobileWorkspaceDrawers);
   on('centerPanel', 'pointerdown', onMobileWorkspacePointerDown);
   on('centerPanel', 'pointermove', onMobileWorkspacePointerMove);
   on('centerPanel', 'pointerup', finishMobileWorkspaceGesture);

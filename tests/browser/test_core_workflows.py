@@ -458,6 +458,23 @@ def test_canvas_cell_hover_preview_and_outline_follow_editor_mode(
     )
     assert preview_pixel == [34, 34, 34, 255]
 
+    editor_page.evaluate(
+        """
+        () => {
+          onTouchStart({
+            preventDefault() {},
+            touches: [
+              {clientX: 20, clientY: 20},
+              {clientX: 40, clientY: 40}
+            ]
+          });
+          onTouchEnd({});
+        }
+        """
+    )
+    assert editor_state(editor_page)["hoveredCanvasCell"] is None
+    assert hover_canvas.evaluate("element => element.toDataURL()") == baseline
+
     editor_page.locator("#eyedropperBtn").click()
     move_to_cell(5, 6)
     state = editor_state(editor_page)
@@ -795,15 +812,26 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     body = editor_page.locator("body")
     mode_button = editor_page.locator("#mobileWorkspaceModeBtn")
     left_panel = editor_page.locator("#leftPanel")
+    nav_preview = editor_page.locator("#navPreviewWrap")
+    left_controls = editor_page.locator("#leftPanel .left-controls")
+    zoom_controls = editor_page.locator("#zoomSliderWrap")
     right_panel = editor_page.locator("#rightPanel")
+    editorial_label = editor_page.locator("#rightPanel .editorial-area-label")
+    first_tool_button = editor_page.locator("#rightPanel .tool-icon-btn").first
+    palette_tab = editor_page.locator("#paletteTab")
+    statistics_tab = editor_page.locator("#statisticsTab")
+    statistics_scroll = editor_page.locator("#statisticsColorScroll")
     center_panel = editor_page.locator("#centerPanel")
     top_bar = editor_page.locator(".top-bar")
+    left_toggle = editor_page.locator("#mobileLeftPanelBtn")
+    right_toggle = editor_page.locator("#mobileRightPanelBtn")
 
     expect(mode_button).to_be_visible()
     expect(body).not_to_have_class(re.compile(r"\bmobile-focus-mode\b"))
     original_center_box = center_panel.bounding_box()
     assert original_center_box is not None
 
+    select_color(editor_page, BLACK)
     mode_button.click()
     expect(body).to_have_class(re.compile(r"\bmobile-focus-mode\b"))
     expect(mode_button).to_have_attribute("aria-pressed", "true")
@@ -812,32 +840,106 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     assert focus_center_box["width"] > original_center_box["width"]
     assert focus_center_box["width"] == pytest.approx(width, abs=1)
 
-    editor_page.locator("#mobileLeftPanelBtn").click()
+    left_toggle.click()
     expect(body).to_have_class(re.compile(r"\bmobile-left-drawer-open\b"))
-    expect(editor_page.locator("#mobileLeftPanelBtn")).to_have_attribute(
-        "aria-expanded", "true"
-    )
+    expect(left_toggle).to_have_attribute("aria-expanded", "true")
     editor_page.wait_for_timeout(220)
     left_box = left_panel.bounding_box()
+    left_center_box = center_panel.bounding_box()
+    left_toggle_box = left_toggle.bounding_box()
     assert left_box is not None
+    assert left_center_box is not None
+    assert left_toggle_box is not None
     assert left_box["x"] >= 0
+    assert left_center_box["x"] == pytest.approx(
+        left_box["x"] + left_box["width"], abs=1
+    )
+    assert left_center_box["width"] == pytest.approx(
+        width - left_box["width"], abs=1
+    )
+    assert left_toggle_box["x"] + left_toggle_box["width"] / 2 == (
+        pytest.approx(left_center_box["x"], abs=1)
+    )
+    preview_box = nav_preview.bounding_box()
+    controls_box = left_controls.bounding_box()
+    zoom_box = zoom_controls.bounding_box()
+    assert preview_box is not None
+    assert controls_box is not None
+    assert zoom_box is not None
+    assert preview_box["width"] == pytest.approx(preview_box["height"], abs=1)
+    assert preview_box["x"] + preview_box["width"] <= controls_box["x"] + 1
+    assert preview_box["y"] + preview_box["height"] <= (
+        left_box["y"] + left_box["height"] + 1
+    )
+    assert controls_box["y"] + controls_box["height"] <= (
+        left_box["y"] + left_box["height"] + 1
+    )
+    assert zoom_box["y"] + zoom_box["height"] <= (
+        left_box["y"] + left_box["height"] + 1
+    )
+    click_canvas_cell(editor_page, 1, 1)
+    assert editor_state(editor_page)["pixels"][1][1] == BLACK
+    expect(body).to_have_class(re.compile(r"\bmobile-left-drawer-open\b"))
 
-    editor_page.locator("#mobileRightPanelBtn").click()
+    right_toggle.click()
     expect(body).not_to_have_class(
         re.compile(r"\bmobile-left-drawer-open\b")
     )
     expect(body).to_have_class(re.compile(r"\bmobile-right-drawer-open\b"))
     editor_page.wait_for_timeout(220)
     right_box = right_panel.bounding_box()
+    right_center_box = center_panel.bounding_box()
+    right_toggle_box = right_toggle.bounding_box()
     assert right_box is not None
+    assert right_center_box is not None
+    assert right_toggle_box is not None
     assert right_box["x"] + right_box["width"] <= width + 1
+    assert right_center_box["x"] == pytest.approx(0, abs=1)
+    assert right_center_box["width"] == pytest.approx(
+        width - right_box["width"], abs=1
+    )
+    assert right_center_box["x"] + right_center_box["width"] == (
+        pytest.approx(right_box["x"], abs=1)
+    )
+    assert right_toggle_box["x"] + right_toggle_box["width"] / 2 == (
+        pytest.approx(right_box["x"], abs=1)
+    )
+    select_color(editor_page, RED)
+    click_canvas_cell(editor_page, 2, 2)
+    assert editor_state(editor_page)["pixels"][2][2] == RED
+    expect(body).to_have_class(re.compile(r"\bmobile-right-drawer-open\b"))
+    expect(editorial_label).to_be_hidden()
+    tool_button_box = first_tool_button.bounding_box()
+    palette_tab_box = palette_tab.bounding_box()
+    assert tool_button_box is not None
+    assert palette_tab_box is not None
+    assert tool_button_box["height"] <= 37
+    assert palette_tab_box["height"] <= 37
 
-    editor_page.locator("#workspaceDrawerBackdrop").click(
-        position={"x": 80, "y": height / 2}
+    statistics_tab.click()
+    expect(statistics_scroll).to_be_visible()
+    statistics_scroll_box = statistics_scroll.bounding_box()
+    black_stat = editor_page.locator(
+        f'.statistics-color[data-color="{BLACK}"]'
     )
-    expect(body).not_to_have_class(
-        re.compile(r"\bmobile-right-drawer-open\b")
+    black_stat_box = black_stat.bounding_box()
+    assert statistics_scroll_box is not None
+    assert black_stat_box is not None
+    assert statistics_scroll_box["height"] >= 72
+    assert black_stat_box["y"] >= statistics_scroll_box["y"] - 1
+    assert black_stat_box["y"] + black_stat_box["height"] <= (
+        statistics_scroll_box["y"] + statistics_scroll_box["height"] + 1
     )
+    black_stat.click()
+    assert editor_state(editor_page)["statisticsHighlightColor"] == BLACK
+
+    right_toggle.click()
+    expect(body).not_to_have_class(re.compile(r"\bmobile-right-drawer-open\b"))
+    expect(right_toggle).to_have_attribute("aria-expanded", "false")
+    editor_page.wait_for_timeout(220)
+    restored_center_box = center_panel.bounding_box()
+    assert restored_center_box is not None
+    assert restored_center_box["width"] == pytest.approx(width, abs=1)
 
     expanded_top_height = top_bar.bounding_box()["height"]
     editor_page.locator("#mobileToolbarHandle").click()
