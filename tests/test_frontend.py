@@ -262,7 +262,10 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "mainCtx.fillText" not in editor
     assert "markReplicationCellCompleted(replicationPos.x, replicationPos.y)" in editor
     assert "复刻模式下画布为只读" in editor
-    assert "renderStatisticsHighlightOverlay()" in overlay
+    assert 'id="statisticsOverlayCanvas"' in html
+    assert "statisticsOverlayCanvas.style.display = 'none'" in app
+    assert "renderStatisticsHighlightOverlay()" in editor
+    assert "renderStatisticsHighlightOverlay()" not in overlay
     assert "'rgba(16, 18, 22, 0.72)'" in app
     assert "document.querySelectorAll('.conversion-result-summary')" in state
 
@@ -669,7 +672,13 @@ def test_canvas_center_axes_render_above_pixels_in_black() -> None:
     assert "ctx.moveTo(0, height / 2)" in editor
     assert "ctx.lineTo(width, height / 2)" in editor
     assert "drawCanvasCenterAxes(mainCtx, w, h)" in editor
-    assert "drawCanvasCenterAxes(overlayCtx, canvasSize, canvasSize)" in app
+    assert (
+        "drawCanvasCenterAxes(\n"
+        "    statisticsOverlayCtx,\n"
+        "    canvasSize,\n"
+        "    canvasSize\n"
+        "  )"
+    ) in app
     assert "drawCanvasCenterAxes(overlayCtx, w, w)" in image_import
 
 

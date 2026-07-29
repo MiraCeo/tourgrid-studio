@@ -704,11 +704,6 @@ function reImportCurrent() {
 
 // --- 参考图叠加 ---
 function renderOverlay() {
-  if (isStatisticsMode()) {
-    renderStatisticsHighlightOverlay();
-    return;
-  }
-
   if (!overlayVisible || !importedPreviewImage || !importedPreviewImage.complete) {
     overlayCanvas.style.display = 'none';
     return;

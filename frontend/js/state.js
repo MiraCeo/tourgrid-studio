@@ -307,6 +307,7 @@ let historyOperationInProgress = false;
 
 // --- DOM瀵洜鏁?---
 let mainCanvas, mainCtx, navCanvas, navCtx, hoverCanvas, hoverCtx;
+let overlayCanvas, overlayCtx, statisticsOverlayCanvas, statisticsOverlayCtx;
 let canvasContainer, centerPanel;
 
 // --- init ---

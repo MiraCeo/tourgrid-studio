@@ -765,22 +765,25 @@ function renderStatisticsHighlightOverlay() {
     (!statisticsHighlightColor && !completedPreview) ||
     (!canvasGuidesVisible && !completedPreview)
   ) {
-    overlayCanvas.style.display = 'none';
+    statisticsOverlayCanvas.style.display = 'none';
     return;
   }
 
   var cellSize = BASE_CELL_SIZE * (zoom / 100);
   var canvasSize = GRID_SIZE * cellSize;
-  overlayCanvas.width = canvasSize;
-  overlayCanvas.height = canvasSize;
-  overlayCanvas.style.display = 'block';
-  overlayCtx.clearRect(0, 0, canvasSize, canvasSize);
-  overlayCtx.fillStyle = completedPreview
+  statisticsOverlayCanvas.width = canvasSize;
+  statisticsOverlayCanvas.height = canvasSize;
+  statisticsOverlayCanvas.style.display = 'block';
+  statisticsOverlayCtx.clearRect(0, 0, canvasSize, canvasSize);
+  statisticsOverlayCtx.fillStyle = completedPreview
     ? 'rgb(232, 236, 239)'
     : 'rgba(16, 18, 22, 0.72)';
-  overlayCtx.fillRect(0, 0, canvasSize, canvasSize);
-  overlayCtx.strokeStyle = '#72F5F2';
-  overlayCtx.lineWidth = Math.max(1.5, Math.min(3, cellSize * 0.12));
+  statisticsOverlayCtx.fillRect(0, 0, canvasSize, canvasSize);
+  statisticsOverlayCtx.strokeStyle = '#72F5F2';
+  statisticsOverlayCtx.lineWidth = Math.max(
+    1.5,
+    Math.min(3, cellSize * 0.12)
+  );
 
   for (var y = 0; y < GRID_SIZE; y++) {
     for (var x = 0; x < GRID_SIZE; x++) {
@@ -791,34 +794,41 @@ function renderStatisticsHighlightOverlay() {
       if (!selected && !completed) continue;
       var left = x * cellSize;
       var top = y * cellSize;
-      overlayCtx.clearRect(left, top, cellSize, cellSize);
+      statisticsOverlayCtx.clearRect(left, top, cellSize, cellSize);
       if (
         completedPreview &&
         completed &&
         pixelColor === '#FFFFFF'
       ) {
-        overlayCtx.save();
-        overlayCtx.strokeStyle = 'rgba(142, 149, 154, 0.6)';
-        overlayCtx.lineWidth = Math.max(1, Math.min(1.5, cellSize * 0.08));
-        overlayCtx.strokeRect(
-          left + overlayCtx.lineWidth / 2,
-          top + overlayCtx.lineWidth / 2,
-          cellSize - overlayCtx.lineWidth,
-          cellSize - overlayCtx.lineWidth
+        statisticsOverlayCtx.save();
+        statisticsOverlayCtx.strokeStyle = 'rgba(142, 149, 154, 0.6)';
+        statisticsOverlayCtx.lineWidth = Math.max(
+          1,
+          Math.min(1.5, cellSize * 0.08)
         );
-        overlayCtx.restore();
+        statisticsOverlayCtx.strokeRect(
+          left + statisticsOverlayCtx.lineWidth / 2,
+          top + statisticsOverlayCtx.lineWidth / 2,
+          cellSize - statisticsOverlayCtx.lineWidth,
+          cellSize - statisticsOverlayCtx.lineWidth
+        );
+        statisticsOverlayCtx.restore();
       }
       if (selected && !completed) {
-        overlayCtx.strokeRect(
-          left + overlayCtx.lineWidth / 2,
-          top + overlayCtx.lineWidth / 2,
-          cellSize - overlayCtx.lineWidth,
-          cellSize - overlayCtx.lineWidth
+        statisticsOverlayCtx.strokeRect(
+          left + statisticsOverlayCtx.lineWidth / 2,
+          top + statisticsOverlayCtx.lineWidth / 2,
+          cellSize - statisticsOverlayCtx.lineWidth,
+          cellSize - statisticsOverlayCtx.lineWidth
         );
       }
     }
   }
-  drawCanvasCenterAxes(overlayCtx, canvasSize, canvasSize);
+  drawCanvasCenterAxes(
+    statisticsOverlayCtx,
+    canvasSize,
+    canvasSize
+  );
 }
 
 function setPalettePanelMode(mode) {
@@ -871,6 +881,7 @@ function setPalettePanelMode(mode) {
   } else {
     renderColorGrid();
     renderOverlay();
+    renderStatisticsHighlightOverlay();
     if (currentColor) {
       focusPanelColor('.color-swatch', 'paletteColorScroll', currentColor);
     }

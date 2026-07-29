@@ -221,7 +221,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     editor_page.locator(
         f'.statistics-color[data-color="{RED}"]'
     ).click()
-    overlay_alpha = editor_page.locator("#overlayCanvas").evaluate(
+    overlay_alpha = editor_page.locator("#statisticsOverlayCanvas").evaluate(
         """canvas => {
           const context = canvas.getContext('2d');
           const cell = canvas.width / 24;
@@ -255,7 +255,9 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     expect(editor_page.locator("#replicationPreviewControl")).to_be_visible()
     editor_page.locator("#replicationCompletedViewBtn").click()
     assert editor_state(editor_page)["replicationPreviewMode"] == "completed"
-    completed_preview_alpha = editor_page.locator("#overlayCanvas").evaluate(
+    completed_preview_alpha = editor_page.locator(
+        "#statisticsOverlayCanvas"
+    ).evaluate(
         """canvas => {
           const context = canvas.getContext('2d');
           const cell = canvas.width / 24;
@@ -847,9 +849,13 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     left_box = left_panel.bounding_box()
     left_center_box = center_panel.bounding_box()
     left_toggle_box = left_toggle.bounding_box()
+    toolbar_handle_box = editor_page.locator(
+        "#mobileToolbarHandle"
+    ).bounding_box()
     assert left_box is not None
     assert left_center_box is not None
     assert left_toggle_box is not None
+    assert toolbar_handle_box is not None
     assert left_box["x"] >= 0
     assert left_center_box["x"] == pytest.approx(
         left_box["x"] + left_box["width"], abs=1
@@ -857,8 +863,14 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     assert left_center_box["width"] == pytest.approx(
         width - left_box["width"], abs=1
     )
-    assert left_toggle_box["x"] + left_toggle_box["width"] / 2 == (
+    assert left_toggle_box["x"] == (
         pytest.approx(left_center_box["x"], abs=1)
+    )
+    assert toolbar_handle_box["x"] + toolbar_handle_box["width"] / 2 == (
+        pytest.approx(
+            left_center_box["x"] + left_center_box["width"] / 2,
+            abs=1,
+        )
     )
     preview_box = nav_preview.bounding_box()
     controls_box = left_controls.bounding_box()
@@ -890,9 +902,13 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     right_box = right_panel.bounding_box()
     right_center_box = center_panel.bounding_box()
     right_toggle_box = right_toggle.bounding_box()
+    toolbar_handle_box = editor_page.locator(
+        "#mobileToolbarHandle"
+    ).bounding_box()
     assert right_box is not None
     assert right_center_box is not None
     assert right_toggle_box is not None
+    assert toolbar_handle_box is not None
     assert right_box["x"] + right_box["width"] <= width + 1
     assert right_center_box["x"] == pytest.approx(0, abs=1)
     assert right_center_box["width"] == pytest.approx(
@@ -901,8 +917,14 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     assert right_center_box["x"] + right_center_box["width"] == (
         pytest.approx(right_box["x"], abs=1)
     )
-    assert right_toggle_box["x"] + right_toggle_box["width"] / 2 == (
+    assert right_toggle_box["x"] + right_toggle_box["width"] == (
         pytest.approx(right_box["x"], abs=1)
+    )
+    assert toolbar_handle_box["x"] + toolbar_handle_box["width"] / 2 == (
+        pytest.approx(
+            right_center_box["x"] + right_center_box["width"] / 2,
+            abs=1,
+        )
     )
     select_color(editor_page, RED)
     click_canvas_cell(editor_page, 2, 2)
@@ -1039,6 +1061,53 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
         re.compile(r"\bmobile-toolbar-collapsed\b")
     )
     expect(mode_button).to_have_attribute("aria-pressed", "false")
+
+
+def test_mobile_reference_overlay_remains_visible_in_replication_mode(
+    editor_page: Page,
+) -> None:
+    editor_page.set_viewport_size({"width": 640, "height": 360})
+    import_image(
+        editor_page,
+        FIXTURES / "avatar-reference-synthetic.png",
+    )
+
+    editor_page.locator("#mobileWorkspaceModeBtn").click()
+    editor_page.locator("#mobileRightPanelBtn").click()
+    editor_page.locator("#statisticsTab").click()
+    editor_page.locator(".statistics-color").first.click()
+    expect(editor_page.locator("#statisticsOverlayCanvas")).to_be_visible()
+    editor_page.locator("#mobileLeftPanelBtn").click()
+    editor_page.locator("#overlayToggleBtn").click()
+
+    expect(editor_page.locator("#overlayCanvas")).to_be_visible()
+    expect(editor_page.locator("#statisticsOverlayCanvas")).to_be_visible()
+    overlay_alpha = editor_page.locator("#overlayCanvas").evaluate(
+        """canvas => canvas.getContext('2d').getImageData(
+          Math.floor(canvas.width / 2),
+          Math.floor(canvas.height / 2),
+          1,
+          1
+        ).data[3]"""
+    )
+    assert overlay_alpha > 0
+
+    editor_page.locator("#overlayOpacity").fill("70")
+    assert editor_state(editor_page)["overlayOpacity"] == pytest.approx(0.7)
+    adjusted_alpha = editor_page.locator("#overlayCanvas").evaluate(
+        """canvas => canvas.getContext('2d').getImageData(
+          Math.floor(canvas.width / 2),
+          Math.floor(canvas.height / 2),
+          1,
+          1
+        ).data[3]"""
+    )
+    assert adjusted_alpha > overlay_alpha
+
+    editor_page.locator("#mobileRightPanelBtn").click()
+    editor_page.locator("#paletteTab").click()
+    expect(editor_page.locator("#statisticsOverlayCanvas")).to_be_hidden()
+    expect(editor_page.locator("#overlayCanvas")).to_be_visible()
 
 
 def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:

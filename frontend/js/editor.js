@@ -8,6 +8,8 @@ function init() {
   navCtx = navCanvas.getContext('2d');
   overlayCanvas = document.getElementById('overlayCanvas');
   overlayCtx = overlayCanvas.getContext('2d');
+  statisticsOverlayCanvas = document.getElementById('statisticsOverlayCanvas');
+  statisticsOverlayCtx = statisticsOverlayCanvas.getContext('2d');
   canvasContainer = document.getElementById('canvasContainer');
   centerPanel = document.getElementById('centerPanel');
   restoreCanvasGuidesPreference();
@@ -268,6 +270,7 @@ function renderCanvas() {
   drawCanvasCenterAxes(mainCtx, w, h);
   renderCanvasCellHighlight();
   renderOverlay();
+  renderStatisticsHighlightOverlay();
 }
 
 function restoreCanvasGuidesPreference() {
