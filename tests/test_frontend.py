@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-21"
+    asset_version = "20260729-22"
 
     assert (
         f'<link rel="stylesheet" '
@@ -641,7 +641,7 @@ def test_top_bar_uses_dynamic_shared_work_identity_and_unified_svg_icons() -> No
     )[0]
     assert 'id="topWorkTitle"' in top_bar
     assert 'id="topWorkMeta"' in top_bar
-    assert "Tourgrid Studio｜24×24 像素画编辑器" in top_bar
+    assert "旅行「像」框 | 24×24 像素画编辑器" in top_bar
     assert "Exhibition Gallery.indd" not in top_bar
     assert "🗑" not in top_bar
     assert "↻" not in top_bar

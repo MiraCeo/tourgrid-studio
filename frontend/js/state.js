@@ -80,7 +80,7 @@ function updateTopWorkIdentity() {
     documentMetadata.sharedCode
   );
   if (!isShared) {
-    titleElement.textContent = 'Tourgrid Studio｜24×24 像素画编辑器';
+    titleElement.textContent = '旅行「像」框 | 24×24 像素画编辑器';
     metaElement.textContent = '';
     metaElement.hidden = true;
     return;
