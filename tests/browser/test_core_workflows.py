@@ -574,6 +574,50 @@ def test_local_import_is_24_by_24_and_palette_limited(
     }.issubset(set(state["palette"]))
 
 
+def test_import_adjustments_update_preview_and_limit_target_colors(
+    editor_page: Page,
+) -> None:
+    editor_page.locator("#importFileInput").set_input_files(
+        str(FIXTURES / "portrait-scene.png")
+    )
+    expect(editor_page.locator("#cropOverlay")).to_be_visible()
+    preview = editor_page.locator("#cropPreviewCanvas")
+    editor_page.wait_for_function(
+        "() => document.querySelector('#cropPreviewSummary')"
+        ".textContent.includes('像素结果使用')"
+    )
+    baseline = preview.evaluate("canvas => canvas.toDataURL()")
+
+    editor_page.locator("#cropContrast").fill("135")
+    editor_page.locator("#cropBrightness").fill("110")
+    editor_page.locator("#cropSaturation").fill("125")
+    editor_page.locator("#cropColorOverlay").fill("#E53E3E")
+    editor_page.locator("#cropColorOverlayOpacity").fill("30")
+    editor_page.locator("#cropTargetColorCount").fill("8")
+    expect(editor_page.locator("#cropTargetColorCountVal")).to_have_text("8 色")
+    editor_page.wait_for_timeout(150)
+    assert preview.evaluate("canvas => canvas.toDataURL()") != baseline
+
+    editor_page.locator("#cropPreviewToggleBtn").click()
+    expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_attribute(
+        "aria-pressed",
+        "true",
+    )
+    expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_text("查看原图")
+    expect(editor_page.locator("#cropPreviewBadge")).to_have_text("像素化结果")
+    expect(editor_page.locator("#cropPreviewSummary")).to_contain_text(
+        "像素结果使用"
+    )
+
+    editor_page.locator("#confirmCropBtn").click()
+    expect(editor_page.locator("#cropOverlay")).to_be_hidden(timeout=15_000)
+    state = editor_state(editor_page)
+    used_colors = {color for row in state["pixels"] for color in row}
+    assert state["gridSize"] == 24
+    assert len(used_colors) <= 8
+    assert used_colors.issubset(set(state["palette"]))
+
+
 def test_import_clear_undo_and_redo_restore_the_complete_document(
     editor_page: Page,
 ) -> None:

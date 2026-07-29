@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-09">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-10">
 </head>
 <body>
 
@@ -646,22 +646,59 @@
     <div class="crop-main">
       <div class="crop-viewport" id="cropViewport">
         <img id="cropImage" draggable="false" style="display:none">
+        <canvas id="cropPreviewCanvas" aria-label="图片导入实时预览"></canvas>
+        <span class="crop-preview-badge" id="cropPreviewBadge">处理后原图</span>
       </div>
       <div class="crop-options">
-        <div class="crop-controls">
-          <span class="crop-zoom-label">缩放</span>
-          <input type="range" class="crop-zoom-slider" id="cropZoomSlider" min="1" max="500" value="100">
-          <span class="crop-zoom-label" id="cropZoomVal">100%</span>
-          <span class="crop-zoom-label">输出</span>
-          <span class="crop-size-value">24×24</span>
+        <div class="crop-preview-toolbar">
+          <button type="button" class="crop-preview-toggle" id="cropPreviewToggleBtn"
+                  aria-pressed="false">查看像素化结果</button>
+          <span class="crop-preview-summary" id="cropPreviewSummary">实时预览 · 输出 24×24</span>
         </div>
-        <div class="crop-controls">
-          <span class="crop-zoom-label">抖动</span>
-          <select id="cropDither" style="font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:3px;background:#fff;color:#333;cursor:pointer;">
-            <option value="none" selected>无（推荐）</option>
-            <option value="floyd">Floyd-Steinberg</option>
-            <option value="atkinson">Atkinson</option>
-          </select>
+        <div class="crop-settings-grid">
+          <label class="crop-setting crop-setting-wide" for="cropZoomSlider">
+            <span>缩放</span>
+            <input type="range" id="cropZoomSlider" min="1" max="500" value="100">
+            <output id="cropZoomVal">100%</output>
+          </label>
+          <label class="crop-setting" for="cropDither">
+            <span>抖动</span>
+            <select id="cropDither">
+              <option value="none" selected>无（推荐）</option>
+              <option value="floyd">Floyd-Steinberg</option>
+              <option value="atkinson">Atkinson</option>
+            </select>
+          </label>
+          <label class="crop-setting" for="cropTargetColorCount">
+            <span>目标颜色</span>
+            <input type="range" id="cropTargetColorCount" min="4" max="64" value="64">
+            <output id="cropTargetColorCountVal">64 色</output>
+          </label>
+          <label class="crop-setting" for="cropContrast">
+            <span>对比度</span>
+            <input type="range" id="cropContrast" min="0" max="200" value="100">
+            <output id="cropContrastVal">100%</output>
+          </label>
+          <label class="crop-setting" for="cropBrightness">
+            <span>亮度</span>
+            <input type="range" id="cropBrightness" min="0" max="200" value="100">
+            <output id="cropBrightnessVal">100%</output>
+          </label>
+          <label class="crop-setting" for="cropSaturation">
+            <span>饱和度</span>
+            <input type="range" id="cropSaturation" min="0" max="200" value="100">
+            <output id="cropSaturationVal">100%</output>
+          </label>
+          <label class="crop-setting crop-color-setting" for="cropColorOverlay">
+            <span>颜色覆盖</span>
+            <input type="color" id="cropColorOverlay" value="#4299E1">
+          </label>
+          <label class="crop-setting" for="cropColorOverlayOpacity">
+            <span>覆盖透明度</span>
+            <input type="range" id="cropColorOverlayOpacity" min="0" max="100" value="0">
+            <output id="cropColorOverlayOpacityVal">0%</output>
+          </label>
+          <span class="crop-size-value">固定输出 24×24</span>
         </div>
         <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
           <span class="conversion-spinner"></span>
@@ -670,7 +707,7 @@
         </div>
       </div>
     </div>
-    <div class="conversion-note" id="conversionNote">图片仅在浏览器本地转换，不会上传；结果严格限制为 natural-64-v1 的 64 种颜色。</div>
+    <div class="conversion-note" id="conversionNote">图片仅在浏览器本地处理，不会上传；目标颜色是 natural-64-v1 色板中允许使用的最大颜色数。</div>
     <div class="crop-btns">
       <button class="crop-btn crop-btn-cancel" id="cancelCropBtn">取消</button>
       <button class="crop-btn crop-btn-confirm" id="confirmCropBtn">确认裁切并转换</button>
@@ -678,16 +715,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-09"></script>
-<script src="/static/js/reference-storage.js?v=20260729-09"></script>
-<script src="/static/js/work-codec.js?v=20260729-09"></script>
-<script src="/static/js/natural-64-v1.js?v=20260729-09"></script>
-<script src="/static/js/state.js?v=20260729-09"></script>
-<script src="/static/js/editor.js?v=20260729-09"></script>
-<script src="/static/js/export.js?v=20260729-09"></script>
-<script src="/static/js/import.js?v=20260729-09"></script>
-<script src="/static/js/works.js?v=20260729-09"></script>
-<script src="/static/js/app.js?v=20260729-09"></script>
+<script src="/static/js/storage.js?v=20260729-10"></script>
+<script src="/static/js/reference-storage.js?v=20260729-10"></script>
+<script src="/static/js/work-codec.js?v=20260729-10"></script>
+<script src="/static/js/natural-64-v1.js?v=20260729-10"></script>
+<script src="/static/js/state.js?v=20260729-10"></script>
+<script src="/static/js/editor.js?v=20260729-10"></script>
+<script src="/static/js/export.js?v=20260729-10"></script>
+<script src="/static/js/import.js?v=20260729-10"></script>
+<script src="/static/js/works.js?v=20260729-10"></script>
+<script src="/static/js/app.js?v=20260729-10"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

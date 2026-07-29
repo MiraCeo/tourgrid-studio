@@ -13,6 +13,15 @@ let importedPreviewObjectUrl = null;
 let conversionInProgress = false;
 const REFERENCE_IMAGE_SIZE = 256;
 const REFERENCE_WEBP_QUALITY = 0.88;
+let cropContrast = 100;
+let cropBrightness = 100;
+let cropSaturation = 100;
+let cropColorOverlay = '#4299E1';
+let cropColorOverlayOpacity = 0;
+let cropTargetColorCount = 64;
+let cropPreviewMode = 'processed';
+let cropPreviewTimer = null;
+let cropPreviewResult = null;
 
 async function loadExhibitionPalette() {
   try {
@@ -53,7 +62,11 @@ async function loadExhibitionPalette() {
 function setConversionBusy(busy) {
   conversionInProgress = busy;
   document.getElementById('confirmCropBtn').disabled = busy;
-  document.getElementById('cropDither').disabled = busy;
+  document.querySelectorAll(
+    '#cropOverlay input, #cropOverlay select, #cropOverlay button'
+  ).forEach(function(control) {
+    if (control.id !== 'cancelCropBtn') control.disabled = busy;
+  });
 }
 
 function setConversionStatus(message, isError, showRetry) {
@@ -63,6 +76,358 @@ function setConversionStatus(message, isError, showRetry) {
   document.getElementById('conversionStatusText').textContent = message || '';
   box.querySelector('.conversion-spinner').style.display = message && !isError ? '' : 'none';
   document.getElementById('conversionRetryBtn').style.display = showRetry ? 'inline-flex' : 'none';
+}
+
+function resetCropAdjustments() {
+  cropContrast = 100;
+  cropBrightness = 100;
+  cropSaturation = 100;
+  cropColorOverlay = '#4299E1';
+  cropColorOverlayOpacity = 0;
+  cropTargetColorCount = 64;
+  cropPreviewMode = 'processed';
+  cropPreviewResult = null;
+
+  var values = {
+    cropContrast: 100,
+    cropBrightness: 100,
+    cropSaturation: 100,
+    cropColorOverlay: cropColorOverlay,
+    cropColorOverlayOpacity: 0,
+    cropTargetColorCount: 64
+  };
+  Object.keys(values).forEach(function(id) {
+    var element = document.getElementById(id);
+    if (element) element.value = values[id];
+  });
+  updateCropAdjustmentLabels();
+  syncCropPreviewMode();
+}
+
+function updateCropAdjustmentLabels() {
+  var controls = [
+    ['cropContrast', 'cropContrastVal', '%'],
+    ['cropBrightness', 'cropBrightnessVal', '%'],
+    ['cropSaturation', 'cropSaturationVal', '%'],
+    ['cropColorOverlayOpacity', 'cropColorOverlayOpacityVal', '%'],
+    ['cropTargetColorCount', 'cropTargetColorCountVal', ' 色']
+  ];
+  controls.forEach(function(item) {
+    var input = document.getElementById(item[0]);
+    var output = document.getElementById(item[1]);
+    if (input && output) output.textContent = input.value + item[2];
+  });
+}
+
+function updateCropAdjustments() {
+  cropContrast = parseInt(document.getElementById('cropContrast').value, 10);
+  cropBrightness = parseInt(document.getElementById('cropBrightness').value, 10);
+  cropSaturation = parseInt(document.getElementById('cropSaturation').value, 10);
+  cropColorOverlay = document.getElementById('cropColorOverlay').value.toUpperCase();
+  cropColorOverlayOpacity = parseInt(
+    document.getElementById('cropColorOverlayOpacity').value,
+    10
+  );
+  cropTargetColorCount = parseInt(
+    document.getElementById('cropTargetColorCount').value,
+    10
+  );
+  updateCropAdjustmentLabels();
+  scheduleCropPreview();
+}
+
+function syncCropPreviewMode() {
+  var showingPixels = cropPreviewMode === 'pixels';
+  var button = document.getElementById('cropPreviewToggleBtn');
+  var badge = document.getElementById('cropPreviewBadge');
+  if (button) {
+    button.setAttribute('aria-pressed', String(showingPixels));
+    button.textContent = showingPixels ? '查看原图' : '查看像素化结果';
+  }
+  if (badge) badge.textContent = showingPixels ? '像素化结果' : '处理后原图';
+}
+
+function toggleCropPreviewMode() {
+  cropPreviewMode = cropPreviewMode === 'pixels' ? 'processed' : 'pixels';
+  syncCropPreviewMode();
+  renderCropPreview();
+}
+
+function cropFilterString() {
+  return [
+    'contrast(' + cropContrast + '%)',
+    'brightness(' + cropBrightness + '%)',
+    'saturate(' + cropSaturation + '%)'
+  ].join(' ');
+}
+
+function buildProcessedCropCanvas(outputSize) {
+  var output = document.createElement('canvas');
+  output.width = outputSize;
+  output.height = outputSize;
+  var outputCtx = output.getContext('2d');
+  outputCtx.fillStyle = '#FFFFFF';
+  outputCtx.fillRect(0, 0, outputSize, outputSize);
+  if (!cropImg) return output;
+
+  var viewport = document.getElementById('cropViewport');
+  var viewportSize = viewport.clientWidth;
+  var scale = cropZoom / 100;
+  var sourceX = -cropImgX / scale;
+  var sourceY = -cropImgY / scale;
+  var sourceWidth = viewportSize / scale;
+  var sourceHeight = viewportSize / scale;
+  var sx = Math.max(0, sourceX);
+  var sy = Math.max(0, sourceY);
+  var sw = Math.min(sourceWidth, cropImg.width - sx);
+  var sh = Math.min(sourceHeight, cropImg.height - sy);
+  if (sw <= 0 || sh <= 0) return output;
+
+  var imageLayer = document.createElement('canvas');
+  imageLayer.width = outputSize;
+  imageLayer.height = outputSize;
+  var imageCtx = imageLayer.getContext('2d');
+  var dx = (sx - sourceX) / sourceWidth * outputSize;
+  var dy = (sy - sourceY) / sourceHeight * outputSize;
+  var dw = sw / sourceWidth * outputSize;
+  var dh = sh / sourceHeight * outputSize;
+  imageCtx.filter = cropFilterString();
+  imageCtx.drawImage(cropImg, sx, sy, sw, sh, dx, dy, dw, dh);
+  imageCtx.filter = 'none';
+
+  if (cropColorOverlayOpacity > 0) {
+    imageCtx.globalCompositeOperation = 'source-atop';
+    imageCtx.globalAlpha = cropColorOverlayOpacity / 100;
+    imageCtx.fillStyle = cropColorOverlay;
+    imageCtx.fillRect(0, 0, outputSize, outputSize);
+    imageCtx.globalAlpha = 1;
+    imageCtx.globalCompositeOperation = 'source-over';
+  }
+  outputCtx.drawImage(imageLayer, 0, 0);
+  return output;
+}
+
+function selectImportPalette(rawR, rawG, rawB, targetCount) {
+  var fullPalette = EXHIBITION_DATA.map(function(color, index) {
+    var hex = color.hex.toUpperCase();
+    return {
+      index: index,
+      hex: hex,
+      rgb: [
+        parseInt(hex.slice(1, 3), 16),
+        parseInt(hex.slice(3, 5), 16),
+        parseInt(hex.slice(5, 7), 16)
+      ],
+      count: 0
+    };
+  });
+  if (fullPalette.length !== 64) {
+    throw new Error('本地 natural-64-v1 色板加载失败。');
+  }
+  if (targetCount >= fullPalette.length) return fullPalette;
+
+  for (var pixelIndex = 0; pixelIndex < rawR.length; pixelIndex++) {
+    var bestEntry = fullPalette[0];
+    var bestDistance = Infinity;
+    fullPalette.forEach(function(entry) {
+      var distance = colorDistRGB(
+        rawR[pixelIndex],
+        rawG[pixelIndex],
+        rawB[pixelIndex],
+        entry.rgb[0],
+        entry.rgb[1],
+        entry.rgb[2]
+      );
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestEntry = entry;
+      }
+    });
+    bestEntry.count++;
+  }
+
+  return fullPalette
+    .slice()
+    .sort(function(a, b) {
+      return b.count - a.count || a.index - b.index;
+    })
+    .slice(0, targetCount)
+    .sort(function(a, b) { return a.index - b.index; });
+}
+
+function quantizeProcessedCrop(processedCanvas) {
+  var sample = 8;
+  var hiData = processedCanvas.getContext('2d').getImageData(
+    0,
+    0,
+    processedCanvas.width,
+    processedCanvas.height
+  ).data;
+  var total = GRID_SIZE * GRID_SIZE;
+  var rawR = new Float64Array(total);
+  var rawG = new Float64Array(total);
+  var rawB = new Float64Array(total);
+
+  for (var gy = 0; gy < GRID_SIZE; gy++) {
+    for (var gx = 0; gx < GRID_SIZE; gx++) {
+      var sr = 0, sg = 0, sb = 0;
+      for (var sampleY = 0; sampleY < sample; sampleY++) {
+        for (var sampleX = 0; sampleX < sample; sampleX++) {
+          var px = gx * sample + sampleX;
+          var py = gy * sample + sampleY;
+          var dataIndex = (py * processedCanvas.width + px) * 4;
+          sr += hiData[dataIndex];
+          sg += hiData[dataIndex + 1];
+          sb += hiData[dataIndex + 2];
+        }
+      }
+      var rawIndex = gy * GRID_SIZE + gx;
+      rawR[rawIndex] = sr / (sample * sample);
+      rawG[rawIndex] = sg / (sample * sample);
+      rawB[rawIndex] = sb / (sample * sample);
+    }
+  }
+
+  var palette = selectImportPalette(
+    rawR,
+    rawG,
+    rawB,
+    cropTargetColorCount
+  );
+  var workR = new Float64Array(rawR);
+  var workG = new Float64Array(rawG);
+  var workB = new Float64Array(rawB);
+  var pixels = Array.from({ length: GRID_SIZE }, function() {
+    return Array.from({ length: GRID_SIZE }, function() { return '#FFFFFF'; });
+  });
+  var ditherMode = document.getElementById('cropDither').value;
+
+  function nearestEntry(r, g, b) {
+    var best = palette[0];
+    var bestDistance = Infinity;
+    palette.forEach(function(entry) {
+      var distance = colorDistRGB(r, g, b, entry.rgb[0], entry.rgb[1], entry.rgb[2]);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = entry;
+      }
+    });
+    return best;
+  }
+
+  function addError(index, er, eg, eb, weight) {
+    workR[index] += er * weight;
+    workG[index] += eg * weight;
+    workB[index] += eb * weight;
+  }
+
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      var index = y * GRID_SIZE + x;
+      var r = Math.max(0, Math.min(255, workR[index]));
+      var g = Math.max(0, Math.min(255, workG[index]));
+      var b = Math.max(0, Math.min(255, workB[index]));
+      var selected = nearestEntry(r, g, b);
+      pixels[y][x] = selected.hex;
+      if (ditherMode === 'none') continue;
+
+      var er = r - selected.rgb[0];
+      var eg = g - selected.rgb[1];
+      var eb = b - selected.rgb[2];
+      if (ditherMode === 'floyd') {
+        if (x + 1 < GRID_SIZE) addError(index + 1, er, eg, eb, 7 / 16);
+        if (y + 1 < GRID_SIZE) {
+          if (x > 0) addError(index + GRID_SIZE - 1, er, eg, eb, 3 / 16);
+          addError(index + GRID_SIZE, er, eg, eb, 5 / 16);
+          if (x + 1 < GRID_SIZE) addError(index + GRID_SIZE + 1, er, eg, eb, 1 / 16);
+        }
+      } else if (ditherMode === 'atkinson') {
+        var atkinsonErrorR = er / 8;
+        var atkinsonErrorG = eg / 8;
+        var atkinsonErrorB = eb / 8;
+        if (x + 1 < GRID_SIZE) addError(index + 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        if (x + 2 < GRID_SIZE) addError(index + 2, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        if (y + 1 < GRID_SIZE) {
+          if (x > 0) addError(index + GRID_SIZE - 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+          addError(index + GRID_SIZE, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+          if (x + 1 < GRID_SIZE) addError(index + GRID_SIZE + 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        }
+        if (y + 2 < GRID_SIZE) addError(index + GRID_SIZE * 2, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+      }
+    }
+  }
+
+  return {
+    pixels: pixels,
+    usedColors: new Set(pixels.flat()).size
+  };
+}
+
+function buildCropConversion() {
+  var processedPreview = buildProcessedCropCanvas(REFERENCE_IMAGE_SIZE);
+  var processedForQuantization = buildProcessedCropCanvas(GRID_SIZE * 8);
+  var quantized = quantizeProcessedCrop(processedForQuantization);
+  return {
+    pixels: quantized.pixels,
+    usedColors: quantized.usedColors,
+    processedPreview: processedPreview
+  };
+}
+
+function renderCropPreview() {
+  if (!cropImg) return;
+  try {
+    cropPreviewResult = buildCropConversion();
+    var previewCanvas = document.getElementById('cropPreviewCanvas');
+    var viewportSize = document.getElementById('cropViewport').clientWidth;
+    previewCanvas.width = viewportSize;
+    previewCanvas.height = viewportSize;
+    var ctx = previewCanvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, viewportSize, viewportSize);
+
+    if (cropPreviewMode === 'pixels') {
+      var pixelCanvas = document.createElement('canvas');
+      pixelCanvas.width = GRID_SIZE;
+      pixelCanvas.height = GRID_SIZE;
+      var pixelCtx = pixelCanvas.getContext('2d');
+      cropPreviewResult.pixels.forEach(function(row, y) {
+        row.forEach(function(color, x) {
+          pixelCtx.fillStyle = color;
+          pixelCtx.fillRect(x, y, 1, 1);
+        });
+      });
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(pixelCanvas, 0, 0, viewportSize, viewportSize);
+    } else {
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(cropPreviewResult.processedPreview, 0, 0, viewportSize, viewportSize);
+    }
+
+    document.getElementById('cropPreviewSummary').textContent =
+      '实时预览 · 像素结果使用 ' + cropPreviewResult.usedColors + ' 色';
+    setConversionStatus('', false, false);
+  } catch (error) {
+    setConversionStatus(
+      error && error.message ? error.message : '无法生成实时预览。',
+      true,
+      false
+    );
+  }
+}
+
+function scheduleCropPreview(immediate) {
+  if (!cropImg) return;
+  if (cropPreviewTimer) clearTimeout(cropPreviewTimer);
+  if (immediate) {
+    cropPreviewTimer = null;
+    renderCropPreview();
+    return;
+  }
+  cropPreviewTimer = setTimeout(function() {
+    cropPreviewTimer = null;
+    renderCropPreview();
+  }, 60);
 }
 
 function startImport(e) {
@@ -76,6 +441,7 @@ function startImport(e) {
       // 閸忓牊妯夌粈鍝勮剨缁愭绱欑涵顔荤箽鐢啫鐪€瑰本鍨氶敍澶涚礉閸愬秷顓哥粻妞剧秴缂?
       document.getElementById('cropOverlay').classList.add('show');
       var vp = document.getElementById('cropViewport');
+      resetCropAdjustments();
       // 缁涘绔寸敮褑顔€鐢啫鐪悽鐔告櫏
       requestAnimationFrame(function() {
         var vpW = vp.clientWidth;
@@ -92,6 +458,7 @@ function startImport(e) {
         zoomSlider.value = cropZoom;
         document.getElementById('cropZoomVal').textContent = cropZoom + '%';
         applyCropTransform();
+        scheduleCropPreview(true);
       });
     };
     cropImg.onerror = function() {
@@ -109,12 +476,13 @@ function startImport(e) {
 function applyCropTransform() {
   const img = document.getElementById('cropImage');
   img.src = cropImg.src;
-  img.style.display = 'block';
+  img.style.display = 'none';
   const scale = cropZoom / 100;
   img.style.width = (cropImg.width * scale) + 'px';
   img.style.height = (cropImg.height * scale) + 'px';
   img.style.left = cropImgX + 'px';
   img.style.top = cropImgY + 'px';
+  scheduleCropPreview();
 }
 
 function updateCropZoom(val) {
@@ -157,6 +525,7 @@ function onCropMouseMove(e) {
 function onCropMouseUp(e) {
   isCropping = false;
   document.getElementById('cropViewport').style.cursor = 'grab';
+  scheduleCropPreview(true);
 }
 
 let cropTouchState = null;
@@ -284,7 +653,7 @@ async function confirmCrop() {
   setConversionStatus('正在准备本地转换…', false, false);
   try {
     await new Promise(function(resolve) { setTimeout(resolve, 0); });
-    await confirmCropLocal();
+    await confirmCropLocalWithAdjustments();
     setConversionStatus('', false, false);
   } catch (error) {
     setConversionStatus(
@@ -297,230 +666,15 @@ async function confirmCrop() {
   }
 }
 
-async function confirmCropLocal() {
+async function confirmCropLocalWithAdjustments() {
   if (!cropImg) return;
   var beforeImport = makeEditorSnapshot();
-  var vp = document.getElementById('cropViewport');
-  var vpW = vp.clientWidth;
-  var scale = cropZoom / 100;
-  var ditherMode = document.getElementById('cropDither').value; // 'none' | 'floyd' | 'atkinson'
+  var conversion = buildCropConversion();
+  importedPixelData = conversion.pixels.map(function(row) { return row.slice(); });
 
-  // === Step 1: 超采样 → 每格平均色 ===
-  var srcX = -cropImgX / scale;
-  var srcY = -cropImgY / scale;
-  var srcW = vpW / scale;
-  var srcH = vpW / scale;
-  var sx = Math.max(0, srcX);
-  var sy = Math.max(0, srcY);
-  var sw = Math.min(srcW, cropImg.width - sx);
-  var sh = Math.min(srcH, cropImg.height - sy);
-
-  var SAMPLE = 8;
-  var hiRes = GRID_SIZE * SAMPLE;
-  var hiCanvas = document.createElement('canvas');
-  hiCanvas.width = hiRes;
-  hiCanvas.height = hiRes;
-  var hiCtx = hiCanvas.getContext('2d');
-  hiCtx.fillStyle = '#FFFFFF';
-  hiCtx.fillRect(0, 0, hiRes, hiRes);
-
-  var dx = (sx - srcX) / srcW * hiRes;
-  var dy = (sy - srcY) / srcH * hiRes;
-  var dw = sw / srcW * hiRes;
-  var dh = sh / srcH * hiRes;
-  if (sw > 0 && sh > 0) {
-    hiCtx.drawImage(cropImg, sx, sy, sw, sh, dx, dy, dw, dh);
-  }
-  var hiData = hiCtx.getImageData(0, 0, hiRes, hiRes).data;
-
-  var rawR = new Float64Array(GRID_SIZE * GRID_SIZE);
-  var rawG = new Float64Array(GRID_SIZE * GRID_SIZE);
-  var rawB = new Float64Array(GRID_SIZE * GRID_SIZE);
-  for (var gy = 0; gy < GRID_SIZE; gy++) {
-    for (var gx = 0; gx < GRID_SIZE; gx++) {
-      var sr = 0, sg = 0, sb = 0, cnt = 0;
-      for (var dy2 = 0; dy2 < SAMPLE; dy2++) {
-        for (var dx2 = 0; dx2 < SAMPLE; dx2++) {
-          var px = gx * SAMPLE + dx2;
-          var py = gy * SAMPLE + dy2;
-          var i = (py * hiRes + px) * 4;
-          var a = hiData[i + 3];
-          if (a > 128) {
-            sr += hiData[i];
-            sg += hiData[i + 1];
-            sb += hiData[i + 2];
-            cnt++;
-          }
-        }
-      }
-      var idx = gy * GRID_SIZE + gx;
-      if (cnt > 0) {
-        rawR[idx] = sr / cnt;
-        rawG[idx] = sg / cnt;
-        rawB[idx] = sb / cnt;
-      } else {
-        rawR[idx] = 255; rawG[idx] = 255; rawB[idx] = 255;
-      }
-    }
-  }
-
-  // === Step 2: 使用内置 natural-64-v1 固定色板 ===
-  var total = GRID_SIZE * GRID_SIZE;
-  var palette = EXHIBITION_DATA.map(function(color) {
-    var hex = color.hex;
-    return [
-      parseInt(hex.slice(1, 3), 16),
-      parseInt(hex.slice(3, 5), 16),
-      parseInt(hex.slice(5, 7), 16)
-    ];
-  });
-  if (palette.length !== 64) {
-    throw new Error('本地 natural-64-v1 色板加载失败。');
-  }
-
-  // 最近色查找 (感知加权)
-  function nearestColor(r, g, b) {
-    var best = 0, bestD = Infinity;
-    for (var i = 0; i < palette.length; i++) {
-      var d = colorDistRGB(r, g, b, palette[i][0], palette[i][1], palette[i][2]);
-      if (d < bestD) { bestD = d; best = i; }
-    }
-    return best;
-  }
-
-  // === Step 3: 抖动 + 固定色板映射 ===
-  var outR = new Float64Array(total);
-  var outG = new Float64Array(total);
-  var outB = new Float64Array(total);
-
-  if (ditherMode === 'floyd') {
-    // Floyd-Steinberg 误差扩散
-    var errR = new Float64Array(total);
-    var errG = new Float64Array(total);
-    var errB = new Float64Array(total);
-    for (var y = 0; y < GRID_SIZE; y++) {
-      for (var x = 0; x < GRID_SIZE; x++) {
-        var idx = y * GRID_SIZE + x;
-        var r = Math.min(255, Math.max(0, rawR[idx] + errR[idx]));
-        var g = Math.min(255, Math.max(0, rawG[idx] + errG[idx]));
-        var b = Math.min(255, Math.max(0, rawB[idx] + errB[idx]));
-        var pi = nearestColor(r, g, b);
-        outR[idx] = palette[pi][0];
-        outG[idx] = palette[pi][1];
-        outB[idx] = palette[pi][2];
-        var er = r - outR[idx];
-        var eg = g - outG[idx];
-        var eb = b - outB[idx];
-        if (x + 1 < GRID_SIZE) {
-          var ri = y * GRID_SIZE + (x + 1);
-          errR[ri] += er * 7/16; errG[ri] += eg * 7/16; errB[ri] += eb * 7/16;
-        }
-        if (y + 1 < GRID_SIZE) {
-          if (x - 1 >= 0) {
-            var bl = (y + 1) * GRID_SIZE + (x - 1);
-            errR[bl] += er * 3/16; errG[bl] += eg * 3/16; errB[bl] += eb * 3/16;
-          }
-          var bd = (y + 1) * GRID_SIZE + x;
-          errR[bd] += er * 5/16; errG[bd] += eg * 5/16; errB[bd] += eb * 5/16;
-          if (x + 1 < GRID_SIZE) {
-            var br = (y + 1) * GRID_SIZE + (x + 1);
-            errR[br] += er * 1/16; errG[br] += eg * 1/16; errB[br] += eb * 1/16;
-          }
-        }
-      }
-    }
-  } else if (ditherMode === 'atkinson') {
-    // Atkinson 误差扩散 (1/8权重, 对比度更高, 像素画常用)
-    var errR = new Float64Array(total);
-    var errG = new Float64Array(total);
-    var errB = new Float64Array(total);
-    for (var y = 0; y < GRID_SIZE; y++) {
-      for (var x = 0; x < GRID_SIZE; x++) {
-        var idx = y * GRID_SIZE + x;
-        var r = Math.min(255, Math.max(0, rawR[idx] + errR[idx]));
-        var g = Math.min(255, Math.max(0, rawG[idx] + errG[idx]));
-        var b = Math.min(255, Math.max(0, rawB[idx] + errB[idx]));
-        var pi = nearestColor(r, g, b);
-        outR[idx] = palette[pi][0];
-        outG[idx] = palette[pi][1];
-        outB[idx] = palette[pi][2];
-        var er = (r - outR[idx]) / 8;
-        var eg = (g - outG[idx]) / 8;
-        var eb = (b - outB[idx]) / 8;
-        // Atkinson pattern: forward 2, down 3
-        if (x + 1 < GRID_SIZE) {
-          var r1 = y * GRID_SIZE + (x + 1);
-          errR[r1] += er; errG[r1] += eg; errB[r1] += eb;
-        }
-        if (x + 2 < GRID_SIZE) {
-          var r2 = y * GRID_SIZE + (x + 2);
-          errR[r2] += er; errG[r2] += eg; errB[r2] += eb;
-        }
-        if (y + 1 < GRID_SIZE) {
-          if (x - 1 >= 0) {
-            var d0 = (y + 1) * GRID_SIZE + (x - 1);
-            errR[d0] += er; errG[d0] += eg; errB[d0] += eb;
-          }
-          var d1 = (y + 1) * GRID_SIZE + x;
-          errR[d1] += er; errG[d1] += eg; errB[d1] += eb;
-          if (x + 1 < GRID_SIZE) {
-            var d2 = (y + 1) * GRID_SIZE + (x + 1);
-            errR[d2] += er; errG[d2] += eg; errB[d2] += eb;
-          }
-        }
-        if (y + 2 < GRID_SIZE) {
-          var d3 = (y + 2) * GRID_SIZE + x;
-          errR[d3] += er; errG[d3] += eg; errB[d3] += eb;
-        }
-      }
-    }
-  } else {
-    // 无抖动：直接最近色映射
-    for (var i = 0; i < total; i++) {
-      var pi = nearestColor(rawR[i], rawG[i], rawB[i]);
-      outR[i] = palette[pi][0];
-      outG[i] = palette[pi][1];
-      outB[i] = palette[pi][2];
-    }
-  }
-
-  // === Step 4: 写入像素数据 ===
-  importedPixelData = [];
-  var coloredCount = 0;
-  for (var y = 0; y < GRID_SIZE; y++) {
-    importedPixelData[y] = [];
-    for (var x = 0; x < GRID_SIZE; x++) {
-      var idx = y * GRID_SIZE + x;
-      var rr = Math.round(outR[idx]);
-      var gg = Math.round(outG[idx]);
-      var bb = Math.round(outB[idx]);
-      if (rr === 255 && gg === 255 && bb === 255) {
-        importedPixelData[y][x] = '#FFFFFF';
-      } else {
-        importedPixelData[y][x] = '#' + [rr,gg,bb].map(function(c){
-          return ('0'+c.toString(16)).slice(-2).toUpperCase();
-        }).join('');
-        coloredCount++;
-      }
-    }
-  }
-
-  // === Step 5: 预览图 ===
-  var PREVIEW_SIZE = REFERENCE_IMAGE_SIZE;
-  var rawPreview = document.createElement('canvas');
-  rawPreview.width = PREVIEW_SIZE;
-  rawPreview.height = PREVIEW_SIZE;
-  var rawPrevCtx = rawPreview.getContext('2d');
-  rawPrevCtx.fillStyle = '#FFFFFF';
-  rawPrevCtx.fillRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
-  var rdx = (sx - srcX) / srcW * PREVIEW_SIZE;
-  var rdy = (sy - srcY) / srcH * PREVIEW_SIZE;
-  var rdw = sw / srcW * PREVIEW_SIZE;
-  var rdh = sh / srcH * PREVIEW_SIZE;
-  if (sw > 0 && sh > 0) {
-    rawPrevCtx.drawImage(cropImg, sx, sy, sw, sh, rdx, rdy, rdw, rdh);
-  }
-  var preparedReference = await installAndPersistReference(rawPreview);
+  var preparedReference = await installAndPersistReference(
+    conversion.processedPreview
+  );
   try {
     await setImportedPreviewBlob(preparedReference.blob);
   } catch (error) {
@@ -544,8 +698,8 @@ async function confirmCropLocal() {
     referenceState = {
       assetId: null,
       mimeType: preparedReference.blob.type || 'image/webp',
-      width: rawPreview.width,
-      height: rawPreview.height,
+      width: conversion.processedPreview.width,
+      height: conversion.processedPreview.height,
       visible: false,
       opacity: overlayOpacity,
       sessionOnly: true
@@ -564,15 +718,11 @@ async function confirmCropLocal() {
     paletteId: DEFAULT_PALETTE_ID,
     editorPaletteId: 'exhibition',
     paletteVersion: DEFAULT_PALETTE_VERSION,
-    converterVersion: 'browser-fixed-palette-v1',
+    converterVersion: 'browser-fixed-palette-filters-v2',
     importedAt: new Date().toISOString()
   };
   buildHexCodeMap();
-  var usedLocalColors = new Set();
-  importedPixelData.forEach(function(row) {
-    row.forEach(function(color) { usedLocalColors.add(color); });
-  });
-  finishImportedPixels(usedLocalColors.size, '本地');
+  finishImportedPixels(conversion.usedColors, '本地');
   if (!preparedReference.record) {
     showToast('转换完成，但参考图未能持久保存');
   }
@@ -711,6 +861,9 @@ async function restoreReferenceFromHistory(referenceSnapshot) {
 
 function cancelCrop() {
   document.getElementById('cropOverlay').classList.remove('show');
+  if (cropPreviewTimer) clearTimeout(cropPreviewTimer);
+  cropPreviewTimer = null;
+  cropPreviewResult = null;
   cropImg = null;
 }
 
@@ -723,6 +876,7 @@ function reImportCurrent() {
   // 重新打开裁切对话框，保留之前的缩放/位置
   document.getElementById('cropOverlay').classList.add('show');
   applyCropTransform();
+  scheduleCropPreview(true);
   showToast('已重新打开裁切');
 }
 

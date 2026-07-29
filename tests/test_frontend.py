@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-09"
+    asset_version = "20260729-10"
 
     assert (
         f'<link rel="stylesheet" '
@@ -102,12 +102,12 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert '<option value="server">' not in source
     assert 'id="conversionCancelBtn"' not in source
     assert '<option value="none" selected>' in source
-    assert "var palette = EXHIBITION_DATA.map" in source
-    assert "palette.length !== 64" in source
-    assert "browser-fixed-palette-v1" in source
+    assert "var fullPalette = EXHIBITION_DATA.map" in source
+    assert "fullPalette.length !== 64" in source
+    assert "browser-fixed-palette-filters-v2" in source
     assert "paletteId: DEFAULT_PALETTE_ID" in source
     assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
-    assert "confirmCropLocal()" in image_import
+    assert "confirmCropLocalWithAdjustments()" in image_import
     assert "confirmCropServer" not in image_import
     assert "new FormData()" not in image_import
     assert "new AbortController()" not in image_import
@@ -115,7 +115,9 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert "TourgridConversion" not in image_import
     assert not (JAVASCRIPT_ROOT / "conversion-api.js").exists()
     assert "K-means" not in image_import
-    assert '<span class="crop-size-value">24×24</span>' in source
+    assert '<span class="crop-size-value">固定输出 24×24</span>' in source
+    assert 'id="cropTargetColorCount"' in source
+    assert 'id="cropPreviewToggleBtn"' in source
     assert "const GRID_SIZE = 24" in source
 
 
@@ -130,7 +132,7 @@ def test_first_run_canvas_is_blank_white_instead_of_a_demo_pattern() -> None:
 def test_local_converter_keeps_optional_dithering() -> None:
     source = read_frontend()
 
-    assert "confirmCropLocal()" in source
+    assert "confirmCropLocalWithAdjustments()" in source
     assert "ditherMode === 'floyd'" in source
     assert "let viewMode" not in source
     assert "id=\"viewMode\"" not in source

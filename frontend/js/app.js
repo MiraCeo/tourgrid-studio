@@ -1665,6 +1665,20 @@ function bindStaticControls() {
   on('cropZoomSlider', 'input', function(event) {
     updateCropZoom(event.currentTarget.value);
   });
+  [
+    'cropContrast',
+    'cropBrightness',
+    'cropSaturation',
+    'cropColorOverlay',
+    'cropColorOverlayOpacity',
+    'cropTargetColorCount'
+  ].forEach(function(id) {
+    on(id, 'input', updateCropAdjustments);
+  });
+  on('cropDither', 'change', function() {
+    scheduleCropPreview();
+  });
+  on('cropPreviewToggleBtn', 'click', toggleCropPreviewMode);
   on('conversionRetryBtn', 'click', confirmCrop);
   on('cancelCropBtn', 'click', cancelCrop);
   on('confirmCropBtn', 'click', confirmCrop);
