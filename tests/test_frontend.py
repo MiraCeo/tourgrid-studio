@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-20"
+    asset_version = "20260729-21"
 
     assert (
         f'<link rel="stylesheet" '
@@ -477,7 +477,7 @@ def test_frontend_can_publish_and_load_immutable_shared_works() -> None:
     assert 'value="博士"' in html
     assert "作品标题（默认为" not in html
     assert "作者名称（默认为" not in html
-    assert html.count('maxlength="10"') >= 2
+    assert html.count('maxlength="15"') >= 2
     assert 'id="publishedWorkLink"' in html
     assert 'id="workCodeInput"' in html
     assert "TourgridWorkCodec.packPixels" in works
@@ -488,6 +488,8 @@ def test_frontend_can_publish_and_load_immutable_shared_works() -> None:
     assert "copyPublishedWorkCode()" in works
     assert "copyPublishedWorkLink()" in works
     assert "buildSharedWorkLink(code)" in works
+    assert "authorName + '向你分享了《' + title + '》：'" in works
+    assert "完整分享文案已复制" in works
     assert "publishConfirmationCanvas" in html
     assert "confirmPublishCurrentWork()" in works
     assert "readReplaceConfirmation" in html

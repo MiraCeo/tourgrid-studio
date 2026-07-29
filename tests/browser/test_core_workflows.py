@@ -1779,6 +1779,7 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     assert editor_page.evaluate("navigator.clipboard.readText()") == code
     share_link = editor_page.locator("#publishedWorkLink").text_content()
     assert share_link is not None
+    assert share_link.startswith("博士向你分享了《很糊的画》：")
     assert share_link.endswith("/?work=" + code)
     editor_page.locator("#publishedWorkLink").click()
     assert editor_page.evaluate("navigator.clipboard.readText()") == share_link

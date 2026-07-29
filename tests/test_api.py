@@ -414,7 +414,18 @@ def test_shared_work_metadata_is_normalized_validated_and_deduplicated(
     )
     too_long = client.post(
         "/api/v1/works",
-        json=work_payload(title="超过十个字的作品标题啊"),
+        json=work_payload(title="1234567890123456"),
+    )
+    too_long_author = client.post(
+        "/api/v1/works",
+        json=work_payload(author_name="1234567890123456"),
+    )
+    at_limit = client.post(
+        "/api/v1/works",
+        json=work_payload(
+            title="123456789012345",
+            author_name="123456789012345",
+        ),
     )
 
     assert first.status_code == 201
@@ -425,6 +436,8 @@ def test_shared_work_metadata_is_normalized_validated_and_deduplicated(
     assert renamed.json()["title"] == "巡展作品"
     assert renamed.json()["authorName"] == "Mira"
     assert too_long.status_code == 422
+    assert too_long_author.status_code == 422
+    assert at_limit.status_code == 201
 
 
 def test_shared_work_rejects_invalid_payload_and_palette_version(

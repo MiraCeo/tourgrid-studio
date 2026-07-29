@@ -69,8 +69,8 @@ class SaveWorkRequest(ApiModel):
         max_length=576,
         pattern=r"^[A-Za-z0-9+/]{576}$",
     )
-    author_name: str | None = Field(default=None, max_length=10)
-    title: str | None = Field(default=None, max_length=10)
+    author_name: str | None = Field(default=None, max_length=15)
+    title: str | None = Field(default=None, max_length=15)
 
     @field_validator("author_name", "title", mode="before")
     @classmethod

@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-20">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-21">
 </head>
 <body>
 
@@ -443,15 +443,15 @@
       <div class="work-metadata-grid">
         <label>
           <span>作品标题</span>
-          <input id="workTitleInput" type="text" maxlength="10"
+          <input id="workTitleInput" type="text" maxlength="15"
                  autocomplete="off" value="很糊的画"
-                 placeholder="最多10个字">
+                 placeholder="最多15个字">
         </label>
         <label>
           <span>作者名称</span>
-          <input id="workAuthorInput" type="text" maxlength="10"
+          <input id="workAuthorInput" type="text" maxlength="15"
                  autocomplete="off" value="博士"
-                 placeholder="最多10个字">
+                 placeholder="最多15个字">
         </label>
       </div>
       <button class="work-share-action primary" id="publishWorkButton"
@@ -486,8 +486,8 @@
                 title="单击复制分享码"></button>
         <span class="published-work-hint">单击分享码即可复制</span>
         <button class="published-work-link" id="publishedWorkLink" type="button"
-                aria-label="复制完整作品分享链接"></button>
-        <span class="published-work-hint">单击链接即可复制完整访问地址</span>
+                aria-label="复制完整作品分享文案"></button>
+        <span class="published-work-hint">单击即可复制完整分享文案</span>
       </div>
     </section>
 
@@ -765,16 +765,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-20"></script>
-<script src="/static/js/reference-storage.js?v=20260729-20"></script>
-<script src="/static/js/work-codec.js?v=20260729-20"></script>
-<script src="/static/js/natural-64-v2.js?v=20260729-20"></script>
-<script src="/static/js/state.js?v=20260729-20"></script>
-<script src="/static/js/editor.js?v=20260729-20"></script>
-<script src="/static/js/export.js?v=20260729-20"></script>
-<script src="/static/js/import.js?v=20260729-20"></script>
-<script src="/static/js/works.js?v=20260729-20"></script>
-<script src="/static/js/app.js?v=20260729-20"></script>
+<script src="/static/js/storage.js?v=20260729-21"></script>
+<script src="/static/js/reference-storage.js?v=20260729-21"></script>
+<script src="/static/js/work-codec.js?v=20260729-21"></script>
+<script src="/static/js/natural-64-v2.js?v=20260729-21"></script>
+<script src="/static/js/state.js?v=20260729-21"></script>
+<script src="/static/js/editor.js?v=20260729-21"></script>
+<script src="/static/js/export.js?v=20260729-21"></script>
+<script src="/static/js/import.js?v=20260729-21"></script>
+<script src="/static/js/works.js?v=20260729-21"></script>
+<script src="/static/js/app.js?v=20260729-21"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

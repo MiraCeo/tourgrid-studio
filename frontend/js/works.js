@@ -68,15 +68,17 @@ function apiErrorMessage(response, body) {
   return '服务器请求失败（HTTP ' + response.status + '）';
 }
 
-function updatePublishedWorkResult(code) {
+function updatePublishedWorkResult(code, title, authorName) {
   activeSharedWorkCode = code;
   var result = document.getElementById('publishedWorkResult');
   var codeOutput = document.getElementById('publishedWorkCode');
   var linkOutput = document.getElementById('publishedWorkLink');
+  var shareText = authorName + '向你分享了《' + title + '》：' +
+    buildSharedWorkLink(code);
 
   codeOutput.textContent = code;
-  linkOutput.textContent = buildSharedWorkLink(code);
-  linkOutput.title = buildSharedWorkLink(code);
+  linkOutput.textContent = shareText;
+  linkOutput.title = shareText;
   result.hidden = false;
 }
 
@@ -91,8 +93,8 @@ function buildSharedWorkLink(code) {
 function readWorkMetadata(inputId, label, defaultValue) {
   var input = document.getElementById(inputId);
   var value = String(input ? input.value : '').trim();
-  if (Array.from(value).length > 10) {
-    throw new Error(label + '不能超过10个字。');
+  if (Array.from(value).length > 15) {
+    throw new Error(label + '不能超过15个字。');
   }
   return value || defaultValue;
 }
@@ -170,7 +172,11 @@ async function confirmPublishCurrentWork() {
     var body = await response.json();
     if (!response.ok) throw new Error(apiErrorMessage(response, body));
 
-    updatePublishedWorkResult(body.code);
+    updatePublishedWorkResult(
+      body.code,
+      body.title || pendingPublish.title,
+      body.authorName || pendingPublish.authorName
+    );
     cancelPublishConfirmation(true);
     setWorkShareStatus(
       '作品已永久保存；相同画面始终保留首次保存的标题与作者。',
@@ -196,7 +202,7 @@ async function copyPublishedWorkLink() {
   var link = String(linkOutput ? linkOutput.textContent : '').trim();
   if (!link) return;
   await copyText(link);
-  showToast('完整分享链接已复制');
+  showToast('完整分享文案已复制');
 }
 
 async function copyText(value) {

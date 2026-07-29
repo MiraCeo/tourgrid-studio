@@ -1794,12 +1794,11 @@ body {
 .published-work-result .published-work-link {
   width: 100%;
   margin-top: 8px;
-  overflow: hidden;
   color: #b7dad9;
   font: 600 11px/1.4 system-ui, sans-serif;
   letter-spacing: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .published-work-result button:hover,
 .published-work-result button:focus-visible {
