@@ -542,6 +542,87 @@ function sortUsageEntries(entries, mode) {
   });
 }
 
+function findRelatedPaletteColors(sourceHex, limit) {
+  var source = String(sourceHex || '').toUpperCase();
+  if (!/^#[0-9A-F]{6}$/.test(source)) return [];
+  var sourceR = parseInt(source.slice(1, 3), 16);
+  var sourceG = parseInt(source.slice(3, 5), 16);
+  var sourceB = parseInt(source.slice(5, 7), 16);
+
+  return getPaletteUsageEntries()
+    .filter(function(entry) {
+      return entry.hex !== source;
+    })
+    .map(function(entry) {
+      return {
+        hex: entry.hex,
+        paletteIndex: entry.paletteIndex,
+        distance: colorDistRGB(
+          sourceR,
+          sourceG,
+          sourceB,
+          parseInt(entry.hex.slice(1, 3), 16),
+          parseInt(entry.hex.slice(3, 5), 16),
+          parseInt(entry.hex.slice(5, 7), 16)
+        )
+      };
+    })
+    .sort(function(a, b) {
+      return a.distance - b.distance ||
+        a.paletteIndex - b.paletteIndex;
+    })
+    .slice(0, Math.max(5, Math.min(8, limit || 7)))
+    .map(function(entry) {
+      return entry.hex;
+    });
+}
+
+function refreshReplacementOrder(relatedSourceColor) {
+  var baseEntries = sortUsageEntries(
+    getPaletteUsageEntries(),
+    replacementSortMode
+  );
+  var baseColors = baseEntries.map(function(entry) {
+    return entry.hex;
+  });
+  var source = relatedSourceColor
+    ? String(relatedSourceColor).toUpperCase()
+    : null;
+
+  replacementRelatedSourceColor = null;
+  replacementRelatedColors = [];
+  if (source && baseColors.indexOf(source) !== -1) {
+    replacementRelatedSourceColor = source;
+    replacementRelatedColors = findRelatedPaletteColors(source, 7);
+  }
+
+  var prioritized = replacementRelatedSourceColor
+    ? [replacementRelatedSourceColor].concat(replacementRelatedColors)
+    : [];
+  var prioritizedSet = new Set(prioritized);
+  replacementOrderedColors = prioritized.concat(
+    baseColors.filter(function(color) {
+      return !prioritizedSet.has(color);
+    })
+  );
+}
+
+function getReplacementEntriesInDisplayOrder() {
+  var entries = getPaletteUsageEntries();
+  var entryByColor = new Map(entries.map(function(entry) {
+    return [entry.hex, entry];
+  }));
+  var validOrder =
+    replacementOrderedColors.length === entries.length &&
+    replacementOrderedColors.every(function(color) {
+      return entryByColor.has(color);
+    });
+  if (!validOrder) refreshReplacementOrder();
+  return replacementOrderedColors.map(function(color) {
+    return entryByColor.get(color);
+  });
+}
+
 function renderColorGrid() {
   var grid = document.getElementById('colorGrid');
   var palette = getCurrentPaletteColors();
@@ -646,6 +727,23 @@ function beginReplacementTargetSelection() {
   renderStatisticsHighlightOverlay();
 }
 
+function showReplacementRelatedColors() {
+  if (
+    !isReplacementMode() ||
+    replacementTargetMode ||
+    replacementSelectedColors.size !== 1
+  ) {
+    return;
+  }
+  var source = Array.from(replacementSelectedColors)[0];
+  refreshReplacementOrder(source);
+  renderReplacementPanel();
+  renderStatisticsHighlightOverlay();
+  var scroll = document.getElementById('replacementColorScroll');
+  if (scroll) scroll.scrollTop = 0;
+  showToast('已将 ' + source + ' 及其相关颜色置顶');
+}
+
 function cancelReplacementTargetSelection() {
   replacementTargetMode = false;
   replacementTargetColor = null;
@@ -697,6 +795,7 @@ function confirmColorReplacement() {
   replacementSelectedColors.clear();
   replacementTargetColor = null;
   replacementTargetMode = false;
+  refreshReplacementOrder();
   renderCanvas();
   renderNavigator();
   renderColorGrid();
@@ -711,8 +810,7 @@ function renderReplacementPanel() {
   var grid = document.getElementById('replacementGrid');
   if (!grid) return;
   reconcileReplacementSelection();
-  var entries = getPaletteUsageEntries();
-  entries = sortUsageEntries(entries, replacementSortMode);
+  var entries = getReplacementEntriesInDisplayOrder();
 
   grid.innerHTML = '';
   entries.forEach(function(entry) {
@@ -749,6 +847,10 @@ function renderReplacementPanel() {
   var selectedCellCount = getReplacementSelectedCellCount();
   var summary = document.getElementById('replacementSelectionSummary');
   var hint = document.getElementById('replacementHint');
+  var primaryActions = document.getElementById(
+    'replacementPrimaryActions'
+  );
+  var relatedButton = document.getElementById('replacementRelatedBtn');
   var replaceButton = document.getElementById('replacementStartBtn');
   var confirmActions = document.getElementById(
     'replacementConfirmActions'
@@ -765,7 +867,8 @@ function renderReplacementPanel() {
           : '请选择一种目标颜色'
       )
     : '点击颜色或使用吸管，可多选需要替换的颜色';
-  replaceButton.hidden = replacementTargetMode;
+  primaryActions.hidden = replacementTargetMode;
+  relatedButton.disabled = replacementSelectedColors.size !== 1;
   replaceButton.disabled = replacementSelectedColors.size === 0;
   confirmActions.hidden = !replacementTargetMode;
 
@@ -890,7 +993,7 @@ function setReplacementSortMode(mode) {
   if (!['count-desc', 'count-asc', 'palette-order'].includes(mode)) return;
   replacementSortMode = mode;
   document.getElementById('replacementSort').value = mode;
-
+  refreshReplacementOrder();
   renderReplacementPanel();
   renderStatisticsHighlightOverlay();
   var focusColor = replacementTargetColor ||
@@ -1975,6 +2078,7 @@ function bindStaticControls() {
   on('replicationTab', 'click', function() {
     setWorkspacePanelMode('replication');
   });
+  on('replacementRelatedBtn', 'click', showReplacementRelatedColors);
   on('replacementStartBtn', 'click', beginReplacementTargetSelection);
   on('replacementCancelBtn', 'click', cancelReplacementTargetSelection);
   on('replacementConfirmBtn', 'click', confirmColorReplacement);
@@ -2069,6 +2173,9 @@ function installTourgridTestApi() {
         replacementTargetColor: replacementTargetColor,
         replacementTargetMode: replacementTargetMode,
         replacementSortMode: replacementSortMode,
+        replacementOrderedColors: replacementOrderedColors.slice(),
+        replacementRelatedColors: replacementRelatedColors.slice(),
+        replacementRelatedSourceColor: replacementRelatedSourceColor,
         replicationHighlightColor: replicationHighlightColor,
         replicationSortMode: replicationSortMode,
         replicationCompletedCells: Array.from(replicationCompletedCells).sort(

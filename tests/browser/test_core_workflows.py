@@ -64,6 +64,8 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
     assert editor_page.locator(
         "#replacementGrid .color-statistics-color"
     ).count() == 64
+    related_button = editor_page.locator("#replacementRelatedBtn")
+    expect(related_button).to_be_disabled()
     statistics_sort = editor_page.locator("#replacementSort")
     statistics_sort.select_option("count-asc")
     ascending_counts = editor_page.locator(
@@ -94,9 +96,29 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
 
     editor_page.locator("#eyedropperBtn").click()
     assert editor_state(editor_page)["eyedropperActive"] is True
+    order_before_selection = editor_state(editor_page)[
+        "replacementOrderedColors"
+    ]
     click_canvas_cell(editor_page, 1, 1)
     assert editor_state(editor_page)["eyedropperActive"] is False
+    expect(related_button).to_be_enabled()
+    assert (
+        editor_state(editor_page)["replacementOrderedColors"]
+        == order_before_selection
+    )
+    related_button.click()
+    related_state = editor_state(editor_page)
+    assert related_state["replacementRelatedSourceColor"] == BLACK
+    assert 5 <= len(related_state["replacementRelatedColors"]) <= 8
+    assert related_state["replacementOrderedColors"][0] == BLACK
+    assert related_state["replacementOrderedColors"][1:8] == (
+        related_state["replacementRelatedColors"]
+    )
     white.click()
+    expect(related_button).to_be_disabled()
+    assert editor_state(editor_page)["replacementOrderedColors"] == (
+        related_state["replacementOrderedColors"]
+    )
     expect(editor_page.locator("#replacementSelectionSummary")).to_have_text(
         "已选择 2 种颜色 · 共 575 格"
     )
@@ -1189,6 +1211,7 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     editorial_label = editor_page.locator("#rightPanel .editorial-area-label")
     first_tool_button = editor_page.locator("#rightPanel .tool-icon-btn").first
     palette_tab = editor_page.locator("#coloringTab")
+    replacement_tab = editor_page.locator("#replacementTab")
     statistics_tab = editor_page.locator("#replicationTab")
     statistics_scroll = editor_page.locator("#replicationColorScroll")
     center_panel = editor_page.locator("#centerPanel")
@@ -1291,6 +1314,32 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     assert palette_tab_box is not None
     assert tool_button_box["height"] <= 37
     assert palette_tab_box["height"] <= 37
+
+    replacement_tab.click()
+    editor_page.locator(
+        f'.color-statistics-color[data-color="{BLACK}"]'
+    ).click()
+    replacement_actions_box = editor_page.locator(
+        "#replacementPrimaryActions"
+    ).bounding_box()
+    related_button_box = editor_page.locator(
+        "#replacementRelatedBtn"
+    ).bounding_box()
+    replacement_button_box = editor_page.locator(
+        "#replacementStartBtn"
+    ).bounding_box()
+    assert replacement_actions_box is not None
+    assert related_button_box is not None
+    assert replacement_button_box is not None
+    assert related_button_box["height"] == pytest.approx(
+        replacement_button_box["height"], abs=1
+    )
+    assert related_button_box["x"] >= replacement_actions_box["x"] - 1
+    assert (
+        replacement_button_box["x"] + replacement_button_box["width"]
+        <= replacement_actions_box["x"] +
+        replacement_actions_box["width"] + 1
+    )
 
     statistics_tab.click()
     expect(statistics_scroll).to_be_visible()

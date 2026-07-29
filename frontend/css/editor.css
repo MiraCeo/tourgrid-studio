@@ -1109,6 +1109,7 @@ body {
   border-top: 1px solid #45454a;
 }
 .color-statistics-replace-btn,
+.color-statistics-related-btn,
 .color-statistics-cancel-btn,
 .color-statistics-confirm-btn {
   min-height: 38px;
@@ -1119,18 +1120,23 @@ body {
   font-weight: 700;
   cursor: pointer;
 }
-.color-statistics-replace-btn {
-  width: 100%;
-  border-color: #2ca9ad;
-  background: #238d91;
-}
+.replacement-primary-actions,
 .color-statistics-confirm-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 7px;
 }
+.replacement-primary-actions[hidden],
 .color-statistics-confirm-actions[hidden] {
   display: none;
+}
+.color-statistics-replace-btn {
+  border-color: #2ca9ad;
+  background: #238d91;
+}
+.color-statistics-related-btn {
+  border-color: #5a8f91;
+  background: #315e61;
 }
 .color-statistics-cancel-btn {
   background: #333338;
@@ -1140,11 +1146,13 @@ body {
   background: #b66f16;
 }
 .color-statistics-replace-btn:disabled,
+.color-statistics-related-btn:disabled,
 .color-statistics-confirm-btn:disabled {
   opacity: 0.38;
   cursor: default;
 }
 .color-statistics-replace-btn:focus-visible,
+.color-statistics-related-btn:focus-visible,
 .color-statistics-cancel-btn:focus-visible,
 .color-statistics-confirm-btn:focus-visible,
 .color-statistics-color:focus-visible {
@@ -2908,6 +2916,7 @@ body {
     padding-top: 5px;
   }
   body.mobile-focus-mode .right-panel .color-statistics-replace-btn,
+  body.mobile-focus-mode .right-panel .color-statistics-related-btn,
   body.mobile-focus-mode .right-panel .color-statistics-cancel-btn,
   body.mobile-focus-mode .right-panel .color-statistics-confirm-btn {
     min-height: 34px;
