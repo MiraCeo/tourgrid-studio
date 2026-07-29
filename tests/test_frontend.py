@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-10"
+    asset_version = "20260729-12"
 
     assert (
         f'<link rel="stylesheet" '
@@ -104,7 +104,7 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert '<option value="none" selected>' in source
     assert "var fullPalette = EXHIBITION_DATA.map" in source
     assert "fullPalette.length !== 64" in source
-    assert "browser-fixed-palette-filters-v2" in source
+    assert "browser-weighted-rgb-dither-v3" in source
     assert "paletteId: DEFAULT_PALETTE_ID" in source
     assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
     assert "confirmCropLocalWithAdjustments()" in image_import
@@ -115,9 +115,11 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert "TourgridConversion" not in image_import
     assert not (JAVASCRIPT_ROOT / "conversion-api.js").exists()
     assert "K-means" not in image_import
-    assert '<span class="crop-size-value">固定输出 24×24</span>' in source
     assert 'id="cropTargetColorCount"' in source
     assert 'id="cropPreviewToggleBtn"' in source
+    assert 'id="cropDitherStrength"' in source
+    assert '<option value="bayer2">Bayer 2×2</option>' in source
+    assert '<option value="bayer4">Bayer 4×4</option>' in source
     assert "const GRID_SIZE = 24" in source
 
 
@@ -134,6 +136,10 @@ def test_local_converter_keeps_optional_dithering() -> None:
 
     assert "confirmCropLocalWithAdjustments()" in source
     assert "ditherMode === 'floyd'" in source
+    assert "colorDistRGB" in source
+    assert "rgbToOklab" not in source
+    assert "srgbByteToLinear" in source
+    assert "var reverse = useSerpentine && y % 2 === 1" in source
     assert "let viewMode" not in source
     assert "id=\"viewMode\"" not in source
     assert "canvasPixelData" not in source

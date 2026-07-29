@@ -1671,13 +1671,12 @@ function bindStaticControls() {
     'cropSaturation',
     'cropColorOverlay',
     'cropColorOverlayOpacity',
-    'cropTargetColorCount'
+    'cropTargetColorCount',
+    'cropDitherStrength'
   ].forEach(function(id) {
     on(id, 'input', updateCropAdjustments);
   });
-  on('cropDither', 'change', function() {
-    scheduleCropPreview();
-  });
+  on('cropDither', 'change', updateCropDitherMode);
   on('cropPreviewToggleBtn', 'click', toggleCropPreviewMode);
   on('conversionRetryBtn', 'click', confirmCrop);
   on('cancelCropBtn', 'click', cancelCrop);

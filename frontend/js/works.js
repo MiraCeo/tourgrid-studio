@@ -45,6 +45,9 @@ function closeWorkShareModal() {
   ) {
     workShareModalTrigger.focus();
   }
+  if (modal.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
 }
 
 function closeWorkShareModalFromBackdrop(event) {

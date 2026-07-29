@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-10">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-12">
 </head>
 <body>
 
@@ -667,12 +667,20 @@
               <option value="none" selected>无（推荐）</option>
               <option value="floyd">Floyd-Steinberg</option>
               <option value="atkinson">Atkinson</option>
+              <option value="bayer2">Bayer 2×2</option>
+              <option value="bayer4">Bayer 4×4</option>
             </select>
           </label>
           <label class="crop-setting" for="cropTargetColorCount">
             <span>目标颜色</span>
             <input type="range" id="cropTargetColorCount" min="4" max="64" value="64">
             <output id="cropTargetColorCountVal">64 色</output>
+          </label>
+          <label class="crop-setting" id="cropDitherStrengthControl"
+                 for="cropDitherStrength" hidden>
+            <span>抖动强度</span>
+            <input type="range" id="cropDitherStrength" min="0" max="100" value="100">
+            <output id="cropDitherStrengthVal">100%</output>
           </label>
           <label class="crop-setting" for="cropContrast">
             <span>对比度</span>
@@ -690,15 +698,14 @@
             <output id="cropSaturationVal">100%</output>
           </label>
           <label class="crop-setting crop-color-setting" for="cropColorOverlay">
-            <span>颜色覆盖</span>
+            <span>滤镜</span>
             <input type="color" id="cropColorOverlay" value="#4299E1">
           </label>
           <label class="crop-setting" for="cropColorOverlayOpacity">
-            <span>覆盖透明度</span>
+            <span>滤镜透明度</span>
             <input type="range" id="cropColorOverlayOpacity" min="0" max="100" value="0">
             <output id="cropColorOverlayOpacityVal">0%</output>
           </label>
-          <span class="crop-size-value">固定输出 24×24</span>
         </div>
         <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
           <span class="conversion-spinner"></span>
@@ -715,16 +722,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-10"></script>
-<script src="/static/js/reference-storage.js?v=20260729-10"></script>
-<script src="/static/js/work-codec.js?v=20260729-10"></script>
-<script src="/static/js/natural-64-v1.js?v=20260729-10"></script>
-<script src="/static/js/state.js?v=20260729-10"></script>
-<script src="/static/js/editor.js?v=20260729-10"></script>
-<script src="/static/js/export.js?v=20260729-10"></script>
-<script src="/static/js/import.js?v=20260729-10"></script>
-<script src="/static/js/works.js?v=20260729-10"></script>
-<script src="/static/js/app.js?v=20260729-10"></script>
+<script src="/static/js/storage.js?v=20260729-12"></script>
+<script src="/static/js/reference-storage.js?v=20260729-12"></script>
+<script src="/static/js/work-codec.js?v=20260729-12"></script>
+<script src="/static/js/natural-64-v1.js?v=20260729-12"></script>
+<script src="/static/js/state.js?v=20260729-12"></script>
+<script src="/static/js/editor.js?v=20260729-12"></script>
+<script src="/static/js/export.js?v=20260729-12"></script>
+<script src="/static/js/import.js?v=20260729-12"></script>
+<script src="/static/js/works.js?v=20260729-12"></script>
+<script src="/static/js/app.js?v=20260729-12"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

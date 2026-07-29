@@ -13,12 +13,19 @@ let importedPreviewObjectUrl = null;
 let conversionInProgress = false;
 const REFERENCE_IMAGE_SIZE = 256;
 const REFERENCE_WEBP_QUALITY = 0.88;
+const SRGB_BYTE_TO_LINEAR = Array.from({ length: 256 }, function(_, value) {
+  var normalized = value / 255;
+  return normalized <= 0.04045
+    ? normalized / 12.92
+    : Math.pow((normalized + 0.055) / 1.055, 2.4);
+});
 let cropContrast = 100;
 let cropBrightness = 100;
 let cropSaturation = 100;
 let cropColorOverlay = '#4299E1';
 let cropColorOverlayOpacity = 0;
 let cropTargetColorCount = 64;
+let cropDitherStrength = 100;
 let cropPreviewMode = 'processed';
 let cropPreviewTimer = null;
 let cropPreviewResult = null;
@@ -85,6 +92,7 @@ function resetCropAdjustments() {
   cropColorOverlay = '#4299E1';
   cropColorOverlayOpacity = 0;
   cropTargetColorCount = 64;
+  cropDitherStrength = 100;
   cropPreviewMode = 'processed';
   cropPreviewResult = null;
 
@@ -94,13 +102,15 @@ function resetCropAdjustments() {
     cropSaturation: 100,
     cropColorOverlay: cropColorOverlay,
     cropColorOverlayOpacity: 0,
-    cropTargetColorCount: 64
+    cropTargetColorCount: 64,
+    cropDitherStrength: 100
   };
   Object.keys(values).forEach(function(id) {
     var element = document.getElementById(id);
     if (element) element.value = values[id];
   });
   updateCropAdjustmentLabels();
+  syncCropDitherControls();
   syncCropPreviewMode();
 }
 
@@ -110,7 +120,8 @@ function updateCropAdjustmentLabels() {
     ['cropBrightness', 'cropBrightnessVal', '%'],
     ['cropSaturation', 'cropSaturationVal', '%'],
     ['cropColorOverlayOpacity', 'cropColorOverlayOpacityVal', '%'],
-    ['cropTargetColorCount', 'cropTargetColorCountVal', ' 色']
+    ['cropTargetColorCount', 'cropTargetColorCountVal', ' 色'],
+    ['cropDitherStrength', 'cropDitherStrengthVal', '%']
   ];
   controls.forEach(function(item) {
     var input = document.getElementById(item[0]);
@@ -132,7 +143,22 @@ function updateCropAdjustments() {
     document.getElementById('cropTargetColorCount').value,
     10
   );
+  cropDitherStrength = parseInt(
+    document.getElementById('cropDitherStrength').value,
+    10
+  );
   updateCropAdjustmentLabels();
+  scheduleCropPreview();
+}
+
+function syncCropDitherControls() {
+  var ditherMode = document.getElementById('cropDither').value;
+  var strengthControl = document.getElementById('cropDitherStrengthControl');
+  if (strengthControl) strengthControl.hidden = ditherMode === 'none';
+}
+
+function updateCropDitherMode() {
+  syncCropDitherControls();
   scheduleCropPreview();
 }
 
@@ -207,17 +233,33 @@ function buildProcessedCropCanvas(outputSize) {
   return output;
 }
 
+function srgbByteToLinear(value) {
+  var normalized = value / 255;
+  return normalized <= 0.04045
+    ? normalized / 12.92
+    : Math.pow((normalized + 0.055) / 1.055, 2.4);
+}
+
+function linearToSrgbByte(value) {
+  var clamped = Math.max(0, Math.min(1, value));
+  var normalized = clamped <= 0.0031308
+    ? clamped * 12.92
+    : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+  return normalized * 255;
+}
+
 function selectImportPalette(rawR, rawG, rawB, targetCount) {
   var fullPalette = EXHIBITION_DATA.map(function(color, index) {
     var hex = color.hex.toUpperCase();
+    var rgb = [
+      parseInt(hex.slice(1, 3), 16),
+      parseInt(hex.slice(3, 5), 16),
+      parseInt(hex.slice(5, 7), 16)
+    ];
     return {
       index: index,
       hex: hex,
-      rgb: [
-        parseInt(hex.slice(1, 3), 16),
-        parseInt(hex.slice(3, 5), 16),
-        parseInt(hex.slice(5, 7), 16)
-      ],
+      rgb: rgb,
       count: 0
     };
   });
@@ -270,21 +312,21 @@ function quantizeProcessedCrop(processedCanvas) {
 
   for (var gy = 0; gy < GRID_SIZE; gy++) {
     for (var gx = 0; gx < GRID_SIZE; gx++) {
-      var sr = 0, sg = 0, sb = 0;
+      var linearR = 0, linearG = 0, linearB = 0;
       for (var sampleY = 0; sampleY < sample; sampleY++) {
         for (var sampleX = 0; sampleX < sample; sampleX++) {
           var px = gx * sample + sampleX;
           var py = gy * sample + sampleY;
           var dataIndex = (py * processedCanvas.width + px) * 4;
-          sr += hiData[dataIndex];
-          sg += hiData[dataIndex + 1];
-          sb += hiData[dataIndex + 2];
+          linearR += SRGB_BYTE_TO_LINEAR[hiData[dataIndex]];
+          linearG += SRGB_BYTE_TO_LINEAR[hiData[dataIndex + 1]];
+          linearB += SRGB_BYTE_TO_LINEAR[hiData[dataIndex + 2]];
         }
       }
       var rawIndex = gy * GRID_SIZE + gx;
-      rawR[rawIndex] = sr / (sample * sample);
-      rawG[rawIndex] = sg / (sample * sample);
-      rawB[rawIndex] = sb / (sample * sample);
+      rawR[rawIndex] = linearToSrgbByte(linearR / (sample * sample));
+      rawG[rawIndex] = linearToSrgbByte(linearG / (sample * sample));
+      rawB[rawIndex] = linearToSrgbByte(linearB / (sample * sample));
     }
   }
 
@@ -301,12 +343,30 @@ function quantizeProcessedCrop(processedCanvas) {
     return Array.from({ length: GRID_SIZE }, function() { return '#FFFFFF'; });
   });
   var ditherMode = document.getElementById('cropDither').value;
+  var ditherStrength = cropDitherStrength / 100;
+  var bayer2 = [
+    [0, 2],
+    [3, 1]
+  ];
+  var bayer4 = [
+    [0, 8, 2, 10],
+    [12, 4, 14, 6],
+    [3, 11, 1, 9],
+    [15, 7, 13, 5]
+  ];
 
   function nearestEntry(r, g, b) {
     var best = palette[0];
     var bestDistance = Infinity;
     palette.forEach(function(entry) {
-      var distance = colorDistRGB(r, g, b, entry.rgb[0], entry.rgb[1], entry.rgb[2]);
+      var distance = colorDistRGB(
+        r,
+        g,
+        b,
+        entry.rgb[0],
+        entry.rgb[1],
+        entry.rgb[2]
+      );
       if (distance < bestDistance) {
         bestDistance = distance;
         best = entry;
@@ -316,43 +376,72 @@ function quantizeProcessedCrop(processedCanvas) {
   }
 
   function addError(index, er, eg, eb, weight) {
-    workR[index] += er * weight;
-    workG[index] += eg * weight;
-    workB[index] += eb * weight;
+    workR[index] += er * weight * ditherStrength;
+    workG[index] += eg * weight * ditherStrength;
+    workB[index] += eb * weight * ditherStrength;
+  }
+
+  function addErrorAt(x, y, er, eg, eb, weight) {
+    if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
+    addError(y * GRID_SIZE + x, er, eg, eb, weight);
+  }
+
+  function bayerEntry(r, g, b, x, y, matrix) {
+    var size = matrix.length;
+    var levels = size * size;
+    var threshold = (matrix[y % size][x % size] + 0.5) / levels - 0.5;
+    var offset = threshold * 48 * ditherStrength;
+    return nearestEntry(
+      Math.max(0, Math.min(255, r + offset)),
+      Math.max(0, Math.min(255, g + offset)),
+      Math.max(0, Math.min(255, b + offset))
+    );
   }
 
   for (var y = 0; y < GRID_SIZE; y++) {
-    for (var x = 0; x < GRID_SIZE; x++) {
+    var useSerpentine = ditherMode === 'floyd' || ditherMode === 'atkinson';
+    var reverse = useSerpentine && y % 2 === 1;
+    var direction = reverse ? -1 : 1;
+    for (var step = 0; step < GRID_SIZE; step++) {
+      var x = reverse ? GRID_SIZE - 1 - step : step;
       var index = y * GRID_SIZE + x;
       var r = Math.max(0, Math.min(255, workR[index]));
       var g = Math.max(0, Math.min(255, workG[index]));
       var b = Math.max(0, Math.min(255, workB[index]));
-      var selected = nearestEntry(r, g, b);
+      var selected;
+      if (ditherMode === 'bayer2') {
+        selected = bayerEntry(r, g, b, x, y, bayer2);
+      } else if (ditherMode === 'bayer4') {
+        selected = bayerEntry(r, g, b, x, y, bayer4);
+      } else {
+        selected = nearestEntry(r, g, b);
+      }
       pixels[y][x] = selected.hex;
-      if (ditherMode === 'none') continue;
+      if (
+        ditherMode === 'none' ||
+        ditherMode === 'bayer2' ||
+        ditherMode === 'bayer4' ||
+        ditherStrength === 0
+      ) continue;
 
       var er = r - selected.rgb[0];
       var eg = g - selected.rgb[1];
       var eb = b - selected.rgb[2];
       if (ditherMode === 'floyd') {
-        if (x + 1 < GRID_SIZE) addError(index + 1, er, eg, eb, 7 / 16);
-        if (y + 1 < GRID_SIZE) {
-          if (x > 0) addError(index + GRID_SIZE - 1, er, eg, eb, 3 / 16);
-          addError(index + GRID_SIZE, er, eg, eb, 5 / 16);
-          if (x + 1 < GRID_SIZE) addError(index + GRID_SIZE + 1, er, eg, eb, 1 / 16);
-        }
+        addErrorAt(x + direction, y, er, eg, eb, 7 / 16);
+        addErrorAt(x - direction, y + 1, er, eg, eb, 3 / 16);
+        addErrorAt(x, y + 1, er, eg, eb, 5 / 16);
+        addErrorAt(x + direction, y + 1, er, eg, eb, 1 / 16);
       } else if (ditherMode === 'atkinson') {
         var atkinsonErrorR = er / 8;
         var atkinsonErrorG = eg / 8;
         var atkinsonErrorB = eb / 8;
-        if (x + 1 < GRID_SIZE) addError(index + 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
-        if (x + 2 < GRID_SIZE) addError(index + 2, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
-        if (y + 1 < GRID_SIZE) {
-          if (x > 0) addError(index + GRID_SIZE - 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
-          addError(index + GRID_SIZE, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
-          if (x + 1 < GRID_SIZE) addError(index + GRID_SIZE + 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
-        }
-        if (y + 2 < GRID_SIZE) addError(index + GRID_SIZE * 2, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        addErrorAt(x + direction, y, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        addErrorAt(x + direction * 2, y, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        addErrorAt(x - direction, y + 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        addErrorAt(x, y + 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        addErrorAt(x + direction, y + 1, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
+        addErrorAt(x, y + 2, atkinsonErrorR, atkinsonErrorG, atkinsonErrorB, 1);
       }
     }
   }
@@ -718,7 +807,7 @@ async function confirmCropLocalWithAdjustments() {
     paletteId: DEFAULT_PALETTE_ID,
     editorPaletteId: 'exhibition',
     paletteVersion: DEFAULT_PALETTE_VERSION,
-    converterVersion: 'browser-fixed-palette-filters-v2',
+    converterVersion: 'browser-weighted-rgb-dither-v3',
     importedAt: new Date().toISOString()
   };
   buildHexCodeMap();

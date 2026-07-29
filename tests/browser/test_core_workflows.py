@@ -618,6 +618,53 @@ def test_import_adjustments_update_preview_and_limit_target_colors(
     assert used_colors.issubset(set(state["palette"]))
 
 
+def test_import_dither_modes_and_strength_update_pixel_preview(
+    editor_page: Page,
+) -> None:
+    editor_page.locator("#importFileInput").set_input_files(
+        str(FIXTURES / "large-pattern.png")
+    )
+    expect(editor_page.locator("#cropOverlay")).to_be_visible()
+    strength_control = editor_page.locator("#cropDitherStrengthControl")
+    expect(strength_control).to_be_hidden()
+
+    editor_page.locator("#cropDither").select_option("floyd")
+    expect(strength_control).to_be_visible()
+    editor_page.locator("#cropDitherStrength").fill("0")
+    expect(editor_page.locator("#cropDitherStrengthVal")).to_have_text("0%")
+    editor_page.locator("#cropPreviewToggleBtn").click()
+    editor_page.wait_for_timeout(150)
+    preview = editor_page.locator("#cropPreviewCanvas")
+    zero_strength = preview.evaluate("canvas => canvas.toDataURL()")
+
+    editor_page.locator("#cropDither").select_option("none")
+    expect(strength_control).to_be_hidden()
+    editor_page.wait_for_timeout(150)
+    no_dither = preview.evaluate("canvas => canvas.toDataURL()")
+    assert zero_strength == no_dither
+
+    editor_page.locator("#cropDither").select_option("bayer2")
+    expect(strength_control).to_be_visible()
+    editor_page.locator("#cropTargetColorCount").fill("12")
+    editor_page.locator("#cropDitherStrength").fill("100")
+    editor_page.wait_for_timeout(150)
+    bayer2 = preview.evaluate("canvas => canvas.toDataURL()")
+
+    editor_page.locator("#cropDither").select_option("bayer4")
+    editor_page.wait_for_timeout(150)
+    bayer4 = preview.evaluate("canvas => canvas.toDataURL()")
+    assert bayer2 != no_dither
+    assert bayer4 != no_dither
+    assert bayer2 != bayer4
+
+    editor_page.locator("#confirmCropBtn").click()
+    expect(editor_page.locator("#cropOverlay")).to_be_hidden(timeout=15_000)
+    state = editor_state(editor_page)
+    used_colors = {color for row in state["pixels"] for color in row}
+    assert len(used_colors) <= 12
+    assert used_colors.issubset(set(state["palette"]))
+
+
 def test_import_clear_undo_and_redo_restore_the_complete_document(
     editor_page: Page,
 ) -> None:
