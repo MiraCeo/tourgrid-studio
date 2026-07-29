@@ -1252,6 +1252,83 @@ def test_mobile_reference_overlay_remains_visible_in_replication_mode(
     expect(editor_page.locator("#overlayCanvas")).to_be_visible()
 
 
+def test_mobile_landscape_crop_keeps_large_image_zoom_and_actions_visible(
+    editor_page: Page,
+) -> None:
+    width = 640
+    height = 360
+    editor_page.set_viewport_size({"width": width, "height": height})
+    editor_page.locator("#importFileInput").set_input_files(
+        str(FIXTURES / "large-pattern.png")
+    )
+
+    overlay = editor_page.locator("#cropOverlay")
+    viewport = editor_page.locator("#cropViewport")
+    options = editor_page.locator(".crop-options")
+    note = editor_page.locator("#conversionNote")
+    buttons = editor_page.locator(".crop-btns")
+    slider = editor_page.locator("#cropZoomSlider")
+    expect(overlay).to_be_visible()
+    editor_page.wait_for_function(
+        "() => Number(document.querySelector('#cropZoomSlider').value) < 10"
+    )
+
+    zoom_range = slider.evaluate(
+        "slider => ({min: Number(slider.min), value: Number(slider.value)})"
+    )
+    assert 1 <= zoom_range["value"] < 10
+    assert zoom_range["min"] == zoom_range["value"]
+
+    viewport_box = viewport.bounding_box()
+    options_box = options.bounding_box()
+    note_box = note.bounding_box()
+    buttons_box = buttons.bounding_box()
+    assert viewport_box is not None
+    assert options_box is not None
+    assert note_box is not None
+    assert buttons_box is not None
+    assert viewport_box["width"] >= 190
+    assert viewport_box["x"] + viewport_box["width"] < options_box["x"]
+    for box in (viewport_box, options_box, note_box, buttons_box):
+        assert box["x"] >= 0
+        assert box["y"] >= 0
+        assert box["x"] + box["width"] <= width + 1
+        assert box["y"] + box["height"] <= height + 1
+
+    slider.evaluate(
+        """slider => {
+          slider.value = String(Number(slider.min) + 1);
+          slider.dispatchEvent(new Event('input', {bubbles: true}));
+        }"""
+    )
+    assert int(slider.input_value()) == zoom_range["min"] + 1
+    slider.evaluate(
+        """slider => {
+          slider.value = slider.min;
+          slider.dispatchEvent(new Event('input', {bubbles: true}));
+        }"""
+    )
+    assert int(slider.input_value()) == zoom_range["min"]
+    expect(editor_page.locator("#cropZoomVal")).to_have_text(
+        f"{zoom_range['min']}%"
+    )
+
+    editor_page.evaluate(
+        "() => setConversionStatus('正在准备本地转换…', false, false)"
+    )
+    status_box = editor_page.locator("#conversionStatus").bounding_box()
+    busy_viewport_box = viewport.bounding_box()
+    busy_buttons_box = buttons.bounding_box()
+    assert status_box is not None
+    assert busy_viewport_box is not None
+    assert busy_buttons_box is not None
+    assert busy_viewport_box["width"] == pytest.approx(
+        viewport_box["width"], abs=1
+    )
+    assert status_box["y"] + status_box["height"] <= height + 1
+    assert busy_buttons_box["y"] + busy_buttons_box["height"] <= height + 1
+
+
 def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     code = "7Kp3mXqB4NzR"
     all_black_payload = base64.b64encode(bytes(432)).decode("ascii")

@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-07">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-08">
 </head>
 <body>
 
@@ -643,30 +643,34 @@
 <div class="crop-overlay" id="cropOverlay">
   <div class="crop-modal">
     <div class="crop-title">导入图片 & 裁切预览</div>
-    <div class="crop-viewport" id="cropViewport">
-      <img id="cropImage" draggable="false" style="display:none">
-    </div>
-    <div class="crop-controls">
-      <span class="crop-zoom-label">缩放</span>
-      <input type="range" class="crop-zoom-slider" id="cropZoomSlider" min="10" max="500" value="100">
-      <span class="crop-zoom-label" id="cropZoomVal">100%</span>
-      <span class="crop-zoom-label">输出</span>
-      <span class="crop-size-value">24×24</span>
-    </div>
-    <div class="crop-controls">
-      <span class="crop-zoom-label">抖动</span>
-      <select id="cropDither" style="font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:3px;background:#fff;color:#333;cursor:pointer;">
-        <option value="none" selected>无（推荐）</option>
-        <option value="floyd">Floyd-Steinberg</option>
-        <option value="atkinson">Atkinson</option>
-      </select>
+    <div class="crop-main">
+      <div class="crop-viewport" id="cropViewport">
+        <img id="cropImage" draggable="false" style="display:none">
+      </div>
+      <div class="crop-options">
+        <div class="crop-controls">
+          <span class="crop-zoom-label">缩放</span>
+          <input type="range" class="crop-zoom-slider" id="cropZoomSlider" min="1" max="500" value="100">
+          <span class="crop-zoom-label" id="cropZoomVal">100%</span>
+          <span class="crop-zoom-label">输出</span>
+          <span class="crop-size-value">24×24</span>
+        </div>
+        <div class="crop-controls">
+          <span class="crop-zoom-label">抖动</span>
+          <select id="cropDither" style="font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:3px;background:#fff;color:#333;cursor:pointer;">
+            <option value="none" selected>无（推荐）</option>
+            <option value="floyd">Floyd-Steinberg</option>
+            <option value="atkinson">Atkinson</option>
+          </select>
+        </div>
+        <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
+          <span class="conversion-spinner"></span>
+          <span id="conversionStatusText">正在转换…</span>
+          <button class="conversion-retry-btn" id="conversionRetryBtn">重新尝试</button>
+        </div>
+      </div>
     </div>
     <div class="conversion-note" id="conversionNote">图片仅在浏览器本地转换，不会上传；结果严格限制为 natural-64-v1 的 64 种颜色。</div>
-    <div class="conversion-status" id="conversionStatus" role="status" aria-live="polite">
-      <span class="conversion-spinner"></span>
-      <span id="conversionStatusText">正在转换…</span>
-      <button class="conversion-retry-btn" id="conversionRetryBtn">重新尝试</button>
-    </div>
     <div class="crop-btns">
       <button class="crop-btn crop-btn-cancel" id="cancelCropBtn">取消</button>
       <button class="crop-btn crop-btn-confirm" id="confirmCropBtn">确认裁切并转换</button>
@@ -674,16 +678,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-07"></script>
-<script src="/static/js/reference-storage.js?v=20260729-07"></script>
-<script src="/static/js/work-codec.js?v=20260729-07"></script>
-<script src="/static/js/natural-64-v1.js?v=20260729-07"></script>
-<script src="/static/js/state.js?v=20260729-07"></script>
-<script src="/static/js/editor.js?v=20260729-07"></script>
-<script src="/static/js/export.js?v=20260729-07"></script>
-<script src="/static/js/import.js?v=20260729-07"></script>
-<script src="/static/js/works.js?v=20260729-07"></script>
-<script src="/static/js/app.js?v=20260729-07"></script>
+<script src="/static/js/storage.js?v=20260729-08"></script>
+<script src="/static/js/reference-storage.js?v=20260729-08"></script>
+<script src="/static/js/work-codec.js?v=20260729-08"></script>
+<script src="/static/js/natural-64-v1.js?v=20260729-08"></script>
+<script src="/static/js/state.js?v=20260729-08"></script>
+<script src="/static/js/editor.js?v=20260729-08"></script>
+<script src="/static/js/export.js?v=20260729-08"></script>
+<script src="/static/js/import.js?v=20260729-08"></script>
+<script src="/static/js/works.js?v=20260729-08"></script>
+<script src="/static/js/app.js?v=20260729-08"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

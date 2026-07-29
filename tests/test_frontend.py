@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-07"
+    asset_version = "20260729-08"
 
     assert (
         f'<link rel="stylesheet" '
@@ -302,6 +302,11 @@ def test_import_ui_supports_local_retry_status_and_touch_crop() -> None:
     assert "onCropTouchStart" in source
     assert "onCropTouchMove" in source
     assert "touch-action: none" in source
+    assert 'id="cropZoomSlider" min="1" max="500"' in source
+    assert "cropMinimumZoom = Math.min(10, cropZoom)" in source
+    assert source.count("cropMinimumZoom,") >= 3
+    assert 'class="crop-main"' in source
+    assert 'class="crop-options"' in source
 
 
 def test_phone_and_tablet_responsive_contract() -> None:

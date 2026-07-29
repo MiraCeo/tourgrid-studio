@@ -1,5 +1,6 @@
 let cropImg = null;
 let cropZoom = 100;
+let cropMinimumZoom = 10;
 let cropImgX = 0, cropImgY = 0;
 let cropDragStartX = 0, cropDragStartY = 0;
 let cropImgStartX = 0, cropImgStartY = 0;
@@ -78,10 +79,14 @@ function startImport(e) {
       requestAnimationFrame(function() {
         var vpW = vp.clientWidth;
         var scale = Math.max(vpW / cropImg.width, vpW / cropImg.height);
-        cropZoom = Math.round(scale * 100);
-        cropImgX = (vpW - cropImg.width * scale) / 2;
-        cropImgY = (vpW - cropImg.height * scale) / 2;
-        document.getElementById('cropZoomSlider').value = cropZoom;
+        cropZoom = Math.max(1, Math.round(scale * 100));
+        cropMinimumZoom = Math.min(10, cropZoom);
+        var initialScale = cropZoom / 100;
+        cropImgX = (vpW - cropImg.width * initialScale) / 2;
+        cropImgY = (vpW - cropImg.height * initialScale) / 2;
+        var zoomSlider = document.getElementById('cropZoomSlider');
+        zoomSlider.min = cropMinimumZoom;
+        zoomSlider.value = cropZoom;
         document.getElementById('cropZoomVal').textContent = cropZoom + '%';
         applyCropTransform();
       });
@@ -111,7 +116,10 @@ function applyCropTransform() {
 
 function updateCropZoom(val) {
   const oldScale = cropZoom / 100;
-  cropZoom = parseInt(val);
+  cropZoom = Math.max(
+    cropMinimumZoom,
+    Math.min(500, parseInt(val, 10) || cropMinimumZoom)
+  );
   const newScale = cropZoom / 100;
   // 娣囨繃瀵旈崶鍓у娑擃厼绺炬稉宥呭綁
   const vp = document.getElementById('cropViewport');
@@ -200,7 +208,10 @@ function onCropTouchMove(e) {
       return;
     }
     var ratio = cropTouchDistance(e.touches) / cropTouchState.distance;
-    cropZoom = Math.max(10, Math.min(500, Math.round(cropTouchState.zoom * ratio)));
+    cropZoom = Math.max(
+      cropMinimumZoom,
+      Math.min(500, Math.round(cropTouchState.zoom * ratio))
+    );
     var midpoint = cropTouchMidpoint(e.touches);
     var viewportRect = document.getElementById('cropViewport').getBoundingClientRect();
     var localX = midpoint.x - viewportRect.left;
@@ -227,8 +238,12 @@ function onCropWheel(e) {
   if (!cropImg) return;
   e.preventDefault();
   e.stopPropagation();
-  var delta = e.deltaY > 0 ? -10 : 10;
-  var newZoom = Math.max(10, Math.min(500, cropZoom + delta));
+  var step = Math.max(1, Math.round(cropZoom * 0.1));
+  var delta = e.deltaY > 0 ? -step : step;
+  var newZoom = Math.max(
+    cropMinimumZoom,
+    Math.min(500, cropZoom + delta)
+  );
   document.getElementById('cropZoomSlider').value = newZoom;
   updateCropZoom(newZoom);
 }
