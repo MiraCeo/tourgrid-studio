@@ -940,7 +940,6 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     toolbar_collapse_button = editor_page.locator(
         "#mobileToolbarCollapseBtn"
     )
-    toolbar_rail = editor_page.locator(".mobile-toolbar-rail")
     toolbar_handle = editor_page.locator("#mobileToolbarHandle")
     left_toggle = editor_page.locator("#mobileLeftPanelBtn")
     right_toggle = editor_page.locator("#mobileRightPanelBtn")
@@ -1069,15 +1068,45 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     collapsed_top_height = top_bar.bounding_box()["height"]
     assert collapsed_top_height < expanded_top_height
     assert collapsed_top_height <= 1
-    expect(toolbar_rail).to_be_visible()
     expect(toolbar_handle).to_be_visible()
-    collapsed_rail_box = toolbar_rail.bounding_box()
+    collapsed_editor_body_box = editor_page.locator(
+        ".editor-body"
+    ).bounding_box()
     collapsed_center_box = center_panel.bounding_box()
-    assert collapsed_rail_box is not None
+    assert collapsed_editor_body_box is not None
     assert collapsed_center_box is not None
-    assert collapsed_rail_box["height"] == pytest.approx(36, abs=1)
-    assert collapsed_rail_box["y"] + collapsed_rail_box["height"] == (
-        pytest.approx(collapsed_center_box["y"], abs=1)
+    assert collapsed_center_box["y"] == pytest.approx(
+        collapsed_editor_body_box["y"], abs=1
+    )
+
+    initial_handle_box = toolbar_handle.bounding_box()
+    assert initial_handle_box is not None
+    initial_handle_center = (
+        initial_handle_box["x"] + initial_handle_box["width"] / 2
+    )
+    assert initial_handle_center == pytest.approx(width / 2, abs=2)
+    drag_y = initial_handle_box["y"] + initial_handle_box["height"] / 2
+    drag_delta = (
+        120
+        if initial_handle_center < width / 2
+        else -120
+    )
+    editor_page.mouse.move(initial_handle_center, drag_y)
+    editor_page.mouse.down()
+    editor_page.mouse.move(
+        initial_handle_center + drag_delta,
+        drag_y,
+        steps=4,
+    )
+    editor_page.mouse.up()
+    expect(body).to_have_class(re.compile(r"\bmobile-toolbar-collapsed\b"))
+    dragged_handle_box = toolbar_handle.bounding_box()
+    assert dragged_handle_box is not None
+    assert abs(dragged_handle_box["x"] - initial_handle_box["x"]) > 60
+    assert dragged_handle_box["x"] >= collapsed_center_box["x"] + 5
+    assert (
+        dragged_handle_box["x"] + dragged_handle_box["width"]
+        <= collapsed_center_box["x"] + collapsed_center_box["width"] - 5
     )
 
     toolbar_handle.click()
@@ -1085,7 +1114,6 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
         re.compile(r"\bmobile-toolbar-collapsed\b")
     )
     expect(toolbar_collapse_button).to_be_visible()
-    expect(toolbar_rail).to_be_hidden()
 
     center_box = center_panel.bounding_box()
     assert center_box is not None

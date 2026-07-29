@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-06"
+    asset_version = "20260729-07"
 
     assert (
         f'<link rel="stylesheet" '
@@ -853,7 +853,7 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     assert 'id="mobileWorkspaceModeBtn"' in html
     assert 'id="mobileToolbarCollapseBtn"' in html
     assert 'id="mobileToolbarHandle"' in html
-    assert 'class="mobile-toolbar-rail"' in html
+    assert 'class="mobile-toolbar-rail"' not in html
     assert 'id="mobileLeftPanelBtn"' in html
     assert 'id="mobileRightPanelBtn"' in html
     assert 'id="workspaceDrawerBackdrop"' not in html
@@ -869,6 +869,18 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     assert "on('workspaceDrawerBackdrop', 'click'" not in app
     assert "function setMobileToolbarCollapsed(collapsed)" in app
     assert "on('mobileToolbarCollapseBtn', 'click', toggleMobileToolbar)" in app
+    assert "function onMobileToolbarHandlePointerDown(event)" in app
+    assert "function onMobileToolbarHandlePointerMove(event)" in app
+    assert "function finishMobileToolbarHandleDrag(event)" in app
+    assert (
+        "on('mobileToolbarHandle', 'pointerdown', "
+        "onMobileToolbarHandlePointerDown)"
+    ) in app
+    assert (
+        "sessionStorage.setItem(\n"
+        "      MOBILE_TOOLBAR_HANDLE_POSITION_KEY"
+    ) in app
+    assert "if (storedValue !== null)" in app
     assert "function onMobileWorkspacePointerDown(event)" in app
     assert "event.target.closest('#pixelCanvas')" in app
     assert "MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40" in app

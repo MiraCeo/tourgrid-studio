@@ -1162,13 +1162,181 @@ var mobileWorkspaceModeActive = false;
 var mobileWorkspaceGesture = null;
 var MOBILE_WORKSPACE_MODE_KEY = 'tourgrid.mobileWorkspaceMode';
 var MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40;
+var MOBILE_TOOLBAR_HANDLE_POSITION_KEY =
+  'tourgrid.mobileToolbarHandlePosition';
+var MOBILE_TOOLBAR_HANDLE_DRAG_THRESHOLD = 5;
+var mobileToolbarHandlePosition = 0.5;
+var mobileToolbarHandlePositionLoaded = false;
+var mobileToolbarHandleDrag = null;
+var suppressMobileToolbarHandleClick = false;
+
+function restoreMobileToolbarHandlePosition() {
+  if (mobileToolbarHandlePositionLoaded) return;
+  mobileToolbarHandlePositionLoaded = true;
+  try {
+    var storedValue = sessionStorage.getItem(
+      MOBILE_TOOLBAR_HANDLE_POSITION_KEY
+    );
+    if (storedValue !== null) {
+      var stored = Number(storedValue);
+      if (Number.isFinite(stored)) {
+        mobileToolbarHandlePosition = Math.max(0, Math.min(1, stored));
+      }
+    }
+  } catch (error) {
+    mobileToolbarHandlePosition = 0.5;
+  }
+}
+
+function getMobileToolbarHandleBounds() {
+  var editorBody = document.querySelector('.editor-body');
+  var handle = document.getElementById('mobileToolbarHandle');
+  var visibleCenter = document.getElementById('centerPanel');
+  if (!editorBody || !handle || !visibleCenter) return null;
+  var bodyRect = editorBody.getBoundingClientRect();
+  var centerRect = visibleCenter.getBoundingClientRect();
+  var halfWidth = handle.offsetWidth / 2;
+  var padding = 6;
+  var minimum =
+    centerRect.left - bodyRect.left + halfWidth + padding;
+  var maximum =
+    centerRect.right - bodyRect.left - halfWidth - padding;
+  if (maximum < minimum) {
+    var midpoint = (minimum + maximum) / 2;
+    minimum = midpoint;
+    maximum = midpoint;
+  }
+  return {
+    minimum: minimum,
+    maximum: maximum
+  };
+}
+
+function syncMobileToolbarHandlePosition() {
+  if (
+    !mobileWorkspaceModeActive ||
+    !document.body.classList.contains('mobile-toolbar-collapsed')
+  ) {
+    return;
+  }
+  restoreMobileToolbarHandlePosition();
+  var handle = document.getElementById('mobileToolbarHandle');
+  var bounds = getMobileToolbarHandleBounds();
+  if (!handle || !bounds) return;
+  var left = bounds.minimum +
+    (bounds.maximum - bounds.minimum) * mobileToolbarHandlePosition;
+  handle.style.left = left + 'px';
+}
+
+function persistMobileToolbarHandlePosition() {
+  try {
+    sessionStorage.setItem(
+      MOBILE_TOOLBAR_HANDLE_POSITION_KEY,
+      String(mobileToolbarHandlePosition)
+    );
+  } catch (error) {
+    // The handle still remains draggable for the current layout.
+  }
+}
+
+function onMobileToolbarHandlePointerDown(event) {
+  if (
+    !mobileWorkspaceModeActive ||
+    !document.body.classList.contains('mobile-toolbar-collapsed') ||
+    (typeof event.button === 'number' && event.button !== 0)
+  ) {
+    return;
+  }
+  var handle = event.currentTarget;
+  var editorBody = document.querySelector('.editor-body');
+  if (!editorBody) return;
+  var bodyRect = editorBody.getBoundingClientRect();
+  var handleRect = handle.getBoundingClientRect();
+  mobileToolbarHandleDrag = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startLeft: handleRect.left - bodyRect.left + handleRect.width / 2,
+    dragged: false
+  };
+  suppressMobileToolbarHandleClick = false;
+  if (handle.setPointerCapture) {
+    try {
+      handle.setPointerCapture(event.pointerId);
+    } catch (error) {
+      // Synthetic pointer events may not own an active pointer.
+    }
+  }
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function onMobileToolbarHandlePointerMove(event) {
+  if (
+    !mobileToolbarHandleDrag ||
+    mobileToolbarHandleDrag.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+  var deltaX = event.clientX - mobileToolbarHandleDrag.startX;
+  if (Math.abs(deltaX) >= MOBILE_TOOLBAR_HANDLE_DRAG_THRESHOLD) {
+    mobileToolbarHandleDrag.dragged = true;
+  }
+  if (!mobileToolbarHandleDrag.dragged) return;
+  var bounds = getMobileToolbarHandleBounds();
+  if (!bounds) return;
+  var left = Math.max(
+    bounds.minimum,
+    Math.min(bounds.maximum, mobileToolbarHandleDrag.startLeft + deltaX)
+  );
+  var span = bounds.maximum - bounds.minimum;
+  mobileToolbarHandlePosition = span > 0
+    ? (left - bounds.minimum) / span
+    : 0.5;
+  event.currentTarget.style.left = left + 'px';
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function finishMobileToolbarHandleDrag(event) {
+  if (
+    !mobileToolbarHandleDrag ||
+    mobileToolbarHandleDrag.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+  var dragged = mobileToolbarHandleDrag.dragged;
+  mobileToolbarHandleDrag = null;
+  if (
+    event.currentTarget.hasPointerCapture &&
+    event.currentTarget.hasPointerCapture(event.pointerId)
+  ) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+  if (dragged) {
+    suppressMobileToolbarHandleClick = true;
+    persistMobileToolbarHandlePosition();
+  }
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function onMobileToolbarHandleClick(event) {
+  if (suppressMobileToolbarHandleClick) {
+    suppressMobileToolbarHandleClick = false;
+    event.preventDefault();
+    return;
+  }
+  toggleMobileToolbar();
+}
 
 function scheduleMobileWorkspaceLayoutSync() {
   window.requestAnimationFrame(function() {
     updateNavigatorViewport();
+    syncMobileToolbarHandlePosition();
   });
   window.setTimeout(function() {
     updateNavigatorViewport();
+    syncMobileToolbarHandlePosition();
   }, 220);
 }
 
@@ -1410,7 +1578,11 @@ function bindStaticControls() {
   on('mobileFullscreenBtn', 'click', toggleFullscreen);
   on('mobileWorkspaceModeBtn', 'click', toggleMobileWorkspaceMode);
   on('mobileToolbarCollapseBtn', 'click', toggleMobileToolbar);
-  on('mobileToolbarHandle', 'click', toggleMobileToolbar);
+  on('mobileToolbarHandle', 'pointerdown', onMobileToolbarHandlePointerDown);
+  on('mobileToolbarHandle', 'pointermove', onMobileToolbarHandlePointerMove);
+  on('mobileToolbarHandle', 'pointerup', finishMobileToolbarHandleDrag);
+  on('mobileToolbarHandle', 'pointercancel', finishMobileToolbarHandleDrag);
+  on('mobileToolbarHandle', 'click', onMobileToolbarHandleClick);
   on('mobileLeftPanelBtn', 'click', function() {
     setMobileWorkspaceDrawer('left');
   });
