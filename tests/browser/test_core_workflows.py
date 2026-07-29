@@ -55,6 +55,7 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
 
     editor_page.locator("#replacementTab").click()
     assert editor_state(editor_page)["workspacePanelMode"] == "replacement"
+    expect(editor_page.locator("#replacementHint")).to_be_visible()
     black = editor_page.locator(
         f'.color-statistics-color[data-color="{BLACK}"]'
     )
@@ -1361,6 +1362,7 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     assert palette_tab_box["height"] <= 37
 
     replacement_tab.click()
+    expect(editor_page.locator("#replacementHint")).to_be_hidden()
     editor_page.locator(
         f'.color-statistics-color[data-color="{BLACK}"]'
     ).click()

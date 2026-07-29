@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-18"
+    asset_version = "20260729-19"
 
     assert (
         f'<link rel="stylesheet" '
@@ -899,6 +899,11 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     assert ".btn-workspace-mode {" in css
     assert "body.mobile-focus-mode .left-panel" in css
     assert "body.mobile-focus-mode .right-panel" in css
+    assert (
+        "@media (max-width: 960px) and (orientation: landscape) "
+        "and (max-height: 430px)"
+    ) in css
+    assert "body.mobile-focus-mode #replacementHint" in css
     assert "body.mobile-focus-mode .center-panel" in css
     assert "body.mobile-focus-mode.mobile-toolbar-collapsed .top-bar" in css
     assert "function setMobileWorkspaceMode(active, announce)" in app

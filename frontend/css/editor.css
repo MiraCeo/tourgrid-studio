@@ -2980,6 +2980,12 @@ body {
   }
 }
 
+@media (max-width: 960px) and (orientation: landscape) and (max-height: 430px) {
+  body.mobile-focus-mode #replacementHint {
+    display: none;
+  }
+}
+
 @media (max-width: 680px) {
   .top-bar .icon-btn {
     width: 34px;
