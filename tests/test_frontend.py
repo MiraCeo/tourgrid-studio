@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-17"
+    asset_version = "20260729-18"
 
     assert (
         f'<link rel="stylesheet" '
@@ -215,6 +215,8 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "function findRelatedPaletteColors(sourceHex, limit)" in app
     assert "function refreshReplacementOrder(relatedSourceColor)" in app
     assert "function showReplacementRelatedColors()" in app
+    assert "replacement-related-divider" in app
+    assert ".replacement-related-divider {" in css
     assert "replacementOrderedColors = []" in state
     assert "replacementRelatedColors = []" in state
     assert "countDifference || a.paletteIndex - b.paletteIndex" in app
@@ -294,6 +296,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "'rgba(16, 18, 22, 0.72)'" in app
     assert "'rgba(16, 18, 22, 0.62)'" not in app
     assert "'rgba(16, 18, 22, 0.18)'" in app
+    assert "statisticsOverlayCtx.fillStyle = replacementTargetColor" in app
     assert "document.querySelectorAll('.conversion-result-summary')" in state
 
 

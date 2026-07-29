@@ -813,7 +813,7 @@ function renderReplacementPanel() {
   var entries = getReplacementEntriesInDisplayOrder();
 
   grid.innerHTML = '';
-  entries.forEach(function(entry) {
+  entries.forEach(function(entry, index) {
     var item = document.createElement('button');
     var isSource = replacementSelectedColors.has(entry.hex);
     var isTarget = replacementTargetColor === entry.hex;
@@ -842,6 +842,12 @@ function renderReplacementPanel() {
       selectReplacementColor(entry.hex);
     });
     grid.appendChild(item);
+    if (replacementRelatedSourceColor && index === 7) {
+      var divider = document.createElement('div');
+      divider.className = 'replacement-related-divider';
+      divider.setAttribute('aria-hidden', 'true');
+      grid.appendChild(divider);
+    }
   });
 
   var selectedCellCount = getReplacementSelectedCellCount();
@@ -1192,11 +1198,35 @@ function renderReplacementHighlightOverlay() {
   var cellSize = BASE_CELL_SIZE * (zoom / 100);
   var canvasSize = GRID_SIZE * cellSize;
   var sourceLineWidth = Math.max(1.5, Math.min(3, cellSize * 0.12));
-  var targetLineWidth = Math.max(2, Math.min(4, cellSize * 0.16));
   statisticsOverlayCanvas.width = canvasSize;
   statisticsOverlayCanvas.height = canvasSize;
   statisticsOverlayCanvas.style.display = 'block';
   statisticsOverlayCtx.clearRect(0, 0, canvasSize, canvasSize);
+
+  if (hasTarget) {
+    for (var previewY = 0; previewY < GRID_SIZE; previewY++) {
+      for (var previewX = 0; previewX < GRID_SIZE; previewX++) {
+        var previewColor = String(
+          pixelData[previewY][previewX]
+        ).toUpperCase();
+        if (!replacementSelectedColors.has(previewColor)) continue;
+        statisticsOverlayCtx.fillStyle = replacementTargetColor;
+        statisticsOverlayCtx.fillRect(
+          previewX * cellSize,
+          previewY * cellSize,
+          cellSize,
+          cellSize
+        );
+      }
+    }
+    drawCanvasCenterAxes(
+      statisticsOverlayCtx,
+      canvasSize,
+      canvasSize
+    );
+    return;
+  }
+
   statisticsOverlayCtx.fillStyle = 'rgba(16, 18, 22, 0.18)';
   statisticsOverlayCtx.fillRect(0, 0, canvasSize, canvasSize);
 
@@ -1204,29 +1234,13 @@ function renderReplacementHighlightOverlay() {
     for (var x = 0; x < GRID_SIZE; x++) {
       var pixelColor = String(pixelData[y][x]).toUpperCase();
       var sourceSelected = replacementSelectedColors.has(pixelColor);
-      var targetSelected = hasTarget &&
-        pixelColor === replacementTargetColor;
-      if (!sourceSelected && !targetSelected) continue;
+      if (!sourceSelected) continue;
 
       var left = x * cellSize;
       var top = y * cellSize;
       statisticsOverlayCtx.clearRect(left, top, cellSize, cellSize);
-      if (targetSelected) {
-        statisticsOverlayCtx.save();
-        statisticsOverlayCtx.strokeStyle = '#FFB84D';
-        statisticsOverlayCtx.lineWidth = targetLineWidth;
-        statisticsOverlayCtx.strokeRect(
-          left + targetLineWidth / 2,
-          top + targetLineWidth / 2,
-          cellSize - targetLineWidth,
-          cellSize - targetLineWidth
-        );
-        statisticsOverlayCtx.restore();
-      }
       if (sourceSelected) {
-        var sourceInset = targetSelected
-          ? targetLineWidth + sourceLineWidth / 2
-          : sourceLineWidth / 2;
+        var sourceInset = sourceLineWidth / 2;
         statisticsOverlayCtx.save();
         statisticsOverlayCtx.strokeStyle = '#72F5F2';
         statisticsOverlayCtx.lineWidth = sourceLineWidth;

@@ -114,6 +114,13 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
     assert related_state["replacementOrderedColors"][1:8] == (
         related_state["replacementRelatedColors"]
     )
+    related_divider = editor_page.locator(
+        "#replacementGrid .replacement-related-divider"
+    )
+    expect(related_divider).to_have_count(1)
+    assert related_divider.evaluate(
+        "divider => Array.from(divider.parentElement.children).indexOf(divider)"
+    ) == 8
     source_only_overlay = editor_page.locator(
         "#statisticsOverlayCanvas"
     ).evaluate(
@@ -154,6 +161,9 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
     assert state["replacementTargetMode"] is True
     assert state["replacementSelectedColors"] == [BLACK, WHITE]
     assert state["replacementTargetColor"] == RED
+    assert state["pixels"][1][1] == BLACK
+    assert state["pixels"][1][2] == RED
+    assert state["pixels"][0][0] == WHITE
     expect(red).to_have_class(re.compile(r"\breplacement-target\b"))
     expect(editor_page.locator("#statisticsOverlayCanvas")).to_be_visible()
 
@@ -161,16 +171,28 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
         """canvas => {
           const context = canvas.getContext('2d');
           const cell = canvas.width / 24;
-          const sample = (x, y) => Array.from(context.getImageData(
+          const center = (x, y) => Array.from(context.getImageData(
+            Math.floor((x + 0.5) * cell),
+            Math.floor((y + 0.5) * cell),
+            1,
+            1
+          ).data);
+          const edge = (x, y) => Array.from(context.getImageData(
             Math.floor(x * cell + 1),
             Math.floor(y * cell + 1),
             1,
             1
           ).data);
-          return { source: sample(1, 1), target: sample(2, 1) };
+          return {
+            sourcePreview: center(1, 1),
+            existingTargetCenter: center(2, 1),
+            existingTargetEdge: edge(2, 1)
+          };
         }"""
     )
-    assert overlay_feedback["source"] != overlay_feedback["target"]
+    assert overlay_feedback["sourcePreview"] == [212, 47, 55, 255]
+    assert overlay_feedback["existingTargetCenter"][3] == 0
+    assert overlay_feedback["existingTargetEdge"][3] == 0
 
     editor_page.locator("#replacementCancelBtn").click()
     state = editor_state(editor_page)
@@ -187,6 +209,9 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
     replaced = editor_state(editor_page)
     assert replaced["undoDepth"] == before_replace["undoDepth"] + 1
     assert replaced["replacementSelectedColors"] == []
+    expect(editor_page.locator(
+        "#replacementGrid .replacement-related-divider"
+    )).to_have_count(0)
     assert all(
         color == RED
         for row in replaced["pixels"]
