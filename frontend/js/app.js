@@ -1197,7 +1197,7 @@ function renderReplacementHighlightOverlay() {
   statisticsOverlayCanvas.height = canvasSize;
   statisticsOverlayCanvas.style.display = 'block';
   statisticsOverlayCtx.clearRect(0, 0, canvasSize, canvasSize);
-  statisticsOverlayCtx.fillStyle = 'rgba(16, 18, 22, 0.62)';
+  statisticsOverlayCtx.fillStyle = 'rgba(16, 18, 22, 0.18)';
   statisticsOverlayCtx.fillRect(0, 0, canvasSize, canvasSize);
 
   for (var y = 0; y < GRID_SIZE; y++) {

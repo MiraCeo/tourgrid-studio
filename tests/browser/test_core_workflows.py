@@ -114,6 +114,26 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
     assert related_state["replacementOrderedColors"][1:8] == (
         related_state["replacementRelatedColors"]
     )
+    source_only_overlay = editor_page.locator(
+        "#statisticsOverlayCanvas"
+    ).evaluate(
+        """canvas => {
+          const context = canvas.getContext('2d');
+          const cell = canvas.width / 24;
+          const alphaAt = (pixelX, pixelY) => context.getImageData(
+            Math.floor(pixelX),
+            Math.floor(pixelY),
+            1,
+            1
+          ).data[3];
+          return {
+            sourceHighlight: alphaAt(1 * cell + 1, 1 * cell + 1),
+            unselectedCenter: alphaAt(2.5 * cell, 1.5 * cell)
+          };
+        }"""
+    )
+    assert source_only_overlay["sourceHighlight"] > 0
+    assert 35 <= source_only_overlay["unselectedCenter"] <= 60
     white.click()
     expect(related_button).to_be_disabled()
     assert editor_state(editor_page)["replacementOrderedColors"] == (

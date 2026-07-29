@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-15"
+    asset_version = "20260729-17"
 
     assert (
         f'<link rel="stylesheet" '
@@ -292,6 +292,8 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "renderStatisticsHighlightOverlay()" in editor
     assert "renderStatisticsHighlightOverlay()" not in overlay
     assert "'rgba(16, 18, 22, 0.72)'" in app
+    assert "'rgba(16, 18, 22, 0.62)'" not in app
+    assert "'rgba(16, 18, 22, 0.18)'" in app
     assert "document.querySelectorAll('.conversion-result-summary')" in state
 
 
