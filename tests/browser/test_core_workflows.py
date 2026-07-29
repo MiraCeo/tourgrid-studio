@@ -45,6 +45,135 @@ def test_initial_editor_is_blank_and_uses_the_fixed_palette(
     assert editor_page.locator("#overlayControls").is_hidden()
 
 
+def test_statistics_replaces_multiple_colors_with_dual_feedback_and_one_undo(
+    editor_page: Page,
+) -> None:
+    select_color(editor_page, BLACK)
+    paint_cells(editor_page, [(1, 1), (3, 1)])
+    select_color(editor_page, RED)
+    paint_cells(editor_page, [(2, 1)])
+
+    editor_page.locator("#statisticsTab").click()
+    assert editor_state(editor_page)["palettePanelMode"] == "statistics"
+    black = editor_page.locator(
+        f'.color-statistics-color[data-color="{BLACK}"]'
+    )
+    white = editor_page.locator(
+        f'.color-statistics-color[data-color="{WHITE}"]'
+    )
+    statistics_sort = editor_page.locator("#colorStatisticsSort")
+    statistics_sort.select_option("count-asc")
+    ascending_counts = editor_page.locator(
+        "#colorStatisticsGrid"
+    ).evaluate(
+        """grid => Array.from(
+          grid.querySelectorAll('.color-statistics-color')
+        ).map(item => Number(
+          item.querySelector('.statistics-count').textContent.slice(1)
+        ))"""
+    )
+    assert ascending_counts == sorted(ascending_counts)
+
+    statistics_sort.select_option("palette-order")
+    palette_order = editor_state(editor_page)["palette"]
+    palette_indices = {
+        color: index for index, color in enumerate(palette_order)
+    }
+    ordered_colors = editor_page.locator("#colorStatisticsGrid").evaluate(
+        """grid => Array.from(
+          grid.querySelectorAll('.color-statistics-color')
+        ).map(item => item.dataset.color)"""
+    )
+    assert [palette_indices[color] for color in ordered_colors] == sorted(
+        palette_indices[color] for color in ordered_colors
+    )
+    statistics_sort.select_option("count-desc")
+
+    editor_page.locator("#eyedropperBtn").click()
+    assert editor_state(editor_page)["eyedropperActive"] is True
+    click_canvas_cell(editor_page, 1, 1)
+    assert editor_state(editor_page)["eyedropperActive"] is False
+    white.click()
+    expect(editor_page.locator("#colorStatisticsSelectionSummary")).to_have_text(
+        "已选择 2 种颜色 · 共 575 格"
+    )
+    expect(black).to_have_class(re.compile(r"\bsource-selected\b"))
+    expect(white).to_have_class(re.compile(r"\bsource-selected\b"))
+
+    editor_page.locator("#colorStatisticsReplaceBtn").click()
+    red = editor_page.locator(
+        f'.color-statistics-color[data-color="{RED}"]'
+    )
+    red.click()
+    state = editor_state(editor_page)
+    assert state["statisticsReplaceMode"] is True
+    assert state["statisticsSelectedColors"] == [BLACK, WHITE]
+    assert state["statisticsReplacementTarget"] == RED
+    expect(red).to_have_class(re.compile(r"\breplacement-target\b"))
+    expect(editor_page.locator("#statisticsOverlayCanvas")).to_be_visible()
+
+    overlay_feedback = editor_page.locator("#statisticsOverlayCanvas").evaluate(
+        """canvas => {
+          const context = canvas.getContext('2d');
+          const cell = canvas.width / 24;
+          const sample = (x, y) => Array.from(context.getImageData(
+            Math.floor(x * cell + 1),
+            Math.floor(y * cell + 1),
+            1,
+            1
+          ).data);
+          return { source: sample(1, 1), target: sample(2, 1) };
+        }"""
+    )
+    assert overlay_feedback["source"] != overlay_feedback["target"]
+
+    editor_page.locator("#colorStatisticsCancelBtn").click()
+    state = editor_state(editor_page)
+    assert state["statisticsReplaceMode"] is False
+    assert state["statisticsSelectedColors"] == [BLACK, WHITE]
+    assert state["statisticsReplacementTarget"] is None
+
+    before_replace = editor_state(editor_page)
+    editor_page.locator("#colorStatisticsReplaceBtn").click()
+    editor_page.locator(
+        f'.color-statistics-color[data-color="{RED}"]'
+    ).click()
+    editor_page.locator("#colorStatisticsConfirmBtn").click()
+    replaced = editor_state(editor_page)
+    assert replaced["undoDepth"] == before_replace["undoDepth"] + 1
+    assert replaced["statisticsSelectedColors"] == []
+    assert all(
+        color == RED
+        for row in replaced["pixels"]
+        for color in row
+    )
+
+    editor_page.locator("#undoBtn").click()
+    wait_for_history(editor_page)
+    restored = editor_state(editor_page)
+    assert restored["pixels"][1][1] == BLACK
+    assert restored["pixels"][1][2] == RED
+    assert restored["pixels"][0][0] == WHITE
+
+    editor_page.locator(
+        f'.color-statistics-color[data-color="{BLACK}"]'
+    ).click()
+    editor_page.locator("#colorStatisticsReplaceBtn").click()
+    editor_page.locator(
+        f'.color-statistics-color[data-color="{RED}"]'
+    ).click()
+    editor_page.locator("#paletteTab").click()
+    state = editor_state(editor_page)
+    assert state["statisticsReplaceMode"] is False
+    assert state["statisticsReplacementTarget"] is None
+    assert state["statisticsSelectedColors"] == [BLACK]
+
+    editor_page.locator("#statisticsTab").click()
+    clear_canvas(editor_page)
+    state = editor_state(editor_page)
+    assert state["statisticsSelectedColors"] == []
+
+
 def test_keyboard_shortcuts_are_scoped_away_from_form_controls(
     editor_page: Page,
 ) -> None:
@@ -130,7 +259,7 @@ def test_canvas_guides_toggle_hides_visual_aids_and_persists(
     )
     assert rendered_colors <= {WHITE, BLACK, RED}
 
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     editor_page.locator(
         '.statistics-color[data-color="#FFFFFF"]'
     ).click()
@@ -155,7 +284,11 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     select_color(editor_page, RED)
     paint_cells(editor_page, [(2, 1)])
 
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
+    editor_page.locator("#replicationSort").select_option("palette-order")
+    sort_state = editor_state(editor_page)
+    assert sort_state["replicationSortMode"] == "palette-order"
+    assert sort_state["statisticsSortMode"] == "count-desc"
     black_stat = editor_page.locator(
         f'.statistics-color[data-color="{BLACK}"]'
     )
@@ -179,7 +312,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     assert state["replicationCompletedCells"] == [25]
     assert state["replicationCompletedColors"] == []
 
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     black_stat = editor_page.locator(
         f'.statistics-color[data-color="{BLACK}"]'
     )
@@ -250,7 +383,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     assert state["replicationCompletedCells"] == [25, 27]
     assert state["replicationCompletedColors"] == [BLACK]
 
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     expect(editor_page.locator("#replicationCompleteControl")).to_be_hidden()
     expect(editor_page.locator("#replicationPreviewControl")).to_be_visible()
     editor_page.locator("#replicationCompletedViewBtn").click()
@@ -310,7 +443,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     assert state["replicationCompletedCells"] == [27]
     assert state["replicationCompletedColors"] == []
 
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     editor_page.locator(
         f'.statistics-color[data-color="{BLACK}"]'
     ).click()
@@ -365,7 +498,7 @@ def test_replication_opens_without_selection_and_preserves_palette_choice(
     editor_page: Page,
 ) -> None:
     select_color(editor_page, RED)
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     state = editor_state(editor_page)
     assert state["statisticsHighlightColor"] is None
     expect(editor_page.locator("#replicationPreviewControl")).to_be_visible()
@@ -501,7 +634,7 @@ def test_canvas_cell_hover_preview_and_outline_follow_editor_mode(
     assert hover_canvas.evaluate("element => element.toDataURL()") == baseline
 
     editor_page.keyboard.press("Escape")
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     move_to_cell(9, 10)
     state = editor_state(editor_page)
     assert state["hoveredCanvasCell"] == {"x": 9, "y": 10}
@@ -541,19 +674,19 @@ def test_continuous_stroke_is_one_undo_step_and_can_be_redone(
     assert all(redone["pixels"][y][x] == BLACK for x, y in cells)
 
 
-def test_statistics_mode_keeps_the_canvas_read_only(
+def test_replication_mode_keeps_the_canvas_read_only(
     editor_page: Page,
 ) -> None:
     select_color(editor_page, BLACK)
     paint_cells(editor_page, [(5, 5)])
     before = pixel_signature(editor_state(editor_page))
 
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     expect(editor_page.locator("#undoBtn")).to_be_disabled()
     paint_cells(editor_page, [(6, 6)])
 
     after = editor_state(editor_page)
-    assert after["palettePanelMode"] == "statistics"
+    assert after["palettePanelMode"] == "replication"
     assert pixel_signature(after) == before
 
 
@@ -1053,7 +1186,7 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     editorial_label = editor_page.locator("#rightPanel .editorial-area-label")
     first_tool_button = editor_page.locator("#rightPanel .tool-icon-btn").first
     palette_tab = editor_page.locator("#paletteTab")
-    statistics_tab = editor_page.locator("#statisticsTab")
+    statistics_tab = editor_page.locator("#replicationTab")
     statistics_scroll = editor_page.locator("#statisticsColorScroll")
     center_panel = editor_page.locator("#centerPanel")
     top_bar = editor_page.locator(".top-bar")
@@ -1336,7 +1469,7 @@ def test_mobile_reference_overlay_remains_visible_in_replication_mode(
 
     editor_page.locator("#mobileWorkspaceModeBtn").click()
     editor_page.locator("#mobileRightPanelBtn").click()
-    editor_page.locator("#statisticsTab").click()
+    editor_page.locator("#replicationTab").click()
     editor_page.locator(".statistics-color").first.click()
     expect(editor_page.locator("#statisticsOverlayCanvas")).to_be_visible()
     editor_page.locator("#mobileLeftPanelBtn").click()

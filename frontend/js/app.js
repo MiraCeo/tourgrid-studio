@@ -260,6 +260,13 @@ function sampleCanvasColor(gx, gy) {
   var matchedColor = findClosestPaletteColor(sampledColor);
 
   if (isStatisticsMode()) {
+    selectColorStatisticsEntry(matchedColor);
+    focusPanelColor(
+      '.color-statistics-color',
+      'colorStatisticsScroll',
+      matchedColor
+    );
+  } else if (isReplicationMode()) {
     replicationSelectionChanged = true;
     statisticsHighlightColor = matchedColor;
     currentColor = matchedColor;
@@ -282,6 +289,14 @@ function sampleCanvasColor(gx, gy) {
 
 function isStatisticsMode() {
   return palettePanelMode === 'statistics';
+}
+
+function isReplicationMode() {
+  return palettePanelMode === 'replication';
+}
+
+function isReadOnlyPanelMode() {
+  return isStatisticsMode() || isReplicationMode();
 }
 
 function replicationWorkFingerprint() {
@@ -512,15 +527,15 @@ function getPaletteUsageEntries() {
   });
 }
 
-function sortStatisticsEntries(entries) {
-  if (statisticsSortMode === 'palette-order') {
+function sortUsageEntries(entries, mode) {
+  if (mode === 'palette-order') {
     return entries.slice().sort(function(a, b) {
       return a.paletteIndex - b.paletteIndex;
     });
   }
 
   return entries.slice().sort(function(a, b) {
-    var countDifference = statisticsSortMode === 'count-asc'
+    var countDifference = mode === 'count-asc'
       ? a.count - b.count
       : b.count - a.count;
     return countDifference || a.paletteIndex - b.paletteIndex;
@@ -549,11 +564,13 @@ function renderColorGrid() {
   });
 
   updateColorUsageSummary();
-  if (isStatisticsMode()) renderStatisticsPanel();
+  reconcileStatisticsSelection();
+  if (isStatisticsMode()) renderColorStatisticsPanel();
+  if (isReplicationMode()) renderStatisticsPanel();
 }
 
 function selectColor(color, swatchEl) {
-  if (isStatisticsMode()) return;
+  if (isReadOnlyPanelMode()) return;
   currentColor = color;
   currentTool = 'brush';
 
@@ -568,6 +585,213 @@ function selectColor(color, swatchEl) {
   }
 }
 
+function getStatisticsSelectedCellCount() {
+  var selectedCount = 0;
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      if (statisticsSelectedColors.has(
+        String(pixelData[y][x]).toUpperCase()
+      )) {
+        selectedCount++;
+      }
+    }
+  }
+  return selectedCount;
+}
+
+function reconcileStatisticsSelection() {
+  var usedColors = new Set();
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      usedColors.add(String(pixelData[y][x]).toUpperCase());
+    }
+  }
+  Array.from(statisticsSelectedColors).forEach(function(color) {
+    if (!usedColors.has(color)) statisticsSelectedColors.delete(color);
+  });
+  if (
+    statisticsReplacementTarget &&
+    getCurrentPaletteColors().map(function(color) {
+      return color.toUpperCase();
+    }).indexOf(statisticsReplacementTarget) === -1
+  ) {
+    statisticsReplacementTarget = null;
+  }
+  if (statisticsReplaceMode && statisticsSelectedColors.size === 0) {
+    statisticsReplaceMode = false;
+    statisticsReplacementTarget = null;
+  }
+}
+
+function selectColorStatisticsEntry(color) {
+  if (!isStatisticsMode()) return;
+  var normalized = String(color).toUpperCase();
+  if (statisticsReplaceMode) {
+    statisticsReplacementTarget =
+      statisticsReplacementTarget === normalized ? null : normalized;
+  } else if (statisticsSelectedColors.has(normalized)) {
+    statisticsSelectedColors.delete(normalized);
+  } else {
+    statisticsSelectedColors.add(normalized);
+  }
+  renderColorStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+}
+
+function beginStatisticsReplacement() {
+  if (!isStatisticsMode() || statisticsSelectedColors.size === 0) return;
+  statisticsReplaceMode = true;
+  statisticsReplacementTarget = null;
+  renderColorStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+}
+
+function cancelStatisticsReplacement() {
+  statisticsReplaceMode = false;
+  statisticsReplacementTarget = null;
+  if (isStatisticsMode()) renderColorStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+}
+
+function confirmStatisticsReplacement() {
+  if (
+    !isStatisticsMode() ||
+    !statisticsReplaceMode ||
+    !statisticsReplacementTarget ||
+    statisticsSelectedColors.size === 0
+  ) {
+    return;
+  }
+
+  var target = statisticsReplacementTarget;
+  var changedCount = 0;
+  for (var countY = 0; countY < GRID_SIZE; countY++) {
+    for (var countX = 0; countX < GRID_SIZE; countX++) {
+      var countColor = String(pixelData[countY][countX]).toUpperCase();
+      if (
+        statisticsSelectedColors.has(countColor) &&
+        countColor !== target
+      ) {
+        changedCount++;
+      }
+    }
+  }
+  if (changedCount === 0) {
+    showToast('当前选择不会改变画布');
+    return;
+  }
+
+  var sourceColorCount = statisticsSelectedColors.size;
+  pushUndo();
+  beginReplicationCanvasEdit();
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      var color = String(pixelData[y][x]).toUpperCase();
+      if (!statisticsSelectedColors.has(color) || color === target) continue;
+      markReplicationCellChanged(x, y);
+      pixelData[y][x] = target;
+    }
+  }
+  commitReplicationCanvasEdit(true);
+  markSharedWorkAsEdited();
+  statisticsSelectedColors.clear();
+  statisticsReplacementTarget = null;
+  statisticsReplaceMode = false;
+  renderCanvas();
+  renderNavigator();
+  renderColorGrid();
+  saveToStorage(true);
+  showToast(
+    '已将 ' + sourceColorCount + ' 种颜色、' +
+    changedCount + ' 格替换为 ' + target
+  );
+}
+
+function renderColorStatisticsPanel() {
+  var grid = document.getElementById('colorStatisticsGrid');
+  if (!grid) return;
+  reconcileStatisticsSelection();
+  var entries = getPaletteUsageEntries();
+  if (!statisticsReplaceMode) {
+    entries = entries.filter(function(entry) {
+      return entry.count > 0;
+    });
+  }
+  entries = sortUsageEntries(entries, statisticsSortMode);
+
+  grid.innerHTML = '';
+  entries.forEach(function(entry) {
+    var item = document.createElement('button');
+    var isSource = statisticsSelectedColors.has(entry.hex);
+    var isTarget = statisticsReplacementTarget === entry.hex;
+    item.type = 'button';
+    item.className = 'color-statistics-color';
+    item.style.background = entry.hex;
+    item.dataset.color = entry.hex;
+    item.setAttribute('aria-pressed', String(
+      statisticsReplaceMode ? isTarget : isSource
+    ));
+    item.setAttribute(
+      'aria-label',
+      '颜色 ' + entry.hex + '，使用 ' + entry.count + ' 格' +
+        (isSource ? '，已选为被替换颜色' : '') +
+        (isTarget ? '，已选为目标颜色' : '')
+    );
+    if (isSource) item.classList.add('source-selected');
+    if (isTarget) item.classList.add('replacement-target');
+    if (isSource && isTarget) item.classList.add('source-and-target');
+
+    var count = document.createElement('span');
+    count.className = 'statistics-count';
+    count.textContent = '×' + entry.count;
+    item.appendChild(count);
+    item.addEventListener('click', function() {
+      selectColorStatisticsEntry(entry.hex);
+    });
+    grid.appendChild(item);
+  });
+
+  var selectedCellCount = getStatisticsSelectedCellCount();
+  var summary = document.getElementById('colorStatisticsSelectionSummary');
+  var hint = document.getElementById('colorStatisticsHint');
+  var replaceButton = document.getElementById('colorStatisticsReplaceBtn');
+  var confirmActions = document.getElementById(
+    'colorStatisticsConfirmActions'
+  );
+  var confirmButton = document.getElementById('colorStatisticsConfirmBtn');
+  summary.textContent =
+    '已选择 ' + statisticsSelectedColors.size +
+    ' 种颜色 · 共 ' + selectedCellCount + ' 格';
+  hint.textContent = statisticsReplaceMode
+    ? (
+        statisticsReplacementTarget
+          ? '目标颜色 ' + statisticsReplacementTarget +
+            ' · 确认后一次性替换'
+          : '请选择一种目标颜色'
+      )
+    : '点击颜色或使用吸管，可多选需要替换的颜色';
+  replaceButton.hidden = statisticsReplaceMode;
+  replaceButton.disabled = statisticsSelectedColors.size === 0;
+  confirmActions.hidden = !statisticsReplaceMode;
+
+  var effectiveChangeCount = 0;
+  if (statisticsReplacementTarget) {
+    for (var y = 0; y < GRID_SIZE; y++) {
+      for (var x = 0; x < GRID_SIZE; x++) {
+        var color = String(pixelData[y][x]).toUpperCase();
+        if (
+          statisticsSelectedColors.has(color) &&
+          color !== statisticsReplacementTarget
+        ) {
+          effectiveChangeCount++;
+        }
+      }
+    }
+  }
+  confirmButton.disabled = !statisticsReplacementTarget ||
+    effectiveChangeCount === 0;
+}
+
 function renderStatisticsPanel() {
   var grid = document.getElementById('statisticsGrid');
   var hint = document.getElementById('statisticsHint');
@@ -578,7 +802,10 @@ function renderStatisticsPanel() {
   var targetViewButton = document.getElementById('replicationTargetViewBtn');
   var completedViewButton = document.getElementById('replicationCompletedViewBtn');
   var resetButton = document.getElementById('replicationResetBtn');
-  var entries = sortStatisticsEntries(getPaletteUsageEntries());
+  var entries = sortUsageEntries(
+    getPaletteUsageEntries(),
+    replicationSortMode
+  );
   grid.innerHTML = '';
 
   entries.forEach(function(entry) {
@@ -664,10 +891,28 @@ function renderStatisticsPanel() {
   }
 }
 
-function setStatisticsSortMode(mode) {
+function setColorStatisticsSortMode(mode) {
   if (!['count-desc', 'count-asc', 'palette-order'].includes(mode)) return;
   statisticsSortMode = mode;
-  document.getElementById('statisticsSort').value = mode;
+  document.getElementById('colorStatisticsSort').value = mode;
+
+  renderColorStatisticsPanel();
+  renderStatisticsHighlightOverlay();
+  var focusColor = statisticsReplacementTarget ||
+    Array.from(statisticsSelectedColors)[0];
+  if (focusColor) {
+    focusPanelColor(
+      '.color-statistics-color',
+      'colorStatisticsScroll',
+      focusColor
+    );
+  }
+}
+
+function setReplicationSortMode(mode) {
+  if (!['count-desc', 'count-asc', 'palette-order'].includes(mode)) return;
+  replicationSortMode = mode;
+  document.getElementById('replicationSort').value = mode;
 
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();
@@ -681,7 +926,7 @@ function setStatisticsSortMode(mode) {
 }
 
 function selectStatisticsColor(color) {
-  if (!isStatisticsMode()) return;
+  if (!isReplicationMode()) return;
   replicationSelectionChanged = true;
   statisticsHighlightColor = statisticsHighlightColor === color ? null : color;
   currentColor = statisticsHighlightColor;
@@ -690,7 +935,7 @@ function selectStatisticsColor(color) {
 }
 
 function setReplicationColorCompleted(completed) {
-  if (!isStatisticsMode() || !statisticsHighlightColor) return;
+  if (!isReplicationMode() || !statisticsHighlightColor) return;
   var selectedEntry = getPaletteUsageEntries().find(function(entry) {
     return entry.hex === statisticsHighlightColor;
   });
@@ -708,7 +953,7 @@ function setReplicationColorCompleted(completed) {
 }
 
 function markReplicationCellCompleted(x, y) {
-  if (!isStatisticsMode() || !statisticsHighlightColor) return false;
+  if (!isReplicationMode() || !statisticsHighlightColor) return false;
   if (
     x < 0 || x >= GRID_SIZE ||
     y < 0 || y >= GRID_SIZE ||
@@ -757,11 +1002,16 @@ function setReplicationPreviewMode(mode) {
 }
 
 function renderStatisticsHighlightOverlay() {
-  var completedPreview = isStatisticsMode() &&
+  if (isStatisticsMode()) {
+    renderColorStatisticsHighlightOverlay();
+    return;
+  }
+
+  var completedPreview = isReplicationMode() &&
     !statisticsHighlightColor &&
     replicationPreviewMode === 'completed';
   if (
-    !isStatisticsMode() ||
+    !isReplicationMode() ||
     (!statisticsHighlightColor && !completedPreview) ||
     (!canvasGuidesVisible && !completedPreview)
   ) {
@@ -831,42 +1081,134 @@ function renderStatisticsHighlightOverlay() {
   );
 }
 
-function setPalettePanelMode(mode) {
-  if (mode !== 'palette' && mode !== 'statistics') return;
-  var wasStatistics = isStatisticsMode();
+function renderColorStatisticsHighlightOverlay() {
+  reconcileStatisticsSelection();
+  var hasSources = statisticsSelectedColors.size > 0;
+  var hasTarget = statisticsReplaceMode &&
+    Boolean(statisticsReplacementTarget);
+  if (!hasSources && !hasTarget) {
+    statisticsOverlayCanvas.style.display = 'none';
+    return;
+  }
 
-  if (mode === 'statistics' && !wasStatistics) {
+  var cellSize = BASE_CELL_SIZE * (zoom / 100);
+  var canvasSize = GRID_SIZE * cellSize;
+  var sourceLineWidth = Math.max(1.5, Math.min(3, cellSize * 0.12));
+  var targetLineWidth = Math.max(2, Math.min(4, cellSize * 0.16));
+  statisticsOverlayCanvas.width = canvasSize;
+  statisticsOverlayCanvas.height = canvasSize;
+  statisticsOverlayCanvas.style.display = 'block';
+  statisticsOverlayCtx.clearRect(0, 0, canvasSize, canvasSize);
+  statisticsOverlayCtx.fillStyle = 'rgba(16, 18, 22, 0.62)';
+  statisticsOverlayCtx.fillRect(0, 0, canvasSize, canvasSize);
+
+  for (var y = 0; y < GRID_SIZE; y++) {
+    for (var x = 0; x < GRID_SIZE; x++) {
+      var pixelColor = String(pixelData[y][x]).toUpperCase();
+      var sourceSelected = statisticsSelectedColors.has(pixelColor);
+      var targetSelected = hasTarget &&
+        pixelColor === statisticsReplacementTarget;
+      if (!sourceSelected && !targetSelected) continue;
+
+      var left = x * cellSize;
+      var top = y * cellSize;
+      statisticsOverlayCtx.clearRect(left, top, cellSize, cellSize);
+      if (targetSelected) {
+        statisticsOverlayCtx.save();
+        statisticsOverlayCtx.strokeStyle = '#FFB84D';
+        statisticsOverlayCtx.lineWidth = targetLineWidth;
+        statisticsOverlayCtx.strokeRect(
+          left + targetLineWidth / 2,
+          top + targetLineWidth / 2,
+          cellSize - targetLineWidth,
+          cellSize - targetLineWidth
+        );
+        statisticsOverlayCtx.restore();
+      }
+      if (sourceSelected) {
+        var sourceInset = targetSelected
+          ? targetLineWidth + sourceLineWidth / 2
+          : sourceLineWidth / 2;
+        statisticsOverlayCtx.save();
+        statisticsOverlayCtx.strokeStyle = '#72F5F2';
+        statisticsOverlayCtx.lineWidth = sourceLineWidth;
+        statisticsOverlayCtx.strokeRect(
+          left + sourceInset,
+          top + sourceInset,
+          cellSize - sourceInset * 2,
+          cellSize - sourceInset * 2
+        );
+        statisticsOverlayCtx.restore();
+      }
+    }
+  }
+  drawCanvasCenterAxes(
+    statisticsOverlayCtx,
+    canvasSize,
+    canvasSize
+  );
+}
+
+function setPalettePanelMode(mode) {
+  if (
+    mode !== 'palette' &&
+    mode !== 'statistics' &&
+    mode !== 'replication'
+  ) {
+    return;
+  }
+  var wasReplication = isReplicationMode();
+  var wasColorStatistics = isStatisticsMode();
+
+  if (mode === 'replication' && !wasReplication) {
     paletteColorBeforeReplication = currentColor;
     replicationSelectionChanged = false;
     statisticsHighlightColor = null;
-  } else if (mode === 'palette' && wasStatistics) {
+  } else if (mode !== 'replication' && wasReplication) {
     currentColor = replicationSelectionChanged
       ? statisticsHighlightColor
       : paletteColorBeforeReplication;
     paletteColorBeforeReplication = null;
     replicationSelectionChanged = false;
   }
+  if (wasColorStatistics && mode !== 'statistics') {
+    statisticsReplaceMode = false;
+    statisticsReplacementTarget = null;
+  }
 
   palettePanelMode = mode;
 
   var paletteTab = document.getElementById('paletteTab');
   var statisticsTab = document.getElementById('statisticsTab');
+  var replicationTab = document.getElementById('replicationTab');
   var paletteView = document.getElementById('palettePanelView');
-  var statisticsView = document.getElementById('statisticsPanelView');
-  var readOnly = isStatisticsMode();
+  var colorStatisticsView = document.getElementById(
+    'colorStatisticsPanelView'
+  );
+  var replicationView = document.getElementById('statisticsPanelView');
+  var readOnly = isReadOnlyPanelMode();
 
-  paletteTab.classList.toggle('active', !readOnly);
-  statisticsTab.classList.toggle('active', readOnly);
-  paletteTab.setAttribute('aria-selected', String(!readOnly));
-  statisticsTab.setAttribute('aria-selected', String(readOnly));
-  paletteView.hidden = readOnly;
-  statisticsView.hidden = !readOnly;
+  paletteTab.classList.toggle('active', mode === 'palette');
+  statisticsTab.classList.toggle('active', mode === 'statistics');
+  replicationTab.classList.toggle('active', mode === 'replication');
+  paletteTab.setAttribute('aria-selected', String(mode === 'palette'));
+  statisticsTab.setAttribute(
+    'aria-selected',
+    String(mode === 'statistics')
+  );
+  replicationTab.setAttribute(
+    'aria-selected',
+    String(mode === 'replication')
+  );
+  paletteView.hidden = mode !== 'palette';
+  colorStatisticsView.hidden = mode !== 'statistics';
+  replicationView.hidden = mode !== 'replication';
 
-  document.getElementById('undoBtn').disabled = readOnly;
-  document.getElementById('redoBtn').disabled = readOnly;
+  document.getElementById('undoBtn').disabled = isReplicationMode();
+  document.getElementById('redoBtn').disabled = isReplicationMode();
   canvasContainer.classList.toggle('statistics-readonly', readOnly);
 
-  if (readOnly) {
+  if (isReplicationMode()) {
     isDrawing = false;
     clearCanvasCellHighlight();
     renderStatisticsPanel();
@@ -878,6 +1220,12 @@ function setPalettePanelMode(mode) {
         statisticsHighlightColor
       );
     }
+  } else if (isStatisticsMode()) {
+    isDrawing = false;
+    clearCanvasCellHighlight();
+    reconcileStatisticsSelection();
+    renderColorStatisticsPanel();
+    renderStatisticsHighlightOverlay();
   } else {
     renderColorGrid();
     renderOverlay();
@@ -976,7 +1324,11 @@ function hasShortcutModifier(e) {
 function onKeyDown(e) {
   if (e.key === 'Escape') {
     var workShareModal = document.getElementById('workShareModal');
-    if (workShareModal && !workShareModal.hidden) {
+    if (
+      workShareModal &&
+      !workShareModal.hidden &&
+      workShareModal.classList.contains('show')
+    ) {
       e.preventDefault();
       closeWorkShareModal();
       return;
@@ -993,18 +1345,6 @@ function onKeyDown(e) {
       closeAuthorModal();
       return;
     }
-    if (closeMobileWorkspaceDrawers()) {
-      e.preventDefault();
-      return;
-    }
-    if (
-      mobileWorkspaceModeActive &&
-      document.body.classList.contains('mobile-toolbar-collapsed')
-    ) {
-      e.preventDefault();
-      setMobileToolbarCollapsed(false);
-      return;
-    }
     if (eyedropperActive) {
       e.preventDefault();
       setEyedropperActive(false);
@@ -1015,6 +1355,18 @@ function onKeyDown(e) {
       e.preventDefault();
       setMoveCanvasActive(false);
       showToast('已恢复画笔');
+      return;
+    }
+    if (closeMobileWorkspaceDrawers()) {
+      e.preventDefault();
+      return;
+    }
+    if (
+      mobileWorkspaceModeActive &&
+      document.body.classList.contains('mobile-toolbar-collapsed')
+    ) {
+      e.preventDefault();
+      setMobileToolbarCollapsed(false);
       return;
     }
   }
@@ -1043,18 +1395,18 @@ function onKeyDown(e) {
   } else if (!hasShortcutModifier(e) && key === 's') {
     e.preventDefault();
     manualSave();
-  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'b') {
+  } else if (!isReadOnlyPanelMode() && !hasShortcutModifier(e) && key === 'b') {
     e.preventDefault();
     setTool('brush');
     showToast('已切换到画笔');
-  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'e') {
+  } else if (!isReadOnlyPanelMode() && !hasShortcutModifier(e) && key === 'e') {
     e.preventDefault();
     setTool('eraser');
     showToast('已切换到白色橡皮');
-  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'i') {
+  } else if (!hasShortcutModifier(e) && key === 'i') {
     e.preventDefault();
     toggleEyedropper();
-  } else if (!isStatisticsMode() && !hasShortcutModifier(e) && key === 'm') {
+  } else if (!isReadOnlyPanelMode() && !hasShortcutModifier(e) && key === 'm') {
     e.preventDefault();
     toggleMoveCanvas();
   } else if (!hasShortcutModifier(e) && key === 'g') {
@@ -1627,6 +1979,12 @@ function bindStaticControls() {
   on('statisticsTab', 'click', function() {
     setPalettePanelMode('statistics');
   });
+  on('replicationTab', 'click', function() {
+    setPalettePanelMode('replication');
+  });
+  on('colorStatisticsReplaceBtn', 'click', beginStatisticsReplacement);
+  on('colorStatisticsCancelBtn', 'click', cancelStatisticsReplacement);
+  on('colorStatisticsConfirmBtn', 'click', confirmStatisticsReplacement);
   on('replicationCompleteCheckbox', 'change', function(event) {
     setReplicationColorCompleted(event.currentTarget.checked);
   });
@@ -1637,8 +1995,11 @@ function bindStaticControls() {
     setReplicationPreviewMode('completed');
   });
   on('replicationResetBtn', 'click', clearCurrentReplicationProgress);
-  on('statisticsSort', 'change', function(event) {
-    setStatisticsSortMode(event.currentTarget.value);
+  on('colorStatisticsSort', 'change', function(event) {
+    setColorStatisticsSortMode(event.currentTarget.value);
+  });
+  on('replicationSort', 'change', function(event) {
+    setReplicationSortMode(event.currentTarget.value);
   });
 
   on('workShareModal', 'click', closeWorkShareModalFromBackdrop);
@@ -1709,7 +2070,14 @@ function installTourgridTestApi() {
         }),
         currentColor: currentColor,
         palettePanelMode: palettePanelMode,
+        statisticsSelectedColors: Array.from(
+          statisticsSelectedColors
+        ).sort(),
+        statisticsReplacementTarget: statisticsReplacementTarget,
+        statisticsReplaceMode: statisticsReplaceMode,
+        statisticsSortMode: statisticsSortMode,
         statisticsHighlightColor: statisticsHighlightColor,
+        replicationSortMode: replicationSortMode,
         replicationCompletedCells: Array.from(replicationCompletedCells).sort(
           function(a, b) { return a - b; }
         ),

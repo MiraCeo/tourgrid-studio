@@ -980,6 +980,7 @@ body {
 }
 
 .palette-panel-view,
+.color-statistics-panel-view,
 .statistics-panel-view {
   flex: 1;
   min-height: 0;
@@ -995,10 +996,12 @@ body {
   text-align: right;
 }
 .palette-panel-view[hidden],
+.color-statistics-panel-view[hidden],
 .statistics-panel-view[hidden] {
   display: none;
 }
 .palette-color-scroll,
+.color-statistics-scroll,
 .statistics-color-scroll {
   flex: 1;
   min-height: 0;
@@ -1009,8 +1012,143 @@ body {
   scrollbar-width: thin;
 }
 .palette-color-scroll:focus-visible,
+.color-statistics-scroll:focus-visible,
 .statistics-color-scroll:focus-visible {
   outline: 1px solid rgba(114,245,242,0.65);
+  outline-offset: 2px;
+}
+.color-statistics-summary {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid #4c4c51;
+  border-radius: 4px;
+  background: #242427;
+  color: #f1f1f3;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+.color-statistics-hint {
+  margin-bottom: 10px;
+  color: #9a9aa0;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+.color-statistics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.color-statistics-color {
+  aspect-ratio: 1;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.color-statistics-color:hover {
+  z-index: 2;
+  transform: scale(1.08);
+  border-color: #fff;
+}
+.color-statistics-color.source-selected {
+  border: 3px solid #72F5F2;
+  box-shadow: 0 0 8px rgba(114,245,242,0.75);
+}
+.color-statistics-color.source-selected::before {
+  content: '✓';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  z-index: 2;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(20,20,23,0.86);
+  color: #72F5F2;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.color-statistics-color.replacement-target {
+  border: 4px double #FFB84D;
+  box-shadow: 0 0 10px rgba(255,184,77,0.8);
+}
+.color-statistics-color.replacement-target::after {
+  content: '→';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(20,20,23,0.88);
+  color: #FFB84D;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+.color-statistics-color.source-and-target {
+  outline: 2px solid #72F5F2;
+  outline-offset: -7px;
+}
+.color-statistics-actions {
+  flex: 0 0 auto;
+  padding-top: 10px;
+  border-top: 1px solid #45454a;
+}
+.color-statistics-replace-btn,
+.color-statistics-cancel-btn,
+.color-statistics-confirm-btn {
+  min-height: 38px;
+  border: 1px solid #5a5a60;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.color-statistics-replace-btn {
+  width: 100%;
+  border-color: #2ca9ad;
+  background: #238d91;
+}
+.color-statistics-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.color-statistics-confirm-actions[hidden] {
+  display: none;
+}
+.color-statistics-cancel-btn {
+  background: #333338;
+}
+.color-statistics-confirm-btn {
+  border-color: #d38b2b;
+  background: #b66f16;
+}
+.color-statistics-replace-btn:disabled,
+.color-statistics-confirm-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+.color-statistics-replace-btn:focus-visible,
+.color-statistics-cancel-btn:focus-visible,
+.color-statistics-confirm-btn:focus-visible,
+.color-statistics-color:focus-visible {
+  outline: 2px solid #fff;
   outline-offset: 2px;
 }
 .statistics-summary {
@@ -2749,6 +2887,31 @@ body {
     line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  body.mobile-focus-mode .right-panel .color-statistics-summary {
+    margin-bottom: 3px;
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  body.mobile-focus-mode .right-panel .color-statistics-hint {
+    margin-bottom: 4px;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  body.mobile-focus-mode .right-panel .color-statistics-scroll {
+    min-height: 72px;
+  }
+  body.mobile-focus-mode .right-panel .color-statistics-actions {
+    padding-top: 5px;
+  }
+  body.mobile-focus-mode .right-panel .color-statistics-replace-btn,
+  body.mobile-focus-mode .right-panel .color-statistics-cancel-btn,
+  body.mobile-focus-mode .right-panel .color-statistics-confirm-btn {
+    min-height: 34px;
+    font-size: 11px;
   }
   body.mobile-focus-mode .right-panel .replication-complete-control {
     gap: 5px;

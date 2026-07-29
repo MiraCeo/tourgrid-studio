@@ -158,7 +158,7 @@ function renderCanvasCellHighlight() {
   var width = Math.max(1, right - left);
   var height = Math.max(1, bottom - top);
   var lineWidth = Math.max(1, Math.min(3, Math.min(width, height) * 0.12));
-  var previewColor = !isStatisticsMode() && !eyedropperActive && currentColor
+  var previewColor = !isReadOnlyPanelMode() && !eyedropperActive && currentColor
     ? String(currentColor).toUpperCase()
     : null;
   var color = previewColor || String(pixelData[y][x] || '#FFFFFF');
@@ -390,6 +390,11 @@ function onMouseDown(e) {
   }
 
   if (isStatisticsMode()) {
+    e.preventDefault();
+    return;
+  }
+
+  if (isReplicationMode()) {
     const replicationPos = getGridPos(e);
     isReplicationMarking = Boolean(statisticsHighlightColor);
     if (markReplicationCellCompleted(replicationPos.x, replicationPos.y)) {
@@ -418,7 +423,7 @@ function onMouseMove(e) {
   var hoverChanged = canShowCanvasCellHighlight()
     ? setHoveredCanvasCell(pos)
     : setHoveredCanvasCell(null);
-  if (isStatisticsMode()) {
+  if (isReadOnlyPanelMode()) {
     if (hoverChanged) renderCanvasCellHighlight();
     return;
   }
@@ -621,6 +626,9 @@ function onTouchStart(e) {
       return;
     }
     if (isStatisticsMode()) {
+      return;
+    }
+    if (isReplicationMode()) {
       const replicationPos = getGridPos(e.touches[0]);
       isReplicationMarking = Boolean(statisticsHighlightColor);
       markReplicationCellCompleted(replicationPos.x, replicationPos.y);
@@ -856,7 +864,7 @@ async function restoreManualCheckpoint() {
     showToast('当前操作完成后才能恢复保存点');
     return;
   }
-  if (isStatisticsMode()) {
+  if (isReplicationMode()) {
     showToast('请先返回颜料面板');
     return;
   }
@@ -886,7 +894,7 @@ async function restoreManualCheckpoint() {
 }
 
 async function undo() {
-  if (isStatisticsMode()) {
+  if (isReplicationMode()) {
     showToast('复刻模式下画布为只读');
     return;
   }
@@ -919,7 +927,7 @@ async function undo() {
 }
 
 async function redo() {
-  if (isStatisticsMode()) {
+  if (isReplicationMode()) {
     showToast('复刻模式下画布为只读');
     return;
   }
@@ -965,7 +973,7 @@ function clearCanvas() {
     showToast('当前操作完成后才能清空画布');
     return;
   }
-  if (isStatisticsMode()) {
+  if (isReplicationMode()) {
     showToast('复刻模式下画布为只读');
     return;
   }

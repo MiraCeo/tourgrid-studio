@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-12"
+    asset_version = "20260729-13"
 
     assert (
         f'<link rel="stylesheet" '
@@ -167,9 +167,14 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert 'id="colorDisplay"' not in html
     assert "<span>颜料</span>" in html
     assert "<span>复刻</span>" in html
-    assert "<span>统计</span>" not in html
+    assert "<span>统计</span>" in html
     assert 'id="paletteTab"' in html
     assert 'id="statisticsTab"' in html
+    assert 'id="replicationTab"' in html
+    assert 'id="colorStatisticsGrid"' in html
+    assert 'id="colorStatisticsReplaceBtn"' in html
+    assert 'id="colorStatisticsCancelBtn"' in html
+    assert 'id="colorStatisticsConfirmBtn"' in html
     assert 'id="statisticsGrid"' in html
     assert 'id="paletteColorScroll" tabindex="0"' in html
     assert 'id="statisticsColorScroll" tabindex="0"' in html
@@ -177,7 +182,8 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert 'id="statisticsConversionResultSummary"' in html
     assert 'id="conversionResultSummary"' not in html
     assert html.count('class="conversion-result-summary"') == 2
-    assert 'id="statisticsSort"' in html
+    assert 'id="colorStatisticsSort"' in html
+    assert 'id="replicationSort"' in html
     assert 'id="replicationCompleteControl"' in html
     assert 'id="replicationCompleteCheckbox"' in html
     assert 'id="replicationPreviewControl"' in html
@@ -200,12 +206,17 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "cyclePalette" not in app
     assert "palette.forEach(function(color)" in app
     assert "getPaletteUsageEntries" in app
-    assert "sortStatisticsEntries" in app
-    assert "setStatisticsSortMode" in app
-    assert "statisticsSortMode === 'palette-order'" in app
-    assert "entries = entries.filter" not in app
+    assert "sortUsageEntries" in app
+    assert "setColorStatisticsSortMode" in app
+    assert "setReplicationSortMode" in app
+    assert "mode === 'palette-order'" in app
+    assert "if (!statisticsReplaceMode)" in app
     assert "countDifference || a.paletteIndex - b.paletteIndex" in app
     assert "setPalettePanelMode" in app
+    assert "function renderColorStatisticsPanel()" in app
+    assert "function confirmStatisticsReplacement()" in app
+    assert "statisticsSelectedColors = new Set()" in state
+    assert "statisticsReplacementTarget = null" in state
     assert "selectStatisticsColor" in app
     assert "function setReplicationColorCompleted(completed)" in app
     assert "function setReplicationPreviewMode(mode)" in app
@@ -371,7 +382,7 @@ def test_editor_icons_and_visible_operation_messages_are_consistent() -> None:
     source = read_frontend()
 
     assert 'class="history-icon"' in source
-    assert source.count('class="palette-tab-icon"') == 2
+    assert source.count('class="palette-tab-icon"') == 3
     assert 'class="external-link-icon"' in source
     assert "Nothing to undo" not in source
     assert "Nothing to redo" not in source

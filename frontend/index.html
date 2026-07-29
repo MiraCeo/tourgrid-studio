@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-12">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-13">
 </head>
 <body>
 
@@ -311,6 +311,12 @@
         </button>
         <button class="palette-tab" id="statisticsTab" role="tab" aria-selected="false">
           <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 19V9M12 19V5M19 19v-7"></path>
+          </svg>
+          <span>统计</span>
+        </button>
+        <button class="palette-tab" id="replicationTab" role="tab" aria-selected="false">
+          <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 4h16v16H4z"></path>
             <path d="M8 4v16M12 4v16M16 4v16"></path>
           </svg>
@@ -324,6 +330,36 @@
           <div class="color-grid" id="colorGrid"></div>
           <div class="conversion-result-summary" id="paletteConversionResultSummary">
             当前画布 · 未关联转换版本
+          </div>
+        </div>
+      </div>
+
+      <div class="color-statistics-panel-view" id="colorStatisticsPanelView" hidden>
+        <div class="color-statistics-summary" id="colorStatisticsSelectionSummary"
+             aria-live="polite">已选择 0 种颜色 · 共 0 格</div>
+        <div class="color-statistics-hint" id="colorStatisticsHint">
+          点击颜色或使用吸管，可多选需要替换的颜色
+        </div>
+        <label class="statistics-sort-control" for="colorStatisticsSort">
+          <span>排序</span>
+          <select id="colorStatisticsSort">
+            <option value="count-desc" selected>数量：多 → 少</option>
+            <option value="count-asc">数量：少 → 多</option>
+            <option value="palette-order">色板位置顺序</option>
+          </select>
+        </label>
+        <div class="color-statistics-scroll" id="colorStatisticsScroll" tabindex="0">
+          <div class="color-statistics-grid" id="colorStatisticsGrid"></div>
+        </div>
+        <div class="color-statistics-actions" id="colorStatisticsActions">
+          <button type="button" class="color-statistics-replace-btn"
+                  id="colorStatisticsReplaceBtn" disabled>替换</button>
+          <div class="color-statistics-confirm-actions"
+               id="colorStatisticsConfirmActions" hidden>
+            <button type="button" class="color-statistics-cancel-btn"
+                    id="colorStatisticsCancelBtn">取消</button>
+            <button type="button" class="color-statistics-confirm-btn"
+                    id="colorStatisticsConfirmBtn" disabled>确定</button>
           </div>
         </div>
       </div>
@@ -358,9 +394,9 @@
             </svg>
           </button>
         </div>
-        <label class="statistics-sort-control" for="statisticsSort">
+        <label class="statistics-sort-control" for="replicationSort">
           <span>排序</span>
-          <select id="statisticsSort">
+          <select id="replicationSort">
             <option value="count-desc" selected>数量：多 → 少</option>
             <option value="count-asc">数量：少 → 多</option>
             <option value="palette-order">色板位置顺序</option>
@@ -523,6 +559,7 @@
           <li><span>导入</span>点击顶部“导入”，选择图片并确认裁切区域。</li>
           <li><span>转换</span>浏览器会在本地生成 24×24 像素图，图片不会上传。</li>
           <li><span>编辑</span>从右侧颜料中选色后直接绘制；选择白色即可擦除。</li>
+          <li><span>统计</span>多选当前用色后，可统一替换为任一官方颜色。</li>
           <li><span>复刻</span>在“复刻”中按颜色高亮格子，并勾选记录游戏内完成进度。</li>
           <li><span>查看</span>使用左侧参考图与缩放控制辅助对照细节。</li>
           <li><span>导出</span>完成编辑后，从顶部导出所需的图片或图纸。</li>
@@ -722,16 +759,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-12"></script>
-<script src="/static/js/reference-storage.js?v=20260729-12"></script>
-<script src="/static/js/work-codec.js?v=20260729-12"></script>
-<script src="/static/js/natural-64-v1.js?v=20260729-12"></script>
-<script src="/static/js/state.js?v=20260729-12"></script>
-<script src="/static/js/editor.js?v=20260729-12"></script>
-<script src="/static/js/export.js?v=20260729-12"></script>
-<script src="/static/js/import.js?v=20260729-12"></script>
-<script src="/static/js/works.js?v=20260729-12"></script>
-<script src="/static/js/app.js?v=20260729-12"></script>
+<script src="/static/js/storage.js?v=20260729-13"></script>
+<script src="/static/js/reference-storage.js?v=20260729-13"></script>
+<script src="/static/js/work-codec.js?v=20260729-13"></script>
+<script src="/static/js/natural-64-v1.js?v=20260729-13"></script>
+<script src="/static/js/state.js?v=20260729-13"></script>
+<script src="/static/js/editor.js?v=20260729-13"></script>
+<script src="/static/js/export.js?v=20260729-13"></script>
+<script src="/static/js/import.js?v=20260729-13"></script>
+<script src="/static/js/works.js?v=20260729-13"></script>
+<script src="/static/js/app.js?v=20260729-13"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
