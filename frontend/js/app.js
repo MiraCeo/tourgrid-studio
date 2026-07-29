@@ -259,20 +259,20 @@ function sampleCanvasColor(gx, gy) {
   var sampledColor = String(pixelData[gy][gx]).toUpperCase();
   var matchedColor = findClosestPaletteColor(sampledColor);
 
-  if (isStatisticsMode()) {
-    selectColorStatisticsEntry(matchedColor);
+  if (isReplacementMode()) {
+    selectReplacementColor(matchedColor);
     focusPanelColor(
       '.color-statistics-color',
-      'colorStatisticsScroll',
+      'replacementColorScroll',
       matchedColor
     );
   } else if (isReplicationMode()) {
     replicationSelectionChanged = true;
-    statisticsHighlightColor = matchedColor;
+    replicationHighlightColor = matchedColor;
     currentColor = matchedColor;
     renderStatisticsPanel();
     renderStatisticsHighlightOverlay();
-    focusPanelColor('.statistics-color', 'statisticsColorScroll', matchedColor);
+    focusPanelColor('.statistics-color', 'replicationColorScroll', matchedColor);
   } else {
     selectColor(matchedColor);
     focusPanelColor('.color-swatch', 'paletteColorScroll', matchedColor);
@@ -287,16 +287,16 @@ function sampleCanvasColor(gx, gy) {
   return true;
 }
 
-function isStatisticsMode() {
-  return palettePanelMode === 'statistics';
+function isReplacementMode() {
+  return workspacePanelMode === 'replacement';
 }
 
 function isReplicationMode() {
-  return palettePanelMode === 'replication';
+  return workspacePanelMode === 'replication';
 }
 
 function isReadOnlyPanelMode() {
-  return isStatisticsMode() || isReplicationMode();
+  return isReplacementMode() || isReplicationMode();
 }
 
 function replicationWorkFingerprint() {
@@ -564,8 +564,8 @@ function renderColorGrid() {
   });
 
   updateColorUsageSummary();
-  reconcileStatisticsSelection();
-  if (isStatisticsMode()) renderColorStatisticsPanel();
+  reconcileReplacementSelection();
+  if (isReplacementMode()) renderReplacementPanel();
   if (isReplicationMode()) renderStatisticsPanel();
 }
 
@@ -585,11 +585,11 @@ function selectColor(color, swatchEl) {
   }
 }
 
-function getStatisticsSelectedCellCount() {
+function getReplacementSelectedCellCount() {
   var selectedCount = 0;
   for (var y = 0; y < GRID_SIZE; y++) {
     for (var x = 0; x < GRID_SIZE; x++) {
-      if (statisticsSelectedColors.has(
+      if (replacementSelectedColors.has(
         String(pixelData[y][x]).toUpperCase()
       )) {
         selectedCount++;
@@ -599,77 +599,77 @@ function getStatisticsSelectedCellCount() {
   return selectedCount;
 }
 
-function reconcileStatisticsSelection() {
+function reconcileReplacementSelection() {
   var usedColors = new Set();
   for (var y = 0; y < GRID_SIZE; y++) {
     for (var x = 0; x < GRID_SIZE; x++) {
       usedColors.add(String(pixelData[y][x]).toUpperCase());
     }
   }
-  Array.from(statisticsSelectedColors).forEach(function(color) {
-    if (!usedColors.has(color)) statisticsSelectedColors.delete(color);
+  Array.from(replacementSelectedColors).forEach(function(color) {
+    if (!usedColors.has(color)) replacementSelectedColors.delete(color);
   });
   if (
-    statisticsReplacementTarget &&
+    replacementTargetColor &&
     getCurrentPaletteColors().map(function(color) {
       return color.toUpperCase();
-    }).indexOf(statisticsReplacementTarget) === -1
+    }).indexOf(replacementTargetColor) === -1
   ) {
-    statisticsReplacementTarget = null;
+    replacementTargetColor = null;
   }
-  if (statisticsReplaceMode && statisticsSelectedColors.size === 0) {
-    statisticsReplaceMode = false;
-    statisticsReplacementTarget = null;
+  if (replacementTargetMode && replacementSelectedColors.size === 0) {
+    replacementTargetMode = false;
+    replacementTargetColor = null;
   }
 }
 
-function selectColorStatisticsEntry(color) {
-  if (!isStatisticsMode()) return;
+function selectReplacementColor(color) {
+  if (!isReplacementMode()) return;
   var normalized = String(color).toUpperCase();
-  if (statisticsReplaceMode) {
-    statisticsReplacementTarget =
-      statisticsReplacementTarget === normalized ? null : normalized;
-  } else if (statisticsSelectedColors.has(normalized)) {
-    statisticsSelectedColors.delete(normalized);
+  if (replacementTargetMode) {
+    replacementTargetColor =
+      replacementTargetColor === normalized ? null : normalized;
+  } else if (replacementSelectedColors.has(normalized)) {
+    replacementSelectedColors.delete(normalized);
   } else {
-    statisticsSelectedColors.add(normalized);
+    replacementSelectedColors.add(normalized);
   }
-  renderColorStatisticsPanel();
+  renderReplacementPanel();
   renderStatisticsHighlightOverlay();
 }
 
-function beginStatisticsReplacement() {
-  if (!isStatisticsMode() || statisticsSelectedColors.size === 0) return;
-  statisticsReplaceMode = true;
-  statisticsReplacementTarget = null;
-  renderColorStatisticsPanel();
+function beginReplacementTargetSelection() {
+  if (!isReplacementMode() || replacementSelectedColors.size === 0) return;
+  replacementTargetMode = true;
+  replacementTargetColor = null;
+  renderReplacementPanel();
   renderStatisticsHighlightOverlay();
 }
 
-function cancelStatisticsReplacement() {
-  statisticsReplaceMode = false;
-  statisticsReplacementTarget = null;
-  if (isStatisticsMode()) renderColorStatisticsPanel();
+function cancelReplacementTargetSelection() {
+  replacementTargetMode = false;
+  replacementTargetColor = null;
+  if (isReplacementMode()) renderReplacementPanel();
   renderStatisticsHighlightOverlay();
 }
 
-function confirmStatisticsReplacement() {
+function confirmColorReplacement() {
   if (
-    !isStatisticsMode() ||
-    !statisticsReplaceMode ||
-    !statisticsReplacementTarget ||
-    statisticsSelectedColors.size === 0
+    !isReplacementMode() ||
+    !replacementTargetMode ||
+    !replacementTargetColor ||
+    replacementSelectedColors.size === 0
   ) {
     return;
   }
 
-  var target = statisticsReplacementTarget;
+  var target = replacementTargetColor;
   var changedCount = 0;
   for (var countY = 0; countY < GRID_SIZE; countY++) {
     for (var countX = 0; countX < GRID_SIZE; countX++) {
       var countColor = String(pixelData[countY][countX]).toUpperCase();
       if (
-        statisticsSelectedColors.has(countColor) &&
+        replacementSelectedColors.has(countColor) &&
         countColor !== target
       ) {
         changedCount++;
@@ -681,22 +681,22 @@ function confirmStatisticsReplacement() {
     return;
   }
 
-  var sourceColorCount = statisticsSelectedColors.size;
+  var sourceColorCount = replacementSelectedColors.size;
   pushUndo();
   beginReplicationCanvasEdit();
   for (var y = 0; y < GRID_SIZE; y++) {
     for (var x = 0; x < GRID_SIZE; x++) {
       var color = String(pixelData[y][x]).toUpperCase();
-      if (!statisticsSelectedColors.has(color) || color === target) continue;
+      if (!replacementSelectedColors.has(color) || color === target) continue;
       markReplicationCellChanged(x, y);
       pixelData[y][x] = target;
     }
   }
   commitReplicationCanvasEdit(true);
   markSharedWorkAsEdited();
-  statisticsSelectedColors.clear();
-  statisticsReplacementTarget = null;
-  statisticsReplaceMode = false;
+  replacementSelectedColors.clear();
+  replacementTargetColor = null;
+  replacementTargetMode = false;
   renderCanvas();
   renderNavigator();
   renderColorGrid();
@@ -707,29 +707,24 @@ function confirmStatisticsReplacement() {
   );
 }
 
-function renderColorStatisticsPanel() {
-  var grid = document.getElementById('colorStatisticsGrid');
+function renderReplacementPanel() {
+  var grid = document.getElementById('replacementGrid');
   if (!grid) return;
-  reconcileStatisticsSelection();
+  reconcileReplacementSelection();
   var entries = getPaletteUsageEntries();
-  if (!statisticsReplaceMode) {
-    entries = entries.filter(function(entry) {
-      return entry.count > 0;
-    });
-  }
-  entries = sortUsageEntries(entries, statisticsSortMode);
+  entries = sortUsageEntries(entries, replacementSortMode);
 
   grid.innerHTML = '';
   entries.forEach(function(entry) {
     var item = document.createElement('button');
-    var isSource = statisticsSelectedColors.has(entry.hex);
-    var isTarget = statisticsReplacementTarget === entry.hex;
+    var isSource = replacementSelectedColors.has(entry.hex);
+    var isTarget = replacementTargetColor === entry.hex;
     item.type = 'button';
     item.className = 'color-statistics-color';
     item.style.background = entry.hex;
     item.dataset.color = entry.hex;
     item.setAttribute('aria-pressed', String(
-      statisticsReplaceMode ? isTarget : isSource
+      replacementTargetMode ? isTarget : isSource
     ));
     item.setAttribute(
       'aria-label',
@@ -746,55 +741,55 @@ function renderColorStatisticsPanel() {
     count.textContent = '×' + entry.count;
     item.appendChild(count);
     item.addEventListener('click', function() {
-      selectColorStatisticsEntry(entry.hex);
+      selectReplacementColor(entry.hex);
     });
     grid.appendChild(item);
   });
 
-  var selectedCellCount = getStatisticsSelectedCellCount();
-  var summary = document.getElementById('colorStatisticsSelectionSummary');
-  var hint = document.getElementById('colorStatisticsHint');
-  var replaceButton = document.getElementById('colorStatisticsReplaceBtn');
+  var selectedCellCount = getReplacementSelectedCellCount();
+  var summary = document.getElementById('replacementSelectionSummary');
+  var hint = document.getElementById('replacementHint');
+  var replaceButton = document.getElementById('replacementStartBtn');
   var confirmActions = document.getElementById(
-    'colorStatisticsConfirmActions'
+    'replacementConfirmActions'
   );
-  var confirmButton = document.getElementById('colorStatisticsConfirmBtn');
+  var confirmButton = document.getElementById('replacementConfirmBtn');
   summary.textContent =
-    '已选择 ' + statisticsSelectedColors.size +
+    '已选择 ' + replacementSelectedColors.size +
     ' 种颜色 · 共 ' + selectedCellCount + ' 格';
-  hint.textContent = statisticsReplaceMode
+  hint.textContent = replacementTargetMode
     ? (
-        statisticsReplacementTarget
-          ? '目标颜色 ' + statisticsReplacementTarget +
+        replacementTargetColor
+          ? '目标颜色 ' + replacementTargetColor +
             ' · 确认后一次性替换'
           : '请选择一种目标颜色'
       )
     : '点击颜色或使用吸管，可多选需要替换的颜色';
-  replaceButton.hidden = statisticsReplaceMode;
-  replaceButton.disabled = statisticsSelectedColors.size === 0;
-  confirmActions.hidden = !statisticsReplaceMode;
+  replaceButton.hidden = replacementTargetMode;
+  replaceButton.disabled = replacementSelectedColors.size === 0;
+  confirmActions.hidden = !replacementTargetMode;
 
   var effectiveChangeCount = 0;
-  if (statisticsReplacementTarget) {
+  if (replacementTargetColor) {
     for (var y = 0; y < GRID_SIZE; y++) {
       for (var x = 0; x < GRID_SIZE; x++) {
         var color = String(pixelData[y][x]).toUpperCase();
         if (
-          statisticsSelectedColors.has(color) &&
-          color !== statisticsReplacementTarget
+          replacementSelectedColors.has(color) &&
+          color !== replacementTargetColor
         ) {
           effectiveChangeCount++;
         }
       }
     }
   }
-  confirmButton.disabled = !statisticsReplacementTarget ||
+  confirmButton.disabled = !replacementTargetColor ||
     effectiveChangeCount === 0;
 }
 
 function renderStatisticsPanel() {
-  var grid = document.getElementById('statisticsGrid');
-  var hint = document.getElementById('statisticsHint');
+  var grid = document.getElementById('replicationGrid');
+  var hint = document.getElementById('replicationHint');
   var completeControl = document.getElementById('replicationCompleteControl');
   var completeCheckbox = document.getElementById('replicationCompleteCheckbox');
   var completeLabel = document.getElementById('replicationCompleteLabel');
@@ -821,7 +816,7 @@ function renderStatisticsPanel() {
       '颜色 ' + entry.hex + '，使用 ' + entry.count + ' 格' +
         (completed ? '，已完成复刻' : '')
     );
-    if (entry.hex === statisticsHighlightColor) item.classList.add('active');
+    if (entry.hex === replicationHighlightColor) item.classList.add('active');
     if (completed) item.classList.add('completed');
 
     var count = document.createElement('span');
@@ -836,7 +831,7 @@ function renderStatisticsPanel() {
 
   updateColorUsageSummary();
   var selectedEntry = entries.find(function(entry) {
-    return entry.hex === statisticsHighlightColor;
+    return entry.hex === replicationHighlightColor;
   });
   completeControl.hidden = !selectedEntry;
   previewControl.hidden = Boolean(selectedEntry);
@@ -891,19 +886,19 @@ function renderStatisticsPanel() {
   }
 }
 
-function setColorStatisticsSortMode(mode) {
+function setReplacementSortMode(mode) {
   if (!['count-desc', 'count-asc', 'palette-order'].includes(mode)) return;
-  statisticsSortMode = mode;
-  document.getElementById('colorStatisticsSort').value = mode;
+  replacementSortMode = mode;
+  document.getElementById('replacementSort').value = mode;
 
-  renderColorStatisticsPanel();
+  renderReplacementPanel();
   renderStatisticsHighlightOverlay();
-  var focusColor = statisticsReplacementTarget ||
-    Array.from(statisticsSelectedColors)[0];
+  var focusColor = replacementTargetColor ||
+    Array.from(replacementSelectedColors)[0];
   if (focusColor) {
     focusPanelColor(
       '.color-statistics-color',
-      'colorStatisticsScroll',
+      'replacementColorScroll',
       focusColor
     );
   }
@@ -916,11 +911,11 @@ function setReplicationSortMode(mode) {
 
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();
-  if (statisticsHighlightColor) {
+  if (replicationHighlightColor) {
     focusPanelColor(
       '.statistics-color',
-      'statisticsColorScroll',
-      statisticsHighlightColor
+      'replicationColorScroll',
+      replicationHighlightColor
     );
   }
 }
@@ -928,20 +923,20 @@ function setReplicationSortMode(mode) {
 function selectStatisticsColor(color) {
   if (!isReplicationMode()) return;
   replicationSelectionChanged = true;
-  statisticsHighlightColor = statisticsHighlightColor === color ? null : color;
-  currentColor = statisticsHighlightColor;
+  replicationHighlightColor = replicationHighlightColor === color ? null : color;
+  currentColor = replicationHighlightColor;
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();
 }
 
 function setReplicationColorCompleted(completed) {
-  if (!isReplicationMode() || !statisticsHighlightColor) return;
+  if (!isReplicationMode() || !replicationHighlightColor) return;
   var selectedEntry = getPaletteUsageEntries().find(function(entry) {
-    return entry.hex === statisticsHighlightColor;
+    return entry.hex === replicationHighlightColor;
   });
   if (!selectedEntry || selectedEntry.count === 0) return;
 
-  getReplicationColorCellIndices(statisticsHighlightColor).forEach(
+  getReplicationColorCellIndices(replicationHighlightColor).forEach(
     function(index) {
       if (completed) replicationCompletedCells.add(index);
       else replicationCompletedCells.delete(index);
@@ -953,11 +948,11 @@ function setReplicationColorCompleted(completed) {
 }
 
 function markReplicationCellCompleted(x, y) {
-  if (!isReplicationMode() || !statisticsHighlightColor) return false;
+  if (!isReplicationMode() || !replicationHighlightColor) return false;
   if (
     x < 0 || x >= GRID_SIZE ||
     y < 0 || y >= GRID_SIZE ||
-    String(pixelData[y][x]).toUpperCase() !== statisticsHighlightColor ||
+    String(pixelData[y][x]).toUpperCase() !== replicationHighlightColor ||
     isReplicationCellCompleted(x, y)
   ) {
     return false;
@@ -995,24 +990,24 @@ function clearCurrentReplicationProgress() {
 function setReplicationPreviewMode(mode) {
   if (!['target', 'completed'].includes(mode)) return;
   replicationPreviewMode = mode;
-  statisticsHighlightColor = null;
+  replicationHighlightColor = null;
   currentColor = null;
   renderStatisticsPanel();
   renderStatisticsHighlightOverlay();
 }
 
 function renderStatisticsHighlightOverlay() {
-  if (isStatisticsMode()) {
-    renderColorStatisticsHighlightOverlay();
+  if (isReplacementMode()) {
+    renderReplacementHighlightOverlay();
     return;
   }
 
   var completedPreview = isReplicationMode() &&
-    !statisticsHighlightColor &&
+    !replicationHighlightColor &&
     replicationPreviewMode === 'completed';
   if (
     !isReplicationMode() ||
-    (!statisticsHighlightColor && !completedPreview) ||
+    (!replicationHighlightColor && !completedPreview) ||
     (!canvasGuidesVisible && !completedPreview)
   ) {
     statisticsOverlayCanvas.style.display = 'none';
@@ -1039,7 +1034,7 @@ function renderStatisticsHighlightOverlay() {
     for (var x = 0; x < GRID_SIZE; x++) {
       var pixelColor = String(pixelData[y][x]).toUpperCase();
       var selected = !completedPreview &&
-        pixelColor === statisticsHighlightColor;
+        pixelColor === replicationHighlightColor;
       var completed = isReplicationCellCompleted(x, y);
       if (!selected && !completed) continue;
       var left = x * cellSize;
@@ -1081,11 +1076,11 @@ function renderStatisticsHighlightOverlay() {
   );
 }
 
-function renderColorStatisticsHighlightOverlay() {
-  reconcileStatisticsSelection();
-  var hasSources = statisticsSelectedColors.size > 0;
-  var hasTarget = statisticsReplaceMode &&
-    Boolean(statisticsReplacementTarget);
+function renderReplacementHighlightOverlay() {
+  reconcileReplacementSelection();
+  var hasSources = replacementSelectedColors.size > 0;
+  var hasTarget = replacementTargetMode &&
+    Boolean(replacementTargetColor);
   if (!hasSources && !hasTarget) {
     statisticsOverlayCanvas.style.display = 'none';
     return;
@@ -1105,9 +1100,9 @@ function renderColorStatisticsHighlightOverlay() {
   for (var y = 0; y < GRID_SIZE; y++) {
     for (var x = 0; x < GRID_SIZE; x++) {
       var pixelColor = String(pixelData[y][x]).toUpperCase();
-      var sourceSelected = statisticsSelectedColors.has(pixelColor);
+      var sourceSelected = replacementSelectedColors.has(pixelColor);
       var targetSelected = hasTarget &&
-        pixelColor === statisticsReplacementTarget;
+        pixelColor === replacementTargetColor;
       if (!sourceSelected && !targetSelected) continue;
 
       var left = x * cellSize;
@@ -1149,59 +1144,57 @@ function renderColorStatisticsHighlightOverlay() {
   );
 }
 
-function setPalettePanelMode(mode) {
+function setWorkspacePanelMode(mode) {
   if (
-    mode !== 'palette' &&
-    mode !== 'statistics' &&
+    mode !== 'coloring' &&
+    mode !== 'replacement' &&
     mode !== 'replication'
   ) {
     return;
   }
   var wasReplication = isReplicationMode();
-  var wasColorStatistics = isStatisticsMode();
+  var wasReplacement = isReplacementMode();
 
   if (mode === 'replication' && !wasReplication) {
-    paletteColorBeforeReplication = currentColor;
+    colorBeforeReplication = currentColor;
     replicationSelectionChanged = false;
-    statisticsHighlightColor = null;
+    replicationHighlightColor = null;
   } else if (mode !== 'replication' && wasReplication) {
     currentColor = replicationSelectionChanged
-      ? statisticsHighlightColor
-      : paletteColorBeforeReplication;
-    paletteColorBeforeReplication = null;
+      ? replicationHighlightColor
+      : colorBeforeReplication;
+    colorBeforeReplication = null;
     replicationSelectionChanged = false;
   }
-  if (wasColorStatistics && mode !== 'statistics') {
-    statisticsReplaceMode = false;
-    statisticsReplacementTarget = null;
+  if (wasReplacement && mode !== 'replacement') {
+    replacementTargetMode = false;
+    replacementTargetColor = null;
   }
 
-  palettePanelMode = mode;
+  workspacePanelMode = mode;
 
-  var paletteTab = document.getElementById('paletteTab');
-  var statisticsTab = document.getElementById('statisticsTab');
+  var coloringTab = document.getElementById('coloringTab');
+  var replacementTab = document.getElementById('replacementTab');
   var replicationTab = document.getElementById('replicationTab');
-  var paletteView = document.getElementById('palettePanelView');
-  var colorStatisticsView = document.getElementById(
-    'colorStatisticsPanelView'
-  );
-  var replicationView = document.getElementById('statisticsPanelView');
+  var coloringView = document.getElementById('coloringPanelView');
+  var replacementView = document.getElementById('replacementPanelView');
+  var replicationView = document.getElementById('replicationPanelView');
   var readOnly = isReadOnlyPanelMode();
 
-  paletteTab.classList.toggle('active', mode === 'palette');
-  statisticsTab.classList.toggle('active', mode === 'statistics');
+  coloringTab.classList.toggle('active', mode === 'coloring');
+  replacementTab.classList.toggle('active', mode === 'replacement');
   replicationTab.classList.toggle('active', mode === 'replication');
-  paletteTab.setAttribute('aria-selected', String(mode === 'palette'));
-  statisticsTab.setAttribute(
+  coloringTab.setAttribute('aria-selected', String(mode === 'coloring'));
+  replacementTab.setAttribute(
     'aria-selected',
-    String(mode === 'statistics')
+    String(mode === 'replacement')
   );
   replicationTab.setAttribute(
     'aria-selected',
     String(mode === 'replication')
   );
-  paletteView.hidden = mode !== 'palette';
-  colorStatisticsView.hidden = mode !== 'statistics';
+  coloringView.hidden = mode !== 'coloring';
+  replacementView.hidden = mode !== 'replacement';
   replicationView.hidden = mode !== 'replication';
 
   document.getElementById('undoBtn').disabled = isReplicationMode();
@@ -1213,18 +1206,18 @@ function setPalettePanelMode(mode) {
     clearCanvasCellHighlight();
     renderStatisticsPanel();
     renderStatisticsHighlightOverlay();
-    if (statisticsHighlightColor) {
+    if (replicationHighlightColor) {
       focusPanelColor(
         '.statistics-color',
-        'statisticsColorScroll',
-        statisticsHighlightColor
+        'replicationColorScroll',
+        replicationHighlightColor
       );
     }
-  } else if (isStatisticsMode()) {
+  } else if (isReplacementMode()) {
     isDrawing = false;
     clearCanvasCellHighlight();
-    reconcileStatisticsSelection();
-    renderColorStatisticsPanel();
+    reconcileReplacementSelection();
+    renderReplacementPanel();
     renderStatisticsHighlightOverlay();
   } else {
     renderColorGrid();
@@ -1751,7 +1744,7 @@ function syncMobileWorkspaceControls() {
     rightButton.setAttribute('aria-expanded', rightOpen ? 'true' : 'false');
     rightButton.setAttribute(
       'aria-label',
-      rightOpen ? '关闭工具与颜料面板' : '打开工具与颜料面板'
+      rightOpen ? '关闭工具与上色面板' : '打开工具与上色面板'
     );
   }
 }
@@ -1973,18 +1966,18 @@ function bindStaticControls() {
   on('redoBtn', 'click', redo);
   on('eyedropperBtn', 'click', toggleEyedropper);
   on('moveCanvasBtn', 'click', toggleMoveCanvas);
-  on('paletteTab', 'click', function() {
-    setPalettePanelMode('palette');
+  on('coloringTab', 'click', function() {
+    setWorkspacePanelMode('coloring');
   });
-  on('statisticsTab', 'click', function() {
-    setPalettePanelMode('statistics');
+  on('replacementTab', 'click', function() {
+    setWorkspacePanelMode('replacement');
   });
   on('replicationTab', 'click', function() {
-    setPalettePanelMode('replication');
+    setWorkspacePanelMode('replication');
   });
-  on('colorStatisticsReplaceBtn', 'click', beginStatisticsReplacement);
-  on('colorStatisticsCancelBtn', 'click', cancelStatisticsReplacement);
-  on('colorStatisticsConfirmBtn', 'click', confirmStatisticsReplacement);
+  on('replacementStartBtn', 'click', beginReplacementTargetSelection);
+  on('replacementCancelBtn', 'click', cancelReplacementTargetSelection);
+  on('replacementConfirmBtn', 'click', confirmColorReplacement);
   on('replicationCompleteCheckbox', 'change', function(event) {
     setReplicationColorCompleted(event.currentTarget.checked);
   });
@@ -1995,8 +1988,8 @@ function bindStaticControls() {
     setReplicationPreviewMode('completed');
   });
   on('replicationResetBtn', 'click', clearCurrentReplicationProgress);
-  on('colorStatisticsSort', 'change', function(event) {
-    setColorStatisticsSortMode(event.currentTarget.value);
+  on('replacementSort', 'change', function(event) {
+    setReplacementSortMode(event.currentTarget.value);
   });
   on('replicationSort', 'change', function(event) {
     setReplicationSortMode(event.currentTarget.value);
@@ -2069,14 +2062,14 @@ function installTourgridTestApi() {
           return String(color).toUpperCase();
         }),
         currentColor: currentColor,
-        palettePanelMode: palettePanelMode,
-        statisticsSelectedColors: Array.from(
-          statisticsSelectedColors
+        workspacePanelMode: workspacePanelMode,
+        replacementSelectedColors: Array.from(
+          replacementSelectedColors
         ).sort(),
-        statisticsReplacementTarget: statisticsReplacementTarget,
-        statisticsReplaceMode: statisticsReplaceMode,
-        statisticsSortMode: statisticsSortMode,
-        statisticsHighlightColor: statisticsHighlightColor,
+        replacementTargetColor: replacementTargetColor,
+        replacementTargetMode: replacementTargetMode,
+        replacementSortMode: replacementSortMode,
+        replicationHighlightColor: replicationHighlightColor,
         replicationSortMode: replicationSortMode,
         replicationCompletedCells: Array.from(replicationCompletedCells).sort(
           function(a, b) { return a - b; }

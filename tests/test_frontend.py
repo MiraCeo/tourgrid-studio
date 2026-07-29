@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-13"
+    asset_version = "20260729-14"
 
     assert (
         f'<link rel="stylesheet" '
@@ -165,24 +165,24 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert 'id="colorPickPopup"' not in html
     assert 'id="palettePicker"' not in html
     assert 'id="colorDisplay"' not in html
-    assert "<span>颜料</span>" in html
+    assert "<span>上色</span>" in html
     assert "<span>复刻</span>" in html
-    assert "<span>统计</span>" in html
-    assert 'id="paletteTab"' in html
-    assert 'id="statisticsTab"' in html
+    assert "<span>替换</span>" in html
+    assert 'id="coloringTab"' in html
+    assert 'id="replacementTab"' in html
     assert 'id="replicationTab"' in html
-    assert 'id="colorStatisticsGrid"' in html
-    assert 'id="colorStatisticsReplaceBtn"' in html
-    assert 'id="colorStatisticsCancelBtn"' in html
-    assert 'id="colorStatisticsConfirmBtn"' in html
-    assert 'id="statisticsGrid"' in html
+    assert 'id="replacementGrid"' in html
+    assert 'id="replacementStartBtn"' in html
+    assert 'id="replacementCancelBtn"' in html
+    assert 'id="replacementConfirmBtn"' in html
+    assert 'id="replicationGrid"' in html
     assert 'id="paletteColorScroll" tabindex="0"' in html
-    assert 'id="statisticsColorScroll" tabindex="0"' in html
+    assert 'id="replicationColorScroll" tabindex="0"' in html
     assert 'id="paletteConversionResultSummary"' in html
-    assert 'id="statisticsConversionResultSummary"' in html
+    assert 'id="replicationConversionResultSummary"' in html
     assert 'id="conversionResultSummary"' not in html
     assert html.count('class="conversion-result-summary"') == 2
-    assert 'id="colorStatisticsSort"' in html
+    assert 'id="replacementSort"' in html
     assert 'id="replicationSort"' in html
     assert 'id="replicationCompleteControl"' in html
     assert 'id="replicationCompleteCheckbox"' in html
@@ -196,7 +196,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert '<option value="count-asc">' in html
     assert '<option value="palette-order">' in html
     assert "临时色板 · 64色" in html
-    assert html.index('id="statisticsGrid"') < html.index('id="colorUsageSummary"')
+    assert html.index('id="replicationGrid"') < html.index('id="colorUsageSummary"')
 
     assert "const MARD_DATA" not in state
     assert "{ id: 'mard'" not in state
@@ -207,16 +207,16 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "palette.forEach(function(color)" in app
     assert "getPaletteUsageEntries" in app
     assert "sortUsageEntries" in app
-    assert "setColorStatisticsSortMode" in app
+    assert "setReplacementSortMode" in app
     assert "setReplicationSortMode" in app
     assert "mode === 'palette-order'" in app
-    assert "if (!statisticsReplaceMode)" in app
+    assert "entries = sortUsageEntries(entries, replacementSortMode)" in app
     assert "countDifference || a.paletteIndex - b.paletteIndex" in app
-    assert "setPalettePanelMode" in app
-    assert "function renderColorStatisticsPanel()" in app
-    assert "function confirmStatisticsReplacement()" in app
-    assert "statisticsSelectedColors = new Set()" in state
-    assert "statisticsReplacementTarget = null" in state
+    assert "setWorkspacePanelMode" in app
+    assert "function renderReplacementPanel()" in app
+    assert "function confirmColorReplacement()" in app
+    assert "replacementSelectedColors = new Set()" in state
+    assert "replacementTargetColor = null" in state
     assert "selectStatisticsColor" in app
     assert "function setReplicationColorCompleted(completed)" in app
     assert "function setReplicationPreviewMode(mode)" in app
@@ -239,12 +239,12 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "if (active && eyedropperActive) setEyedropperActive(false)" in app
     assert "function sampleCanvasColor(gx, gy)" in app
     assert "focusPanelColor('.color-swatch', 'paletteColorScroll', matchedColor)" in app
-    assert "focusPanelColor('.statistics-color', 'statisticsColorScroll', matchedColor)" in app
-    assert "statisticsHighlightColor = matchedColor" in app
+    assert "focusPanelColor('.statistics-color', 'replicationColorScroll', matchedColor)" in app
+    assert "replicationHighlightColor = matchedColor" in app
     assert "currentColor = matchedColor" in app
     assert "setEyedropperActive(false)" in app
-    assert "statisticsHighlightColor = null" in app
-    assert "paletteColorBeforeReplication = currentColor" in app
+    assert "replicationHighlightColor = null" in app
+    assert "colorBeforeReplication = currentColor" in app
     assert "replicationSelectionChanged" in app
     assert "grid.style.paddingTop" not in app
     assert "grid.style.paddingBottom" not in app
@@ -276,7 +276,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "if (eyedropperActive)" in editor
     assert "sampleCanvasColor(samplePos.x, samplePos.y)" in editor
     assert "if (!currentColor)" in editor
-    assert "请先从颜料中选择一种颜色" in editor
+    assert "请先从上色中选择一种颜色" in editor
     assert "let currentColor = '#222222'" in state
     assert "mainCtx.fillText" not in editor
     assert "markReplicationCellCompleted(replicationPos.x, replicationPos.y)" in editor

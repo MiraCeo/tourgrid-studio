@@ -253,7 +253,7 @@ async function loadSharedWorkByCode(code, options) {
   pushUndo();
   clearReferenceImage(false);
   replicationCompletedCells.clear();
-  statisticsHighlightColor = null;
+  replicationHighlightColor = null;
   pixelData = restoredPixels;
   restoreReplicationProgress();
   restorePaletteSelection('exhibition');

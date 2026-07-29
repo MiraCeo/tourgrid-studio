@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-13">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-14">
 </head>
 <body>
 
@@ -160,7 +160,7 @@
 
     <button class="mobile-panel-toggle mobile-panel-toggle-right"
             id="mobileRightPanelBtn" type="button"
-            aria-label="打开工具与颜料面板" aria-expanded="false"
+            aria-label="打开工具与上色面板" aria-expanded="false"
             aria-controls="rightPanel">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="m12 3 8 9-8 9-8-9z"></path>
@@ -303,17 +303,19 @@
       </div>
 
       <div class="palette-tabs" role="tablist" aria-label="右侧面板">
-        <button class="palette-tab active" id="paletteTab" role="tab" aria-selected="true">
+        <button class="palette-tab active" id="coloringTab" role="tab" aria-selected="true">
           <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="m12 3 8 9-8 9-8-9z"></path>
           </svg>
-          <span>颜料</span>
+          <span>上色</span>
         </button>
-        <button class="palette-tab" id="statisticsTab" role="tab" aria-selected="false">
+        <button class="palette-tab" id="replacementTab" role="tab" aria-selected="false">
           <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 19V9M12 19V5M19 19v-7"></path>
+            <path d="m4 14 8-8 6 6-8 8H4z"></path>
+            <path d="m9 5 7 7"></path>
+            <path d="M19 16s2 2.2 2 3.3a2 2 0 0 1-4 0C17 18.2 19 16 19 16z"></path>
           </svg>
-          <span>统计</span>
+          <span>替换</span>
         </button>
         <button class="palette-tab" id="replicationTab" role="tab" aria-selected="false">
           <svg class="palette-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -324,7 +326,7 @@
         </button>
       </div>
 
-      <div class="palette-panel-view" id="palettePanelView">
+      <div class="palette-panel-view" id="coloringPanelView">
         <div class="palette-view-caption">临时色板 · 64色</div>
         <div class="palette-color-scroll" id="paletteColorScroll" tabindex="0">
           <div class="color-grid" id="colorGrid"></div>
@@ -334,38 +336,38 @@
         </div>
       </div>
 
-      <div class="color-statistics-panel-view" id="colorStatisticsPanelView" hidden>
-        <div class="color-statistics-summary" id="colorStatisticsSelectionSummary"
+      <div class="color-statistics-panel-view" id="replacementPanelView" hidden>
+        <div class="color-statistics-summary" id="replacementSelectionSummary"
              aria-live="polite">已选择 0 种颜色 · 共 0 格</div>
-        <div class="color-statistics-hint" id="colorStatisticsHint">
+        <div class="color-statistics-hint" id="replacementHint">
           点击颜色或使用吸管，可多选需要替换的颜色
         </div>
-        <label class="statistics-sort-control" for="colorStatisticsSort">
+        <label class="statistics-sort-control" for="replacementSort">
           <span>排序</span>
-          <select id="colorStatisticsSort">
+          <select id="replacementSort">
             <option value="count-desc" selected>数量：多 → 少</option>
             <option value="count-asc">数量：少 → 多</option>
             <option value="palette-order">色板位置顺序</option>
           </select>
         </label>
-        <div class="color-statistics-scroll" id="colorStatisticsScroll" tabindex="0">
-          <div class="color-statistics-grid" id="colorStatisticsGrid"></div>
+        <div class="color-statistics-scroll" id="replacementColorScroll" tabindex="0">
+          <div class="color-statistics-grid" id="replacementGrid"></div>
         </div>
-        <div class="color-statistics-actions" id="colorStatisticsActions">
+        <div class="color-statistics-actions" id="replacementActions">
           <button type="button" class="color-statistics-replace-btn"
-                  id="colorStatisticsReplaceBtn" disabled>替换</button>
+                  id="replacementStartBtn" disabled>替换</button>
           <div class="color-statistics-confirm-actions"
-               id="colorStatisticsConfirmActions" hidden>
+               id="replacementConfirmActions" hidden>
             <button type="button" class="color-statistics-cancel-btn"
-                    id="colorStatisticsCancelBtn">取消</button>
+                    id="replacementCancelBtn">取消</button>
             <button type="button" class="color-statistics-confirm-btn"
-                    id="colorStatisticsConfirmBtn" disabled>确定</button>
+                    id="replacementConfirmBtn" disabled>确定</button>
           </div>
         </div>
       </div>
 
-      <div class="statistics-panel-view" id="statisticsPanelView" hidden>
-        <div class="statistics-hint" id="statisticsHint">选择一种颜色，点击高亮格标记为已涂色</div>
+      <div class="statistics-panel-view" id="replicationPanelView" hidden>
+        <div class="statistics-hint" id="replicationHint">选择一种颜色，点击高亮格标记为已涂色</div>
         <label class="replication-complete-control" id="replicationCompleteControl" hidden>
           <input type="checkbox" id="replicationCompleteCheckbox">
           <span class="replication-checkbox-mark" aria-hidden="true"></span>
@@ -402,10 +404,10 @@
             <option value="palette-order">色板位置顺序</option>
           </select>
         </label>
-        <div class="statistics-color-scroll" id="statisticsColorScroll" tabindex="0">
-          <div class="statistics-grid" id="statisticsGrid"></div>
+        <div class="statistics-color-scroll" id="replicationColorScroll" tabindex="0">
+          <div class="statistics-grid" id="replicationGrid"></div>
           <div class="statistics-summary" id="colorUsageSummary">已使用 0 种颜色 · 共 0 格</div>
-          <div class="conversion-result-summary" id="statisticsConversionResultSummary">
+          <div class="conversion-result-summary" id="replicationConversionResultSummary">
             当前画布 · 未关联转换版本
           </div>
         </div>
@@ -558,8 +560,8 @@
         <ol class="announcement-steps">
           <li><span>导入</span>点击顶部“导入”，选择图片并确认裁切区域。</li>
           <li><span>转换</span>浏览器会在本地生成 24×24 像素图，图片不会上传。</li>
-          <li><span>编辑</span>从右侧颜料中选色后直接绘制；选择白色即可擦除。</li>
-          <li><span>统计</span>多选当前用色后，可统一替换为任一官方颜色。</li>
+          <li><span>上色</span>从右侧色板中选色后直接绘制；选择白色即可擦除。</li>
+          <li><span>替换</span>多选当前用色后，可统一替换为任一官方颜色。</li>
           <li><span>复刻</span>在“复刻”中按颜色高亮格子，并勾选记录游戏内完成进度。</li>
           <li><span>查看</span>使用左侧参考图与缩放控制辅助对照细节。</li>
           <li><span>导出</span>完成编辑后，从顶部导出所需的图片或图纸。</li>
@@ -759,16 +761,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-13"></script>
-<script src="/static/js/reference-storage.js?v=20260729-13"></script>
-<script src="/static/js/work-codec.js?v=20260729-13"></script>
-<script src="/static/js/natural-64-v1.js?v=20260729-13"></script>
-<script src="/static/js/state.js?v=20260729-13"></script>
-<script src="/static/js/editor.js?v=20260729-13"></script>
-<script src="/static/js/export.js?v=20260729-13"></script>
-<script src="/static/js/import.js?v=20260729-13"></script>
-<script src="/static/js/works.js?v=20260729-13"></script>
-<script src="/static/js/app.js?v=20260729-13"></script>
+<script src="/static/js/storage.js?v=20260729-14"></script>
+<script src="/static/js/reference-storage.js?v=20260729-14"></script>
+<script src="/static/js/work-codec.js?v=20260729-14"></script>
+<script src="/static/js/natural-64-v1.js?v=20260729-14"></script>
+<script src="/static/js/state.js?v=20260729-14"></script>
+<script src="/static/js/editor.js?v=20260729-14"></script>
+<script src="/static/js/export.js?v=20260729-14"></script>
+<script src="/static/js/import.js?v=20260729-14"></script>
+<script src="/static/js/works.js?v=20260729-14"></script>
+<script src="/static/js/app.js?v=20260729-14"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

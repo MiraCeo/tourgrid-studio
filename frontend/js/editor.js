@@ -389,14 +389,14 @@ function onMouseDown(e) {
     return;
   }
 
-  if (isStatisticsMode()) {
+  if (isReplacementMode()) {
     e.preventDefault();
     return;
   }
 
   if (isReplicationMode()) {
     const replicationPos = getGridPos(e);
-    isReplicationMarking = Boolean(statisticsHighlightColor);
+    isReplicationMarking = Boolean(replicationHighlightColor);
     if (markReplicationCellCompleted(replicationPos.x, replicationPos.y)) {
       renderCanvasCellHighlight();
     }
@@ -404,7 +404,7 @@ function onMouseDown(e) {
     return;
   }
   if (!currentColor) {
-    showToast('请先从颜料中选择一种颜色');
+    showToast('请先从上色中选择一种颜色');
     return;
   }
 
@@ -625,17 +625,17 @@ function onTouchStart(e) {
       sampleCanvasColor(samplePos.x, samplePos.y);
       return;
     }
-    if (isStatisticsMode()) {
+    if (isReplacementMode()) {
       return;
     }
     if (isReplicationMode()) {
       const replicationPos = getGridPos(e.touches[0]);
-      isReplicationMarking = Boolean(statisticsHighlightColor);
+      isReplicationMarking = Boolean(replicationHighlightColor);
       markReplicationCellCompleted(replicationPos.x, replicationPos.y);
       return;
     }
     if (!currentColor) {
-      showToast('请先从颜料中选择一种颜色');
+      showToast('请先从上色中选择一种颜色');
       return;
     }
     beginTouchDrawRollback();
@@ -822,7 +822,7 @@ function makeEditorSnapshot() {
 async function restoreEditorSnapshot(snapshot) {
   var previousPixels = pixelData.map(function(row) { return row.slice(); });
   var previousFingerprint = replicationWorkFingerprint();
-  statisticsHighlightColor = null;
+  replicationHighlightColor = null;
   await restoreReferenceFromHistory(snapshot.reference);
   pixelData = snapshot.pixels.map(function(row) { return row.slice(); });
   reconcileReplicationProgress(
@@ -865,7 +865,7 @@ async function restoreManualCheckpoint() {
     return;
   }
   if (isReplicationMode()) {
-    showToast('请先返回颜料面板');
+    showToast('请先返回上色面板');
     return;
   }
 
@@ -983,7 +983,7 @@ function clearCanvas() {
   updateTopWorkIdentity();
   clearReferenceImage(false);
   invalidateReplicationProgress(false);
-  statisticsHighlightColor = null;
+  replicationHighlightColor = null;
   pixelData = Array.from({ length: GRID_SIZE }, () =>
     Array.from({ length: GRID_SIZE }, () => '#FFFFFF')
   );

@@ -796,7 +796,7 @@ async function confirmCropLocalWithAdjustments() {
   }
 
   replicationCompletedCells.clear();
-  statisticsHighlightColor = null;
+  replicationHighlightColor = null;
   pixelData = importedPixelData.map(function(row) { return row.slice(); });
   restoreReplicationProgress();
   currentPaletteId = 'exhibition';
