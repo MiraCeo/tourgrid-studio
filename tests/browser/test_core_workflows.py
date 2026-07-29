@@ -781,6 +781,35 @@ def test_work_share_modal_scrolls_to_all_actions_in_short_landscape(
     assert confirm_box["y"] + confirm_box["height"] <= height
 
 
+def test_author_modal_scrolls_inside_short_landscape(
+    editor_page: Page,
+) -> None:
+    width = 568
+    height = 240
+    editor_page.set_viewport_size({"width": width, "height": height})
+    editor_page.locator("#authorInfoBtn").click()
+
+    modal = editor_page.locator("#authorModal .author-modal")
+    expect(modal).to_be_visible()
+    editor_page.wait_for_timeout(220)
+    modal_box = modal.bounding_box()
+    assert modal_box is not None
+    assert modal_box["x"] >= 8
+    assert modal_box["y"] >= 8
+    assert modal_box["x"] + modal_box["width"] <= width - 8
+    assert modal_box["y"] + modal_box["height"] <= height - 8
+    assert modal.evaluate(
+        "(element) => element.scrollHeight > element.clientHeight"
+    )
+
+    project_note = editor_page.locator(".author-project-note")
+    project_note.scroll_into_view_if_needed()
+    note_box = project_note.bounding_box()
+    assert note_box is not None
+    assert note_box["y"] >= 0
+    assert note_box["y"] + note_box["height"] <= height
+
+
 def test_fullscreen_button_hides_when_browser_api_is_unavailable(
     editor_page: Page,
 ) -> None:
@@ -1254,6 +1283,7 @@ def test_mobile_reference_overlay_remains_visible_in_replication_mode(
 
 def test_mobile_landscape_crop_keeps_large_image_zoom_and_actions_visible(
     editor_page: Page,
+    tmp_path: Path,
 ) -> None:
     width = 640
     height = 360
@@ -1327,6 +1357,27 @@ def test_mobile_landscape_crop_keeps_large_image_zoom_and_actions_visible(
     )
     assert status_box["y"] + status_box["height"] <= height + 1
     assert busy_buttons_box["y"] + busy_buttons_box["height"] <= height + 1
+
+    editor_page.locator("#cancelCropBtn").click()
+    tiny_image = tmp_path / "tiny-source.png"
+    Image.new("RGB", (8, 8), "#D42F37").save(tiny_image)
+    editor_page.locator("#importFileInput").set_input_files(str(tiny_image))
+    expect(overlay).to_be_visible()
+    editor_page.wait_for_function(
+        "() => Number(document.querySelector('#cropZoomSlider').value) > 500"
+    )
+    tiny_zoom_range = slider.evaluate(
+        "slider => ({max: Number(slider.max), value: Number(slider.value)})"
+    )
+    assert tiny_zoom_range["value"] > 500
+    assert tiny_zoom_range["max"] == tiny_zoom_range["value"] * 2
+    slider.evaluate(
+        """slider => {
+          slider.value = slider.max;
+          slider.dispatchEvent(new Event('input', {bubbles: true}));
+        }"""
+    )
+    assert int(slider.input_value()) == tiny_zoom_range["max"]
 
 
 def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:

@@ -1328,6 +1328,24 @@ body {
 .author-overlay.show .author-modal {
   transform: translateY(0) scale(1);
 }
+#authorModal {
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-right: max(8px, env(safe-area-inset-right));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-left: max(8px, env(safe-area-inset-left));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#authorModal .author-modal {
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #55565c transparent;
+  -webkit-overflow-scrolling: touch;
+}
 .author-close-btn {
   position: absolute;
   top: 12px;

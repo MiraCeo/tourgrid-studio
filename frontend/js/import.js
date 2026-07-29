@@ -1,6 +1,7 @@
 let cropImg = null;
 let cropZoom = 100;
 let cropMinimumZoom = 10;
+let cropMaximumZoom = 500;
 let cropImgX = 0, cropImgY = 0;
 let cropDragStartX = 0, cropDragStartY = 0;
 let cropImgStartX = 0, cropImgStartY = 0;
@@ -81,11 +82,13 @@ function startImport(e) {
         var scale = Math.max(vpW / cropImg.width, vpW / cropImg.height);
         cropZoom = Math.max(1, Math.round(scale * 100));
         cropMinimumZoom = Math.min(10, cropZoom);
+        cropMaximumZoom = Math.max(500, cropZoom * 2);
         var initialScale = cropZoom / 100;
         cropImgX = (vpW - cropImg.width * initialScale) / 2;
         cropImgY = (vpW - cropImg.height * initialScale) / 2;
         var zoomSlider = document.getElementById('cropZoomSlider');
         zoomSlider.min = cropMinimumZoom;
+        zoomSlider.max = cropMaximumZoom;
         zoomSlider.value = cropZoom;
         document.getElementById('cropZoomVal').textContent = cropZoom + '%';
         applyCropTransform();
@@ -118,7 +121,10 @@ function updateCropZoom(val) {
   const oldScale = cropZoom / 100;
   cropZoom = Math.max(
     cropMinimumZoom,
-    Math.min(500, parseInt(val, 10) || cropMinimumZoom)
+    Math.min(
+      cropMaximumZoom,
+      parseInt(val, 10) || cropMinimumZoom
+    )
   );
   const newScale = cropZoom / 100;
   // 娣囨繃瀵旈崶鍓у娑擃厼绺炬稉宥呭綁
@@ -210,7 +216,10 @@ function onCropTouchMove(e) {
     var ratio = cropTouchDistance(e.touches) / cropTouchState.distance;
     cropZoom = Math.max(
       cropMinimumZoom,
-      Math.min(500, Math.round(cropTouchState.zoom * ratio))
+      Math.min(
+        cropMaximumZoom,
+        Math.round(cropTouchState.zoom * ratio)
+      )
     );
     var midpoint = cropTouchMidpoint(e.touches);
     var viewportRect = document.getElementById('cropViewport').getBoundingClientRect();
@@ -242,7 +251,7 @@ function onCropWheel(e) {
   var delta = e.deltaY > 0 ? -step : step;
   var newZoom = Math.max(
     cropMinimumZoom,
-    Math.min(500, cropZoom + delta)
+    Math.min(cropMaximumZoom, cropZoom + delta)
   );
   document.getElementById('cropZoomSlider').value = newZoom;
   updateCropZoom(newZoom);

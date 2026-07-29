@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-08"
+    asset_version = "20260729-09"
 
     assert (
         f'<link rel="stylesheet" '
@@ -305,6 +305,8 @@ def test_import_ui_supports_local_retry_status_and_touch_crop() -> None:
     assert 'id="cropZoomSlider" min="1" max="500"' in source
     assert "cropMinimumZoom = Math.min(10, cropZoom)" in source
     assert source.count("cropMinimumZoom,") >= 3
+    assert "cropMaximumZoom = Math.max(500, cropZoom * 2)" in source
+    assert source.count("cropMaximumZoom,") >= 3
     assert 'class="crop-main"' in source
     assert 'class="crop-options"' in source
 
@@ -931,6 +933,10 @@ def test_author_project_modal_uses_no_unlicensed_avatar_and_safe_github_links() 
     assert html.count('rel="noopener noreferrer"') >= 2
     assert 'title="重新导入"' not in html
     assert ".author-overlay {" in css
+    assert "#authorModal {" in css
+    assert "#authorModal .author-modal {" in css
+    assert "max-height: 100%" in css
+    assert "overscroll-behavior: contain" in css
     assert ".author-avatar-frame {" not in css
     assert ".author-link {" in css
     assert "function openAuthorModal()" in app
