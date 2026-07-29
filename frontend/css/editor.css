@@ -408,6 +408,8 @@ body {
   overflow: hidden;
 }
 
+.btn-toolbar-collapse,
+.mobile-toolbar-rail,
 .mobile-toolbar-handle,
 .mobile-panel-toggle {
   display: none;
@@ -2141,7 +2143,7 @@ body {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   /* 锁定页面：禁止滚动、禁止缩放 */
   html, body {
     overflow: hidden;
@@ -2157,11 +2159,12 @@ body {
   /* 横屏移动端同样使用完整可视区域 */
   .editor-modal {
     position: fixed;
-    inset: 0;
+    top: env(safe-area-inset-top);
+    right: env(safe-area-inset-right);
+    bottom: env(safe-area-inset-bottom);
+    left: env(safe-area-inset-left);
     width: auto;
     height: auto;
-    top: 0;
-    left: 0;
     transform: none;
     margin: 0;
     border-radius: 0;
@@ -2242,6 +2245,18 @@ body {
   .top-bar .btn-workspace-mode {
     display: flex;
   }
+  body.mobile-focus-mode .top-bar .btn-toolbar-collapse {
+    display: flex;
+  }
+  .top-bar .btn-toolbar-collapse svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
   .top-bar .warn-text {
     display: none;
   }
@@ -2298,17 +2313,43 @@ body {
     --mobile-left-panel-width: min(48vw, 320px);
     --mobile-right-panel-width: min(56vw, 360px);
     position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     isolation: isolate;
   }
+  body.mobile-focus-mode.mobile-toolbar-collapsed .editor-body {
+    grid-template-rows: 36px minmax(0, 1fr);
+  }
+  body.mobile-focus-mode .mobile-toolbar-rail {
+    display: none;
+  }
+  body.mobile-focus-mode.mobile-toolbar-collapsed
+  .mobile-toolbar-rail {
+    z-index: 23;
+    display: grid;
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    min-height: 0;
+    place-items: center;
+    border-bottom: 1px solid rgba(114,245,242,0.28);
+    background: #202023;
+  }
   body.mobile-focus-mode .center-panel {
+    grid-column: 1;
+    grid-row: 1;
     flex: 1 1 100%;
-    width: 100%;
+    width: auto;
     min-width: 0;
     padding: 8px;
     touch-action: none;
     transition:
       margin-left 0.2s ease,
       margin-right 0.2s ease;
+  }
+  body.mobile-focus-mode.mobile-toolbar-collapsed .center-panel {
+    grid-row: 2;
   }
   body.mobile-focus-mode.mobile-left-drawer-open .center-panel {
     margin-left: var(--mobile-left-panel-width);
@@ -2321,7 +2362,7 @@ body {
     transition: width 0.2s ease;
   }
   body.mobile-focus-mode.mobile-toolbar-collapsed .canvas-container {
-    width: min(100%, calc(100dvh - 24px));
+    width: min(100%, calc(100dvh - 60px));
   }
   body.mobile-focus-mode .left-panel,
   body.mobile-focus-mode .right-panel {
@@ -2350,10 +2391,8 @@ body {
     transform: translateX(0);
   }
   body.mobile-focus-mode .mobile-toolbar-handle {
-    position: absolute;
-    top: 5px;
-    left: 50%;
-    z-index: 24;
+    position: relative;
+    z-index: 1;
     display: grid;
     width: 42px;
     height: 24px;
@@ -2362,19 +2401,13 @@ body {
     place-items: center;
     background: rgba(31,34,38,0.88);
     color: #72F5F2;
-    transform: translateX(-50%);
     box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-    transition:
-      left 0.2s ease,
-      transform 0.2s ease;
+    transform: none;
   }
-  body.mobile-focus-mode.mobile-left-drawer-open
-  .mobile-toolbar-handle {
-    left: calc(50% + var(--mobile-left-panel-width) / 2);
-  }
-  body.mobile-focus-mode.mobile-right-drawer-open
-  .mobile-toolbar-handle {
-    left: calc(50% - var(--mobile-right-panel-width) / 2);
+  body.mobile-focus-mode .mobile-toolbar-handle::before {
+    content: '';
+    position: absolute;
+    inset: -10px -4px;
   }
   body.mobile-focus-mode .mobile-toolbar-handle svg {
     width: 17px;
@@ -2389,6 +2422,10 @@ body {
   body.mobile-focus-mode.mobile-toolbar-collapsed
   .mobile-toolbar-handle svg {
     transform: rotate(180deg);
+  }
+  body.mobile-focus-mode.mobile-toolbar-collapsed .left-panel,
+  body.mobile-focus-mode.mobile-toolbar-collapsed .right-panel {
+    top: 36px;
   }
   body.mobile-focus-mode .mobile-panel-toggle {
     position: absolute;
@@ -2443,7 +2480,7 @@ body {
   }
 }
 
-@media (max-width: 900px) and (orientation: landscape) {
+@media (max-width: 960px) and (orientation: landscape) {
   /*
    * The navigation drawer is height-constrained in landscape. Keep the
    * reference and zoom controls available, and let the preview use the
@@ -2540,9 +2577,10 @@ body {
     font-size: 10px;
   }
   body.mobile-focus-mode .right-panel .replication-preview-control {
-    grid-template-columns: minmax(0, 1fr) 28px;
+    grid-template-columns: minmax(0, 1fr) 40px;
     gap: 4px;
     margin-bottom: 4px;
+    min-height: 40px;
   }
   body.mobile-focus-mode .right-panel .replication-preview-segments {
     gap: 2px;
@@ -2554,8 +2592,16 @@ body {
     font-size: 10px;
   }
   body.mobile-focus-mode .right-panel .replication-reset-btn {
+    position: relative;
     width: 28px;
     height: 28px;
+    align-self: center;
+    justify-self: center;
+  }
+  body.mobile-focus-mode .right-panel .replication-reset-btn::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
   }
   body.mobile-focus-mode .right-panel .replication-reset-btn svg {
     width: 14px;

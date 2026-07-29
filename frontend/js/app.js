@@ -1174,6 +1174,9 @@ function scheduleMobileWorkspaceLayoutSync() {
 
 function syncMobileWorkspaceControls() {
   var modeButton = document.getElementById('mobileWorkspaceModeBtn');
+  var toolbarCollapseButton = document.getElementById(
+    'mobileToolbarCollapseBtn'
+  );
   var toolbarHandle = document.getElementById('mobileToolbarHandle');
   var leftButton = document.getElementById('mobileLeftPanelBtn');
   var rightButton = document.getElementById('mobileRightPanelBtn');
@@ -1204,6 +1207,18 @@ function syncMobileWorkspaceControls() {
       'aria-label',
       toolbarCollapsed ? '展开顶部工具栏' : '折叠顶部工具栏'
     );
+  }
+  if (toolbarCollapseButton) {
+    toolbarCollapseButton.setAttribute(
+      'aria-expanded',
+      toolbarCollapsed ? 'false' : 'true'
+    );
+    toolbarCollapseButton.setAttribute(
+      'aria-label',
+      toolbarCollapsed ? '展开顶部工具栏' : '折叠顶部工具栏'
+    );
+    toolbarCollapseButton.title =
+      toolbarCollapsed ? '展开顶部工具栏' : '折叠顶部工具栏';
   }
   if (leftButton) {
     leftButton.setAttribute('aria-expanded', leftOpen ? 'true' : 'false');
@@ -1317,8 +1332,14 @@ function toggleMobileToolbar() {
 function onMobileWorkspacePointerDown(event) {
   if (
     !mobileWorkspaceModeActive ||
-    event.target !== event.currentTarget ||
     (typeof event.button === 'number' && event.button !== 0)
+  ) {
+    return;
+  }
+  if (
+    event.target &&
+    typeof event.target.closest === 'function' &&
+    event.target.closest('#pixelCanvas')
   ) {
     return;
   }
@@ -1388,6 +1409,7 @@ function bindStaticControls() {
   on('announcementBtn', 'click', openAnnouncementModal);
   on('mobileFullscreenBtn', 'click', toggleFullscreen);
   on('mobileWorkspaceModeBtn', 'click', toggleMobileWorkspaceMode);
+  on('mobileToolbarCollapseBtn', 'click', toggleMobileToolbar);
   on('mobileToolbarHandle', 'click', toggleMobileToolbar);
   on('mobileLeftPanelBtn', 'click', function() {
     setMobileWorkspaceDrawer('left');
@@ -1547,7 +1569,7 @@ function checkOrientation() {
   var hint = document.getElementById('rotateHint');
   if (!hint) return;
   var isPortrait = window.innerWidth < window.innerHeight;
-  var isNarrow = window.innerWidth < 768;
+  var isNarrow = window.innerWidth <= 960;
   if (isNarrow && isPortrait) {
     hint.classList.add('show');
   } else {

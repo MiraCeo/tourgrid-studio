@@ -553,6 +553,49 @@ var touchPanStart = null; // {x, y, scrollLeft, scrollTop}
 var touchPinchDist = 0;   // 双指初始距离（用于缩放判定）
 var touchPinchZoom = 0;   // 双指缩放起始zoom值
 
+var touchDrawRollback = null;
+
+function beginTouchDrawRollback() {
+  touchDrawRollback = {
+    snapshot: makeEditorSnapshot(),
+    undoDepth: undoStack.length,
+    redoStack: redoStack.slice(),
+    replicationCompletedCells: new Set(replicationCompletedCells),
+    replicationEditSourceFingerprint: replicationEditSourceFingerprint,
+    replicationEditRemovedCellCount: replicationEditRemovedCellCount
+  };
+}
+
+function rollbackTouchDrawForGesture() {
+  if (!touchDrawRollback) return false;
+  var rollback = touchDrawRollback;
+  touchDrawRollback = null;
+  pixelData = rollback.snapshot.pixels.map(function(row) {
+    return row.slice();
+  });
+  documentMetadata = Object.assign(
+    TourgridStorage.defaultMetadata(),
+    rollback.snapshot.metadata || {}
+  );
+  replicationCompletedCells = new Set(
+    rollback.replicationCompletedCells
+  );
+  replicationEditSourceFingerprint =
+    rollback.replicationEditSourceFingerprint;
+  replicationEditRemovedCellCount =
+    rollback.replicationEditRemovedCellCount;
+  undoStack.length = rollback.undoDepth;
+  redoStack = rollback.redoStack;
+  isDrawing = false;
+  lastPaintedX = -1;
+  lastPaintedY = -1;
+  updateTopWorkIdentity();
+  renderCanvas();
+  renderNavigator();
+  renderColorGrid();
+  return true;
+}
+
 function onTouchStart(e) {
   if (historyOperationInProgress) return;
   e.preventDefault();
@@ -587,6 +630,7 @@ function onTouchStart(e) {
       showToast('请先从颜料中选择一种颜色');
       return;
     }
+    beginTouchDrawRollback();
     isDrawing = true;
     pushUndo();
     lastPaintedX = -1;
@@ -597,7 +641,7 @@ function onTouchStart(e) {
     renderNavigator();
   } else if (e.touches.length === 2) {
     // 双指：平移+缩放
-    isDrawing = false;
+    rollbackTouchDrawForGesture();
     var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
     var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     var dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -687,6 +731,7 @@ function onTouchEnd(e) {
     renderColorGrid();
     saveToStorage(true);
   }
+  touchDrawRollback = null;
   touchPanStart = null;
   touchPinchDist = 0;
   touchPinchZoom = 0;

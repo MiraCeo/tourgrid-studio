@@ -805,6 +805,118 @@ def test_fullscreen_button_hides_when_browser_api_is_unavailable(
     expect(editor_page.locator("#mobileFullscreenBtn")).to_be_hidden()
 
 
+@pytest.mark.parametrize(
+    ("width", "height"),
+    (
+        (568, 320),
+        (740, 360),
+        (844, 390),
+        (915, 412),
+    ),
+)
+def test_mobile_focus_mode_fits_common_landscape_viewports(
+    editor_page: Page,
+    width: int,
+    height: int,
+) -> None:
+    editor_page.set_viewport_size({"width": width, "height": height})
+    editor_page.evaluate("checkOrientation()")
+    expect(editor_page.locator("#rotateHint")).to_be_hidden()
+    mode_button = editor_page.locator("#mobileWorkspaceModeBtn")
+    expect(mode_button).to_be_visible()
+    mode_button.click()
+
+    leading_box = editor_page.locator(".top-leading-actions").bounding_box()
+    action_box = editor_page.locator(".top-bar .btn-group").bounding_box()
+    center_box = editor_page.locator("#centerPanel").bounding_box()
+    left_toggle_box = editor_page.locator(
+        "#mobileLeftPanelBtn"
+    ).bounding_box()
+    right_toggle_box = editor_page.locator(
+        "#mobileRightPanelBtn"
+    ).bounding_box()
+    assert leading_box is not None
+    assert action_box is not None
+    assert center_box is not None
+    assert left_toggle_box is not None
+    assert right_toggle_box is not None
+    assert leading_box["x"] + leading_box["width"] <= action_box["x"] + 1
+    assert action_box["x"] + action_box["width"] <= width + 1
+    assert center_box["x"] >= 0
+    assert center_box["x"] + center_box["width"] <= width + 1
+    assert left_toggle_box["x"] >= 0
+    assert right_toggle_box["x"] + right_toggle_box["width"] <= width + 1
+
+
+def test_mobile_portrait_hint_covers_extended_phone_breakpoint(
+    editor_page: Page,
+) -> None:
+    editor_page.set_viewport_size({"width": 915, "height": 1024})
+    editor_page.evaluate("checkOrientation()")
+    expect(editor_page.locator("#rotateHint")).to_be_visible()
+
+    editor_page.set_viewport_size({"width": 915, "height": 412})
+    editor_page.evaluate("checkOrientation()")
+    expect(editor_page.locator("#rotateHint")).to_be_hidden()
+
+
+def test_second_touch_rolls_back_unconfirmed_paint_stroke(
+    editor_page: Page,
+) -> None:
+    select_color(editor_page, BLACK)
+    canvas = editor_page.locator("#pixelCanvas")
+    box = canvas.bounding_box()
+    assert box is not None
+    cell_width = box["width"] / 24
+    cell_height = box["height"] / 24
+    first = {
+        "identifier": 1,
+        "clientX": box["x"] + 1.5 * cell_width,
+        "clientY": box["y"] + 1.5 * cell_height,
+        "target": canvas.element_handle(),
+    }
+    moved = {
+        **first,
+        "clientX": box["x"] + 2.5 * cell_width,
+    }
+    second = {
+        "identifier": 2,
+        "clientX": box["x"] + 5.5 * cell_width,
+        "clientY": box["y"] + 5.5 * cell_height,
+        "target": canvas.element_handle(),
+    }
+    initial_undo_depth = editor_state(editor_page)["undoDepth"]
+
+    canvas.dispatch_event(
+        "touchstart",
+        {"touches": [first], "changedTouches": [first]},
+    )
+    canvas.dispatch_event(
+        "touchmove",
+        {"touches": [moved], "changedTouches": [moved]},
+    )
+    painted = editor_state(editor_page)
+    assert painted["pixels"][1][1] == BLACK
+    assert painted["pixels"][1][2] == BLACK
+
+    canvas.dispatch_event(
+        "touchstart",
+        {
+            "touches": [moved, second],
+            "changedTouches": [second],
+        },
+    )
+    rolled_back = editor_state(editor_page)
+    assert rolled_back["pixels"][1][1] == WHITE
+    assert rolled_back["pixels"][1][2] == WHITE
+    assert rolled_back["undoDepth"] == initial_undo_depth
+
+    canvas.dispatch_event(
+        "touchend",
+        {"touches": [], "changedTouches": [moved, second]},
+    )
+
+
 def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     editor_page: Page,
 ) -> None:
@@ -825,6 +937,11 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     statistics_scroll = editor_page.locator("#statisticsColorScroll")
     center_panel = editor_page.locator("#centerPanel")
     top_bar = editor_page.locator(".top-bar")
+    toolbar_collapse_button = editor_page.locator(
+        "#mobileToolbarCollapseBtn"
+    )
+    toolbar_rail = editor_page.locator(".mobile-toolbar-rail")
+    toolbar_handle = editor_page.locator("#mobileToolbarHandle")
     left_toggle = editor_page.locator("#mobileLeftPanelBtn")
     right_toggle = editor_page.locator("#mobileRightPanelBtn")
 
@@ -837,6 +954,8 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     mode_button.click()
     expect(body).to_have_class(re.compile(r"\bmobile-focus-mode\b"))
     expect(mode_button).to_have_attribute("aria-pressed", "true")
+    expect(toolbar_collapse_button).to_be_visible()
+    expect(toolbar_handle).to_be_hidden()
     focus_center_box = center_panel.bounding_box()
     assert focus_center_box is not None
     assert focus_center_box["width"] > original_center_box["width"]
@@ -849,13 +968,9 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     left_box = left_panel.bounding_box()
     left_center_box = center_panel.bounding_box()
     left_toggle_box = left_toggle.bounding_box()
-    toolbar_handle_box = editor_page.locator(
-        "#mobileToolbarHandle"
-    ).bounding_box()
     assert left_box is not None
     assert left_center_box is not None
     assert left_toggle_box is not None
-    assert toolbar_handle_box is not None
     assert left_box["x"] >= 0
     assert left_center_box["x"] == pytest.approx(
         left_box["x"] + left_box["width"], abs=1
@@ -865,12 +980,6 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     )
     assert left_toggle_box["x"] == (
         pytest.approx(left_center_box["x"], abs=1)
-    )
-    assert toolbar_handle_box["x"] + toolbar_handle_box["width"] / 2 == (
-        pytest.approx(
-            left_center_box["x"] + left_center_box["width"] / 2,
-            abs=1,
-        )
     )
     preview_box = nav_preview.bounding_box()
     controls_box = left_controls.bounding_box()
@@ -902,13 +1011,9 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     right_box = right_panel.bounding_box()
     right_center_box = center_panel.bounding_box()
     right_toggle_box = right_toggle.bounding_box()
-    toolbar_handle_box = editor_page.locator(
-        "#mobileToolbarHandle"
-    ).bounding_box()
     assert right_box is not None
     assert right_center_box is not None
     assert right_toggle_box is not None
-    assert toolbar_handle_box is not None
     assert right_box["x"] + right_box["width"] <= width + 1
     assert right_center_box["x"] == pytest.approx(0, abs=1)
     assert right_center_box["width"] == pytest.approx(
@@ -919,12 +1024,6 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     )
     assert right_toggle_box["x"] + right_toggle_box["width"] == (
         pytest.approx(right_box["x"], abs=1)
-    )
-    assert toolbar_handle_box["x"] + toolbar_handle_box["width"] / 2 == (
-        pytest.approx(
-            right_center_box["x"] + right_center_box["width"] / 2,
-            abs=1,
-        )
     )
     select_color(editor_page, RED)
     click_canvas_cell(editor_page, 2, 2)
@@ -964,24 +1063,36 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
     assert restored_center_box["width"] == pytest.approx(width, abs=1)
 
     expanded_top_height = top_bar.bounding_box()["height"]
-    editor_page.locator("#mobileToolbarHandle").click()
+    toolbar_collapse_button.click()
     expect(body).to_have_class(re.compile(r"\bmobile-toolbar-collapsed\b"))
     editor_page.wait_for_timeout(220)
     collapsed_top_height = top_bar.bounding_box()["height"]
     assert collapsed_top_height < expanded_top_height
     assert collapsed_top_height <= 1
+    expect(toolbar_rail).to_be_visible()
+    expect(toolbar_handle).to_be_visible()
+    collapsed_rail_box = toolbar_rail.bounding_box()
+    collapsed_center_box = center_panel.bounding_box()
+    assert collapsed_rail_box is not None
+    assert collapsed_center_box is not None
+    assert collapsed_rail_box["height"] == pytest.approx(36, abs=1)
+    assert collapsed_rail_box["y"] + collapsed_rail_box["height"] == (
+        pytest.approx(collapsed_center_box["y"], abs=1)
+    )
 
-    editor_page.locator("#mobileToolbarHandle").click()
+    toolbar_handle.click()
     expect(body).not_to_have_class(
         re.compile(r"\bmobile-toolbar-collapsed\b")
     )
+    expect(toolbar_collapse_button).to_be_visible()
+    expect(toolbar_rail).to_be_hidden()
 
     center_box = center_panel.bounding_box()
     assert center_box is not None
     gesture_x = center_box["x"] + 4
     gesture_start_y = center_box["y"] + center_box["height"] - 8
     editor_page.dispatch_event(
-        "#centerPanel",
+        "#canvasContainer",
         "pointerdown",
         {
             "pointerId": 41,
@@ -989,10 +1100,11 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
             "button": 0,
             "clientX": gesture_x,
             "clientY": gesture_start_y,
+            "bubbles": True,
         },
     )
     editor_page.dispatch_event(
-        "#centerPanel",
+        "#canvasContainer",
         "pointermove",
         {
             "pointerId": 41,
@@ -1000,10 +1112,11 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
             "button": 0,
             "clientX": gesture_x,
             "clientY": gesture_start_y - 60,
+            "bubbles": True,
         },
     )
     editor_page.dispatch_event(
-        "#centerPanel",
+        "#canvasContainer",
         "pointerup",
         {
             "pointerId": 41,
@@ -1011,6 +1124,7 @@ def test_mobile_focus_mode_drawers_and_toolbar_gestures(
             "button": 0,
             "clientX": gesture_x,
             "clientY": gesture_start_y - 60,
+            "bubbles": True,
         },
     )
     expect(body).to_have_class(re.compile(r"\bmobile-toolbar-collapsed\b"))

@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Tourgrid Studio｜24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-05">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-06">
 </head>
 <body>
 
@@ -71,6 +71,15 @@
         <path class="workspace-focus-mark" d="M10 9h4v6h-4z"></path>
       </svg>
     </button>
+
+    <button class="icon-btn btn-toolbar-collapse"
+            id="mobileToolbarCollapseBtn" type="button"
+            title="折叠顶部工具栏" aria-label="折叠顶部工具栏"
+            aria-expanded="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m7 14 5-5 5 5"></path>
+      </svg>
+    </button>
     </div>
     <span class="warn-text">注意：严禁出现与国家法律法规及政策相抵触的内容</span>
 
@@ -131,13 +140,15 @@
 
   <!-- Z-INDEX 5: 娑撳鐖敮鍐ㄧ湰 -->
   <div class="editor-body">
-    <button class="mobile-toolbar-handle" id="mobileToolbarHandle"
-            type="button" aria-label="折叠顶部工具栏"
-            aria-expanded="true">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="m7 14 5-5 5 5"></path>
-      </svg>
-    </button>
+    <div class="mobile-toolbar-rail">
+      <button class="mobile-toolbar-handle" id="mobileToolbarHandle"
+              type="button" aria-label="展开顶部工具栏"
+              aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m7 14 5-5 5 5"></path>
+        </svg>
+      </button>
+    </div>
 
     <button class="mobile-panel-toggle mobile-panel-toggle-left"
             id="mobileLeftPanelBtn" type="button"
@@ -665,16 +676,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-05"></script>
-<script src="/static/js/reference-storage.js?v=20260729-05"></script>
-<script src="/static/js/work-codec.js?v=20260729-05"></script>
-<script src="/static/js/natural-64-v1.js?v=20260729-05"></script>
-<script src="/static/js/state.js?v=20260729-05"></script>
-<script src="/static/js/editor.js?v=20260729-05"></script>
-<script src="/static/js/export.js?v=20260729-05"></script>
-<script src="/static/js/import.js?v=20260729-05"></script>
-<script src="/static/js/works.js?v=20260729-05"></script>
-<script src="/static/js/app.js?v=20260729-05"></script>
+<script src="/static/js/storage.js?v=20260729-06"></script>
+<script src="/static/js/reference-storage.js?v=20260729-06"></script>
+<script src="/static/js/work-codec.js?v=20260729-06"></script>
+<script src="/static/js/natural-64-v1.js?v=20260729-06"></script>
+<script src="/static/js/state.js?v=20260729-06"></script>
+<script src="/static/js/editor.js?v=20260729-06"></script>
+<script src="/static/js/export.js?v=20260729-06"></script>
+<script src="/static/js/import.js?v=20260729-06"></script>
+<script src="/static/js/works.js?v=20260729-06"></script>
+<script src="/static/js/app.js?v=20260729-06"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-05"
+    asset_version = "20260729-06"
 
     assert (
         f'<link rel="stylesheet" '
@@ -308,7 +308,7 @@ def test_phone_and_tablet_responsive_contract() -> None:
     css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
-    assert "@media (max-width: 900px)" in css
+    assert "@media (max-width: 960px)" in css
     assert "width: min(320px, 42dvh)" in css
     assert "height: min(320px, 42dvh)" in css
     assert "function checkOrientation()" in app
@@ -813,7 +813,7 @@ def test_top_bar_and_left_controls_have_stable_narrow_layout() -> None:
 
     assert 'class="top-leading-actions"' in html
     assert "@media (max-width: 1180px)" in css
-    assert "@media (max-width: 900px)" in css
+    assert "@media (max-width: 960px)" in css
     assert "@media (max-width: 680px)" in css
     assert "flex-wrap: nowrap" in css
     assert ".top-bar .work-identity {\n    display: none;" in css
@@ -851,7 +851,9 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
     assert 'id="mobileWorkspaceModeBtn"' in html
+    assert 'id="mobileToolbarCollapseBtn"' in html
     assert 'id="mobileToolbarHandle"' in html
+    assert 'class="mobile-toolbar-rail"' in html
     assert 'id="mobileLeftPanelBtn"' in html
     assert 'id="mobileRightPanelBtn"' in html
     assert 'id="workspaceDrawerBackdrop"' not in html
@@ -866,9 +868,17 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     assert "function setMobileWorkspaceDrawer(side)" in app
     assert "on('workspaceDrawerBackdrop', 'click'" not in app
     assert "function setMobileToolbarCollapsed(collapsed)" in app
+    assert "on('mobileToolbarCollapseBtn', 'click', toggleMobileToolbar)" in app
     assert "function onMobileWorkspacePointerDown(event)" in app
+    assert "event.target.closest('#pixelCanvas')" in app
     assert "MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40" in app
     assert "sessionStorage.setItem(MOBILE_WORKSPACE_MODE_KEY, 'focus')" in app
+    assert "top: env(safe-area-inset-top)" in css
+    assert "right: env(safe-area-inset-right)" in css
+    assert "bottom: env(safe-area-inset-bottom)" in css
+    assert "left: env(safe-area-inset-left)" in css
+    assert ".mobile-toolbar-handle::before" in css
+    assert ".replication-reset-btn::before" in css
 
 
 def test_work_share_modal_is_scrollable_inside_short_safe_viewports() -> None:
