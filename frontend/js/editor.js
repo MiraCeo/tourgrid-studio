@@ -47,14 +47,12 @@ function init() {
     scheduleReferenceAssetPrune();
   }
 
-  // 娴滃娆㈢紒鎴濈暰
   mainCanvas.addEventListener('mousedown', onMouseDown);
   mainCanvas.addEventListener('mousemove', onMouseMove);
   mainCanvas.addEventListener('mouseup', onMouseUp);
   mainCanvas.addEventListener('mouseleave', onCanvasMouseLeave);
   mainCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
-  // 鐟欙附鎳滄禍瀣╂
   mainCanvas.addEventListener('touchstart', onTouchStart, { passive: false });
   mainCanvas.addEventListener('touchmove', onTouchMove, { passive: false });
   mainCanvas.addEventListener('touchend', onTouchEnd);
@@ -65,7 +63,6 @@ function init() {
   document.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', finishReplicationMarking);
 
-  // 濠婃俺鐤嗙紓鈺傛杹閿涘牏鏁剧敮鍐啇閸ｎ煉绱?
   canvasContainer.addEventListener('wheel', onWheel, { passive: false });
 
   // 导航缩略图支持点击、拖动和键盘定位画布。
@@ -79,12 +76,10 @@ function init() {
 
   // 点击色卡取色
 
-  // 娑擃參鏁?缁岀儤鐗?瀹革箓鏁幏鏍ㄥ楠炲磭些
   canvasContainer.addEventListener('mousedown', onPanStart);
   document.addEventListener('mousemove', onPanMove);
   document.addEventListener('mouseup', onPanEnd);
 
-  // 鐟佷礁澹€瀵湱鐛ユ禍瀣╂
   var cropVp = document.getElementById('cropViewport');
   cropVp.addEventListener('mousedown', onCropMouseDown);
   cropVp.addEventListener('wheel', onCropWheel, { passive: false });
@@ -95,7 +90,6 @@ function init() {
   document.addEventListener('mousemove', onCropMouseMove);
   document.addEventListener('mouseup', onCropMouseUp);
 
-  // 缁愭褰涙径褍鐨崣妯哄
   window.addEventListener('resize', () => {
     updateCanvasSize();
     renderCanvas();
@@ -113,7 +107,6 @@ function init() {
   }
 }
 
-// --- 閺囧瓨鏌婇悽璇茬鐏忓搫顕敍鍫滅矌閺囧瓨鏌婇崘鍛村劥閸掑棜椴搁悳鍥风礉CSS鐏忓搫顕捄鐔兼閸愬懎顔愰懛顏堚偓鍌氱安閿?--
 function updateCanvasSize() {
   const cellSize = BASE_CELL_SIZE * (zoom / 100);
   const canvasPixelSize = GRID_SIZE * cellSize;
@@ -121,10 +114,8 @@ function updateCanvasSize() {
   mainCanvas.height = canvasPixelSize;
   hoverCanvas.width = canvasPixelSize;
   hoverCanvas.height = canvasPixelSize;
-  // 娑撳秴鍟€鐠佸墽鐤咰SS鐎逛粙鐝敍瀹慳nvas娴犮儱甯慨瀣瀻鏉堛劎宸煎〒鍙夌厠閿涘苯顔愰崳鈺玽erflow閹貉冨煑閸欘垵顫嗛崠鍝勭厵
 }
 
-// --- 濞撳弶鐓嬫稉鑽ゆ暰鐢?---
 function drawCanvasCenterAxes(ctx, width, height) {
   if (!canvasGuidesVisible) return;
   ctx.save();
@@ -209,7 +200,6 @@ function renderCanvas() {
 
   mainCanvas.width = w;
   mainCanvas.height = h;
-  // CSS鐏忓搫顕悽鐪俛nvas閸愬懘鍎撮崚鍡氶哺閻滃洩鍤滈悞璺哄枀鐎规熬绱濈€圭懓娅抩verflow鐟佷礁澹€
 
   mainCtx.clearRect(0, 0, w, h);
 
@@ -312,7 +302,6 @@ function toggleCanvasGuides() {
   showToast(canvasGuidesVisible ? '已显示画布辅助线' : '已隐藏画布辅助线');
 }
 
-// --- 濞撳弶鐓嬬€佃壈鍩呴崳銊╊暕鐟?---
 function renderNavigator() {
   // 读取容器实际尺寸(对齐下方控件宽度)
   var wrap = navCanvas.parentElement;
@@ -338,11 +327,9 @@ function renderNavigator() {
   updateNavigatorViewport();
 }
 
-// --- 閼惧嘲褰囬悽璇茬閸ф劖鐖ｇ€电懓绨查惃鍕剼缁辩姵鐗?---
 function getGridPos(e) {
   const rect = mainCanvas.getBoundingClientRect();
   const cellSize = BASE_CELL_SIZE * (zoom / 100);
-  // getBoundingClientRect瀹告彃瀵橀崥顐ｇ泊scroll offset
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
   const gx = Math.floor(mx / cellSize);
@@ -350,7 +337,6 @@ function getGridPos(e) {
   return { x: gx, y: gy };
 }
 
-// --- 缂佹ê鍩楅崡鏇氶嚋閸嶅繒绀?---
 function paintPixel(gx, gy) {
   if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return;
   if (gx === lastPaintedX && gy === lastPaintedY) return;
@@ -366,11 +352,9 @@ function paintPixel(gx, gy) {
   lastPaintedY = gy;
 }
 
-// --- 姒х姵鐖ｆ禍瀣╂ ---
 function onMouseDown(e) {
   if (historyOperationInProgress) return;
-  if (e.button !== 0) return; // 閸欘亜鎼锋惔鏂夸箯闁?
-  // 缁岀儤鐗?瀹革箓鏁?閳?閹锋牗瀚块獮宕囆?
+  if (e.button !== 0) return;
   if (temporaryPanKeyHeld || moveCanvasActive) {
     isPanning = true;
     panStartX = e.clientX;
@@ -454,7 +438,6 @@ function finishReplicationMarking() {
 
 function onMouseUp(e) {
   if (finishReplicationMarking()) return;
-  // 缂佹挻娼粚鐑樼壐閹锋牗瀚?
   if (isPanning && (temporaryPanKeyHeld || moveCanvasActive)) {
     isPanning = false;
     canvasContainer.classList.remove('panning');
@@ -470,7 +453,6 @@ function onMouseUp(e) {
   }
 }
 
-// --- 濠婃俺鐤嗙紓鈺傛杹閿涘牅浜掓Η鐘崇垼娴ｅ秶鐤嗘稉杞拌厬韫囧喛绱?--
 function onWheel(e) {
   e.preventDefault();
   const rect = canvasContainer.getBoundingClientRect();
@@ -505,7 +487,6 @@ function onWheel(e) {
   updateNavigatorViewport();
 }
 
-// --- 娑擃參鏁幏鏍ㄥ楠炲磭些 ---
 function onPanStart(e) {
   if (e.button === 1) {
     e.preventDefault();
@@ -528,13 +509,11 @@ function onPanMove(e) {
     return;
   }
   if (!isPanning) return;
-  // 缁岀儤鐗?瀹革箓鏁幏鏍ㄥ
   if ((temporaryPanKeyHeld || moveCanvasActive) && e.buttons === 1) {
     canvasContainer.scrollLeft = panScrollStartX - (e.clientX - panStartX);
     canvasContainer.scrollTop  = panScrollStartY - (e.clientY - panStartY);
     return;
   }
-  // 娑擃參鏁幏鏍ㄥ
   if (e.buttons === 4) {
     canvasContainer.scrollLeft = panScrollStartX - (e.clientX - panStartX);
     canvasContainer.scrollTop  = panScrollStartY - (e.clientY - panStartY);
@@ -749,7 +728,6 @@ function onTouchEnd(e) {
   }
 }
 
-// --- 閹俱倝鏀?闁插秴浠?---
 var referencePruneTimer = null;
 
 function referenceSnapshotForHistory() {
@@ -805,7 +783,7 @@ function pushUndo(snapshot) {
     historyTruncated = true;
   }
   var discardedRedo = redoStack.length > 0;
-  redoStack = []; // 閺傜増鎼锋担婊勭缁屾椽鍣搁崑姘垽
+  redoStack = [];
   if (historyTruncated || discardedRedo) scheduleReferenceAssetPrune();
 }
 
@@ -965,7 +943,6 @@ async function redo() {
   }
 }
 
-// --- 濞撳懐鈹栭悽璇茬 ---
 function clearCanvas() {
   if (historyOperationInProgress || (
     typeof conversionInProgress !== 'undefined' && conversionInProgress
@@ -993,5 +970,3 @@ function clearCanvas() {
   saveToStorage(true);
   showToast('画布已清空，可按 Ctrl+Z 撤销');
 }
-
-// --- 娣囨繂鐡ㄩ崶鍓у ---

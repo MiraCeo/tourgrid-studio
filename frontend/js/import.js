@@ -527,11 +527,9 @@ function startImport(e) {
   reader.onload = function(ev) {
     cropImg = new Image();
     cropImg.onload = function() {
-      // 閸忓牊妯夌粈鍝勮剨缁愭绱欑涵顔荤箽鐢啫鐪€瑰本鍨氶敍澶涚礉閸愬秷顓哥粻妞剧秴缂?
       document.getElementById('cropOverlay').classList.add('show');
       var vp = document.getElementById('cropViewport');
       resetCropAdjustments();
-      // 缁涘绔寸敮褑顔€鐢啫鐪悽鐔告櫏
       requestAnimationFrame(function() {
         var vpW = vp.clientWidth;
         var scale = Math.max(vpW / cropImg.width, vpW / cropImg.height);
@@ -584,7 +582,6 @@ function updateCropZoom(val) {
     )
   );
   const newScale = cropZoom / 100;
-  // 娣囨繃瀵旈崶鍓у娑擃厼绺炬稉宥呭綁
   const vp = document.getElementById('cropViewport');
   const cx = vp.clientWidth / 2;
   const cy = vp.clientHeight / 2;
@@ -1019,5 +1016,4 @@ function updateOverlayOpacity(val) {
   if (overlayVisible) renderOverlay();
 }
 
-// --- 缂傗晜鏂?---
 // 根据画布格子数动态计算最小缩放(画布撑满400px即可)

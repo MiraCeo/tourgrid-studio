@@ -1,17 +1,11 @@
-/* ============================================================
-   閸嶅繒绀岄悽鑽ょ椽鏉堟垵娅?- 閺嶇绺鹃柅鏄忕帆
-   ============================================================ */
-
-// --- 鐢悂鍣?---
 const GRID_SIZE = 24;
 const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，400% 为 1600px
-const NAV_CELL_SIZE = 4;   // 鐎佃壈鍩呴崳銊︾槨娑擃亜鍎氱槐鐘崇壐閻ㄥ嫬鏄傜€?
+const NAV_CELL_SIZE = 4;
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
 const DEFAULT_PALETTE_ID = 'natural-64-v2';
 const DEFAULT_PALETTE_VERSION = TOURGRID_NATURAL_64_V2.version;
 let documentMetadata = TourgridStorage.defaultMetadata();
 
-// --- 閼瑰弶婢橀弫鐗堝祦閿涘牆濮╅幀浣瑰絹閸欐牜鏁剧敮鍐ц厬娴ｈ法鏁ゆ０婊嗗閿?--
 function getUsedColors() {
   const colorCount = {};
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -20,13 +14,11 @@ function getUsedColors() {
       colorCount[c] = (colorCount[c] || 0) + 1;
     }
   }
-  // 閹稿濞囬悽銊╊暥濞嗭繝妾锋惔蹇ョ礉閹烘帡娅庣痪顖滄閼冲本娅?
   const sorted = Object.entries(colorCount)
     .filter(([color]) => color !== '#FFFFFF')
     .sort((a, b) => b[1] - a[1])
     .map(([color]) => color);
 
-  // 婵绮撻崠鍛儓姒涙垼澹婇崪宀€娅ч懝璇х礄閸╄櫣顢呴懝璇х礆
   if (!sorted.includes('#000000')) sorted.push('#000000');
   sorted.push('#FFFFFF');
   return sorted;
@@ -191,8 +183,7 @@ function findPaletteEntry(hex) {
   return OFFICIAL_COLORS.find(function(e) { return paletteHex(e) === hex; });
 }
 
-// --- 閻㈣绔烽悩鑸碘偓?---
-let pixelData = [];     // 2D閺佹壆绮?[y][x] = '#rrggbb'
+let pixelData = [];
 let zoom = 100;         // zoom
 let isDrawing = false;
 let lastPaintedX = -1;
@@ -300,19 +291,16 @@ function clearStorage() {
   try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
 }
 
-// --- 閹锋牗瀚块獮宕囆╅悩鑸碘偓?---
 let isPanning = false;
 let temporaryPanKeyHeld = false;
 let panStartX = 0, panStartY = 0;
 let panScrollStartX = 0, panScrollStartY = 0;
 
-// --- 閹俱倝鏀㈤弽?---
 const MAX_UNDO = 100;
 let undoStack = [];
 let redoStack = [];
 let historyOperationInProgress = false;
 
-// --- DOM瀵洜鏁?---
 let mainCanvas, mainCtx, navCanvas, navCtx, hoverCanvas, hoverCtx;
 let overlayCanvas, overlayCtx, statisticsOverlayCanvas, statisticsOverlayCtx;
 let canvasContainer, centerPanel;

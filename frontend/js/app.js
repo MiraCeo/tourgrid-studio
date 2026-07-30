@@ -1346,7 +1346,6 @@ function setWorkspacePanelMode(mode) {
   }
 }
 
-// --- 闁款喚娲忚箛顐ｅ祹闁?---
 var authorModalTrigger = null;
 var announcementModalTrigger = null;
 var ANNOUNCEMENT_SESSION_KEY = 'tourgrid-announcement-20260728';
