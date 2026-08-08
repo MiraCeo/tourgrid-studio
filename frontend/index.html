@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅行「像」框 | 24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260808-6">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260808-8">
 </head>
 <body>
 
@@ -116,7 +116,8 @@
         </svg>
         <span>导入图片</span>
       </button>
-      <input type="file" id="importFileInput" accept="image/*" style="display:none">
+      <input type="file" id="importFileInput"
+             accept="image/png,image/jpeg,image/webp" style="display:none">
 
       <button class="btn-primary" id="exportDropdownToggleBtn">
         <svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -760,7 +761,7 @@
         </div>
       </div>
     </div>
-    <div class="conversion-note" id="conversionNote">图片仅在浏览器本地处理，不会上传；目标颜色是 natural-64-v2 色板中允许使用的最大颜色数。</div>
+    <div class="conversion-note" id="conversionNote">图片仅在浏览器本地处理，不会上传；超大图片会在解码时自动安全降采样；目标颜色是 natural-64-v2 色板中允许使用的最大颜色数。</div>
     <div class="crop-btns">
       <button class="crop-btn crop-btn-cancel" id="cancelCropBtn">取消</button>
       <button class="crop-btn crop-btn-confirm" id="confirmCropBtn">确认裁切并转换</button>
@@ -768,16 +769,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260808-6"></script>
-<script src="/static/js/reference-storage.js?v=20260808-6"></script>
-<script src="/static/js/work-codec.js?v=20260808-6"></script>
-<script src="/static/js/natural-64-v2.js?v=20260808-6"></script>
-<script src="/static/js/state.js?v=20260808-6"></script>
-<script src="/static/js/editor.js?v=20260808-6"></script>
-<script src="/static/js/export.js?v=20260808-6"></script>
-<script src="/static/js/import.js?v=20260808-6"></script>
-<script src="/static/js/works.js?v=20260808-6"></script>
-<script src="/static/js/app.js?v=20260808-6"></script>
+<script src="/static/js/storage.js?v=20260808-8"></script>
+<script src="/static/js/reference-storage.js?v=20260808-8"></script>
+<script src="/static/js/work-codec.js?v=20260808-8"></script>
+<script src="/static/js/natural-64-v2.js?v=20260808-8"></script>
+<script src="/static/js/state.js?v=20260808-8"></script>
+<script src="/static/js/editor.js?v=20260808-8"></script>
+<script src="/static/js/export.js?v=20260808-8"></script>
+<script src="/static/js/import.js?v=20260808-8"></script>
+<script src="/static/js/works.js?v=20260808-8"></script>
+<script src="/static/js/app.js?v=20260808-8"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

@@ -15,6 +15,9 @@ let importedPreviewObjectUrl = null;
 let conversionInProgress = false;
 const REFERENCE_IMAGE_SIZE = 256;
 const REFERENCE_WEBP_QUALITY = 0.88;
+const IMPORT_SAFE_PIXEL_BUDGET = 6000000;
+const IMPORT_SAFE_MAX_EDGE = 4096;
+const IMPORT_HEADER_READ_LIMIT = 4 * 1024 * 1024;
 const SRGB_BYTE_TO_LINEAR = Array.from({ length: 256 }, function(_, value) {
   var normalized = value / 255;
   return normalized <= 0.04045
@@ -34,6 +37,11 @@ let cropSamplePreviewReturnMode = 'processed';
 let cropAlignmentGridVisible = true;
 let cropPreviewTimer = null;
 let cropPreviewResult = null;
+let cropImageLoadToken = 0;
+let cropImageObjectUrl = null;
+let cropViewportLastSize = 0;
+let cropViewportResizeFrame = null;
+let cropViewportResizeObserver = null;
 
 async function loadExhibitionPalette() {
   try {
@@ -826,48 +834,312 @@ function scheduleCropPreview(immediate) {
   }, 60);
 }
 
-function startImport(e) {
+function importBytesMatch(view, offset, values) {
+  if (offset < 0 || offset + values.length > view.byteLength) return false;
+  return values.every(function(value, index) {
+    return view.getUint8(offset + index) === value;
+  });
+}
+
+function readJpegExifOrientation(view, start, length) {
+  var end = Math.min(view.byteLength, start + length);
+  if (
+    start + 14 > end ||
+    !importBytesMatch(view, start, [0x45, 0x78, 0x69, 0x66, 0, 0])
+  ) return 1;
+  var tiff = start + 6;
+  var littleEndian;
+  if (importBytesMatch(view, tiff, [0x49, 0x49])) {
+    littleEndian = true;
+  } else if (importBytesMatch(view, tiff, [0x4D, 0x4D])) {
+    littleEndian = false;
+  } else {
+    return 1;
+  }
+  if (view.getUint16(tiff + 2, littleEndian) !== 42) return 1;
+  var ifdOffset = view.getUint32(tiff + 4, littleEndian);
+  var ifd = tiff + ifdOffset;
+  if (ifd + 2 > end) return 1;
+  var entryCount = view.getUint16(ifd, littleEndian);
+  for (var index = 0; index < entryCount; index++) {
+    var entry = ifd + 2 + index * 12;
+    if (entry + 12 > end) break;
+    if (
+      view.getUint16(entry, littleEndian) === 0x0112 &&
+      view.getUint16(entry + 2, littleEndian) === 3 &&
+      view.getUint32(entry + 4, littleEndian) >= 1
+    ) {
+      var orientation = view.getUint16(entry + 8, littleEndian);
+      return orientation >= 1 && orientation <= 8 ? orientation : 1;
+    }
+  }
+  return 1;
+}
+
+function readJpegDimensions(view) {
+  if (!importBytesMatch(view, 0, [0xFF, 0xD8])) return null;
+  var offset = 2;
+  var width = 0;
+  var height = 0;
+  var orientation = 1;
+  var sofMarkers = new Set([
+    0xC0, 0xC1, 0xC2, 0xC3,
+    0xC5, 0xC6, 0xC7,
+    0xC9, 0xCA, 0xCB,
+    0xCD, 0xCE, 0xCF
+  ]);
+  while (offset + 4 <= view.byteLength) {
+    while (offset < view.byteLength && view.getUint8(offset) === 0xFF) offset++;
+    if (offset >= view.byteLength) break;
+    var marker = view.getUint8(offset++);
+    if (marker === 0xD9 || marker === 0xDA) break;
+    if (marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) continue;
+    if (offset + 2 > view.byteLength) break;
+    var segmentLength = view.getUint16(offset, false);
+    if (segmentLength < 2 || offset + segmentLength > view.byteLength) break;
+    var dataStart = offset + 2;
+    var dataLength = segmentLength - 2;
+    if (marker === 0xE1) {
+      var parsedOrientation = readJpegExifOrientation(view, dataStart, dataLength);
+      if (parsedOrientation !== 1 || orientation === 1) {
+        orientation = parsedOrientation;
+      }
+    } else if (sofMarkers.has(marker) && dataLength >= 5) {
+      height = view.getUint16(dataStart + 1, false);
+      width = view.getUint16(dataStart + 3, false);
+    }
+    offset += segmentLength;
+  }
+  if (!width || !height) return null;
+  if (orientation >= 5 && orientation <= 8) {
+    var rotatedWidth = height;
+    height = width;
+    width = rotatedWidth;
+  }
+  return { width: width, height: height, format: 'JPEG' };
+}
+
+function readPngDimensions(view) {
+  if (!importBytesMatch(view, 0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
+    return null;
+  }
+  if (view.byteLength < 24) return null;
+  var width = view.getUint32(16, false);
+  var height = view.getUint32(20, false);
+  return width && height ? { width: width, height: height, format: 'PNG' } : null;
+}
+
+function readWebpDimensions(view) {
+  if (
+    !importBytesMatch(view, 0, [0x52, 0x49, 0x46, 0x46]) ||
+    !importBytesMatch(view, 8, [0x57, 0x45, 0x42, 0x50])
+  ) return null;
+  var offset = 12;
+  while (offset + 8 <= view.byteLength) {
+    var chunkType = String.fromCharCode(
+      view.getUint8(offset),
+      view.getUint8(offset + 1),
+      view.getUint8(offset + 2),
+      view.getUint8(offset + 3)
+    );
+    var chunkSize = view.getUint32(offset + 4, true);
+    var dataStart = offset + 8;
+    if (dataStart + chunkSize > view.byteLength) break;
+    if (chunkType === 'VP8X' && chunkSize >= 10) {
+      return {
+        width: 1 + view.getUint8(dataStart + 4) +
+          (view.getUint8(dataStart + 5) << 8) +
+          (view.getUint8(dataStart + 6) << 16),
+        height: 1 + view.getUint8(dataStart + 7) +
+          (view.getUint8(dataStart + 8) << 8) +
+          (view.getUint8(dataStart + 9) << 16),
+        format: 'WebP'
+      };
+    }
+    if (
+      chunkType === 'VP8 ' && chunkSize >= 10 &&
+      importBytesMatch(view, dataStart + 3, [0x9D, 0x01, 0x2A])
+    ) {
+      return {
+        width: view.getUint16(dataStart + 6, true) & 0x3FFF,
+        height: view.getUint16(dataStart + 8, true) & 0x3FFF,
+        format: 'WebP'
+      };
+    }
+    if (
+      chunkType === 'VP8L' && chunkSize >= 5 &&
+      view.getUint8(dataStart) === 0x2F
+    ) {
+      var bits1 = view.getUint8(dataStart + 1);
+      var bits2 = view.getUint8(dataStart + 2);
+      var bits3 = view.getUint8(dataStart + 3);
+      var bits4 = view.getUint8(dataStart + 4);
+      return {
+        width: 1 + bits1 + ((bits2 & 0x3F) << 8),
+        height: 1 + ((bits2 & 0xC0) >> 6) + (bits3 << 2) +
+          ((bits4 & 0x0F) << 10),
+        format: 'WebP'
+      };
+    }
+    offset = dataStart + chunkSize + (chunkSize % 2);
+  }
+  return null;
+}
+
+async function readImportImageDimensions(file) {
+  var header = await file.slice(
+    0,
+    Math.min(file.size, IMPORT_HEADER_READ_LIMIT)
+  ).arrayBuffer();
+  var view = new DataView(header);
+  var dimensions = readPngDimensions(view) ||
+    readJpegDimensions(view) ||
+    readWebpDimensions(view);
+  if (
+    !dimensions ||
+    !dimensions.width ||
+    !dimensions.height ||
+    dimensions.width > 100000 ||
+    dimensions.height > 100000 ||
+    !Number.isSafeInteger(dimensions.width * dimensions.height)
+  ) {
+    throw new Error('无法安全读取图片尺寸，请选择有效的 PNG、JPEG 或 WebP 图片。');
+  }
+  return dimensions;
+}
+
+function safeImportDimensions(dimensions) {
+  var width = dimensions.width;
+  var height = dimensions.height;
+  var scale = Math.min(
+    1,
+    IMPORT_SAFE_MAX_EDGE / width,
+    IMPORT_SAFE_MAX_EDGE / height,
+    Math.sqrt(IMPORT_SAFE_PIXEL_BUDGET / (width * height))
+  );
+  return {
+    width: Math.max(1, Math.floor(width * scale)),
+    height: Math.max(1, Math.floor(height * scale)),
+    downsampled: scale < 1
+  };
+}
+
+function loadImportHtmlImage(file) {
+  return new Promise(function(resolve, reject) {
+    var objectUrl = URL.createObjectURL(file);
+    var image = new Image();
+    image.onload = function() {
+      resolve({ image: image, objectUrl: objectUrl });
+    };
+    image.onerror = function() {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('无法读取该图片，请选择 PNG、JPEG 或 WebP 文件。'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function decodeImportImage(file, dimensions) {
+  var target = safeImportDimensions(dimensions);
+  if (typeof window.createImageBitmap === 'function') {
+    try {
+      var bitmap = target.downsampled
+        ? await window.createImageBitmap(file, {
+          resizeWidth: target.width,
+          resizeHeight: target.height,
+          resizeQuality: 'high'
+        })
+        : await window.createImageBitmap(file);
+      return {
+        image: bitmap,
+        objectUrl: null,
+        downsampled: target.downsampled,
+        originalWidth: dimensions.width,
+        originalHeight: dimensions.height
+      };
+    } catch (error) {
+      if (target.downsampled) {
+        throw new Error('浏览器无法安全缩小这张超大图片，请先在系统相册中降低分辨率。');
+      }
+    }
+  } else if (target.downsampled) {
+    throw new Error('当前浏览器不支持超大图片安全降采样，请先降低图片分辨率。');
+  }
+  var fallback = await loadImportHtmlImage(file);
+  return {
+    image: fallback.image,
+    objectUrl: fallback.objectUrl,
+    downsampled: false,
+    originalWidth: dimensions.width,
+    originalHeight: dimensions.height
+  };
+}
+
+function disposeCropImage(image, objectUrl) {
+  if (image && typeof image.close === 'function') image.close();
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+}
+
+async function startImport(e) {
   var file = e.target.files[0];
   if (!file) return;
-  setConversionStatus('', false, false);
-  var reader = new FileReader();
-  reader.onload = function(ev) {
-    cropImg = new Image();
-    cropImg.onload = function() {
-      document.getElementById('cropOverlay').classList.add('show');
-      var vp = document.getElementById('cropViewport');
-      resetCropAdjustments();
-      requestAnimationFrame(function() {
-        var vpW = vp.clientWidth;
-        var scale = Math.max(vpW / cropImg.width, vpW / cropImg.height);
-        cropZoom = Math.max(1, Math.round(scale * 100));
-        cropMinimumZoom = Math.min(10, cropZoom);
-        cropMaximumZoom = Math.max(500, cropZoom * 2);
-        var initialScale = cropZoom / 100;
-        cropImgX = (vpW - cropImg.width * initialScale) / 2;
-        cropImgY = (vpW - cropImg.height * initialScale) / 2;
-        cropInitialZoom = cropZoom;
-        cropInitialImgX = cropImgX;
-        cropInitialImgY = cropImgY;
-        var zoomSlider = document.getElementById('cropZoomSlider');
-        zoomSlider.min = cropMinimumZoom;
-        zoomSlider.max = cropMaximumZoom;
-        zoomSlider.value = cropZoom;
-        document.getElementById('cropZoomVal').textContent = cropZoom + '%';
-        applyCropTransform();
-        scheduleCropPreview(true);
-      });
-    };
-    cropImg.onerror = function() {
-      setConversionStatus('无法读取该图片，请选择 PNG、JPEG 或 WebP 文件。', true, false);
-    };
-    cropImg.src = ev.target.result;
-  };
-  reader.onerror = function() {
-    setConversionStatus('读取图片失败，请重试。', true, false);
-  };
-  reader.readAsDataURL(file);
   e.target.value = '';
+  var loadToken = ++cropImageLoadToken;
+  setConversionStatus('', false, false);
+  try {
+    var dimensions = await readImportImageDimensions(file);
+    var safeDimensions = safeImportDimensions(dimensions);
+    if (safeDimensions.downsampled) showToast('正在安全缩小超大图片…');
+    var decoded = await decodeImportImage(file, dimensions);
+    if (loadToken !== cropImageLoadToken) {
+      disposeCropImage(decoded.image, decoded.objectUrl);
+      return;
+    }
+
+    disposeCropImage(cropImg, cropImageObjectUrl);
+    cropImg = decoded.image;
+    cropImageObjectUrl = decoded.objectUrl;
+    cropPreviewResult = null;
+    cropViewportLastSize = 0;
+    document.getElementById('cropOverlay').classList.add('show');
+    var vp = document.getElementById('cropViewport');
+    resetCropAdjustments();
+    requestAnimationFrame(function() {
+      if (loadToken !== cropImageLoadToken || !cropImg) return;
+      var vpW = vp.clientWidth;
+      cropViewportLastSize = vpW;
+      var scale = Math.max(vpW / cropImg.width, vpW / cropImg.height);
+      cropZoom = Math.max(1, Math.round(scale * 100));
+      cropMinimumZoom = Math.min(10, cropZoom);
+      cropMaximumZoom = Math.max(500, cropZoom * 2);
+      var initialScale = cropZoom / 100;
+      cropImgX = (vpW - cropImg.width * initialScale) / 2;
+      cropImgY = (vpW - cropImg.height * initialScale) / 2;
+      cropInitialZoom = cropZoom;
+      cropInitialImgX = cropImgX;
+      cropInitialImgY = cropImgY;
+      var zoomSlider = document.getElementById('cropZoomSlider');
+      zoomSlider.min = cropMinimumZoom;
+      zoomSlider.max = cropMaximumZoom;
+      zoomSlider.value = cropZoom;
+      document.getElementById('cropZoomVal').textContent = cropZoom + '%';
+      applyCropTransform();
+      scheduleCropPreview(true);
+      if (decoded.downsampled) {
+        showToast(
+          '超大图片已从 ' + decoded.originalWidth + '×' + decoded.originalHeight +
+          ' 安全缩小为 ' + cropImg.width + '×' + cropImg.height
+        );
+      }
+    });
+  } catch (error) {
+    if (loadToken !== cropImageLoadToken) return;
+    var message = error && error.message
+      ? error.message
+      : '读取图片失败，请重试。';
+    setConversionStatus(message, true, false);
+    showToast(message);
+  }
 }
 
 function isCropResetControlTarget(target) {
@@ -906,7 +1178,7 @@ function resetCropTransform(event) {
 
 function applyCropTransform() {
   const img = document.getElementById('cropImage');
-  img.src = cropImg.src;
+  img.removeAttribute('src');
   img.style.display = 'none';
   const scale = cropZoom / 100;
   img.style.width = (cropImg.width * scale) + 'px';
@@ -915,6 +1187,90 @@ function applyCropTransform() {
   img.style.top = cropImgY + 'px';
   syncCropResetControl();
   scheduleCropPreview();
+}
+
+function transformCropForViewportSize(oldSize, newSize, zoomValue, x, y) {
+  var oldScale = zoomValue / 100;
+  var sourceCenterX = (oldSize / 2 - x) / oldScale;
+  var sourceCenterY = (oldSize / 2 - y) / oldScale;
+  var newZoom = Math.max(1, Math.round(zoomValue * newSize / oldSize));
+  var newScale = newZoom / 100;
+  return {
+    zoom: newZoom,
+    x: newSize / 2 - sourceCenterX * newScale,
+    y: newSize / 2 - sourceCenterY * newScale
+  };
+}
+
+function syncCropViewportSize() {
+  var overlay = document.getElementById('cropOverlay');
+  var viewport = document.getElementById('cropViewport');
+  if (!cropImg || !overlay || !viewport || !overlay.classList.contains('show')) {
+    return;
+  }
+  var newSize = viewport.clientWidth;
+  if (!newSize) return;
+  if (!cropViewportLastSize) {
+    cropViewportLastSize = newSize;
+    return;
+  }
+  if (Math.abs(newSize - cropViewportLastSize) < 0.5) return;
+
+  var current = transformCropForViewportSize(
+    cropViewportLastSize,
+    newSize,
+    cropZoom,
+    cropImgX,
+    cropImgY
+  );
+  var initial = transformCropForViewportSize(
+    cropViewportLastSize,
+    newSize,
+    cropInitialZoom,
+    cropInitialImgX,
+    cropInitialImgY
+  );
+  cropViewportLastSize = newSize;
+  cropZoom = current.zoom;
+  cropImgX = current.x;
+  cropImgY = current.y;
+  cropInitialZoom = initial.zoom;
+  cropInitialImgX = initial.x;
+  cropInitialImgY = initial.y;
+  cropMinimumZoom = Math.min(10, cropInitialZoom, cropZoom);
+  cropMaximumZoom = Math.max(500, cropInitialZoom * 2, cropZoom);
+
+  var slider = document.getElementById('cropZoomSlider');
+  slider.min = cropMinimumZoom;
+  slider.max = cropMaximumZoom;
+  slider.value = cropZoom;
+  document.getElementById('cropZoomVal').textContent = cropZoom + '%';
+  applyCropTransform();
+  scheduleCropPreview(true);
+}
+
+function scheduleCropViewportSizeSync() {
+  if (cropViewportResizeFrame) return;
+  cropViewportResizeFrame = requestAnimationFrame(function() {
+    cropViewportResizeFrame = null;
+    syncCropViewportSize();
+  });
+}
+
+function initializeCropViewportResizeHandling() {
+  var viewport = document.getElementById('cropViewport');
+  if (!viewport) return;
+  if (typeof ResizeObserver === 'function') {
+    if (!cropViewportResizeObserver) {
+      cropViewportResizeObserver = new ResizeObserver(
+        scheduleCropViewportSizeSync
+      );
+      cropViewportResizeObserver.observe(viewport);
+    }
+    return;
+  }
+  window.addEventListener('resize', scheduleCropViewportSizeSync);
+  window.addEventListener('orientationchange', scheduleCropViewportSizeSync);
 }
 
 function updateCropZoom(val) {
@@ -1297,10 +1653,16 @@ async function restoreReferenceFromHistory(referenceSnapshot) {
 
 function cancelCrop() {
   document.getElementById('cropOverlay').classList.remove('show');
+  cropImageLoadToken++;
   if (cropPreviewTimer) clearTimeout(cropPreviewTimer);
   cropPreviewTimer = null;
+  if (cropViewportResizeFrame) cancelAnimationFrame(cropViewportResizeFrame);
+  cropViewportResizeFrame = null;
+  cropViewportLastSize = 0;
   cropPreviewResult = null;
+  disposeCropImage(cropImg, cropImageObjectUrl);
   cropImg = null;
+  cropImageObjectUrl = null;
 }
 
 function reImportCurrent() {
@@ -1313,6 +1675,7 @@ function reImportCurrent() {
   document.getElementById('cropOverlay').classList.add('show');
   applyCropTransform();
   scheduleCropPreview(true);
+  scheduleCropViewportSizeSync();
   showToast('已重新打开裁切');
 }
 

@@ -1713,14 +1713,21 @@ def test_mobile_landscape_crop_keeps_large_image_zoom_and_actions_visible(
     slider = editor_page.locator("#cropZoomSlider")
     expect(overlay).to_be_visible()
     editor_page.wait_for_function(
-        "() => Number(document.querySelector('#cropZoomSlider').value) < 10"
+        "() => TourgridTest.getState().cropImageSize !== null"
     )
+
+    crop_image_size = editor_state(editor_page)["cropImageSize"]
+    assert crop_image_size["width"] <= 4096
+    assert crop_image_size["height"] <= 4096
+    assert crop_image_size["width"] * crop_image_size["height"] <= 6_000_000
+    assert crop_image_size["width"] < 4096
+    assert crop_image_size["height"] < 3072
 
     zoom_range = slider.evaluate(
         "slider => ({min: Number(slider.min), value: Number(slider.value)})"
     )
-    assert 1 <= zoom_range["value"] < 10
-    assert zoom_range["min"] == zoom_range["value"]
+    assert 1 <= zoom_range["value"] < 20
+    assert zoom_range["min"] == min(10, zoom_range["value"])
 
     viewport_box = viewport.bounding_box()
     options_box = options.bounding_box()
@@ -1791,6 +1798,62 @@ def test_mobile_landscape_crop_keeps_large_image_zoom_and_actions_visible(
         }"""
     )
     assert int(slider.input_value()) == tiny_zoom_range["max"]
+
+
+def test_crop_keeps_same_source_region_when_viewport_resizes(
+    editor_page: Page,
+) -> None:
+    editor_page.set_viewport_size({"width": 640, "height": 360})
+    editor_page.locator("#importFileInput").set_input_files(
+        str(FIXTURES / "avatar-reference-synthetic.png")
+    )
+    expect(editor_page.locator("#cropOverlay")).to_be_visible()
+    editor_page.wait_for_function(
+        """() => {
+          const crop = TourgridTest.getState().cropTransform;
+          return crop && crop.viewportSize > 0;
+        }"""
+    )
+
+    viewport = editor_page.locator("#cropViewport")
+    viewport_box = viewport.bounding_box()
+    assert viewport_box is not None
+    editor_page.mouse.move(
+        viewport_box["x"] + viewport_box["width"] / 2,
+        viewport_box["y"] + viewport_box["height"] / 2,
+    )
+    editor_page.mouse.down()
+    editor_page.mouse.move(
+        viewport_box["x"] + viewport_box["width"] / 2 + 18,
+        viewport_box["y"] + viewport_box["height"] / 2 + 12,
+    )
+    editor_page.mouse.up()
+
+    before = editor_state(editor_page)["cropTransform"]
+    editor_page.set_viewport_size({"width": 800, "height": 500})
+    editor_page.wait_for_function(
+        """previousSize => {
+          const crop = TourgridTest.getState().cropTransform;
+          return crop && crop.viewportSize !== previousSize;
+        }""",
+        before["viewportSize"],
+    )
+    after = editor_state(editor_page)["cropTransform"]
+
+    def source_region(transform: dict[str, float]) -> tuple[float, float, float]:
+        scale = transform["zoom"] / 100
+        size = transform["viewportSize"]
+        return (
+            (size / 2 - transform["x"]) / scale,
+            (size / 2 - transform["y"]) / scale,
+            size / scale,
+        )
+
+    before_region = source_region(before)
+    after_region = source_region(after)
+    assert after_region[0] == pytest.approx(before_region[0], abs=0.1)
+    assert after_region[1] == pytest.approx(before_region[1], abs=0.1)
+    assert after_region[2] == pytest.approx(before_region[2], rel=0.01)
 
 
 def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:

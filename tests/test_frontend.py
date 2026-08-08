@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260808-6"
+    asset_version = "20260808-8"
 
     assert (
         f'<link rel="stylesheet" '
@@ -116,6 +116,7 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert not (JAVASCRIPT_ROOT / "conversion-api.js").exists()
     assert "K-means" not in image_import
     assert 'id="cropTargetColorCount"' in source
+    assert 'accept="image/png,image/jpeg,image/webp"' in source
     assert 'id="cropSamplingMode"' in source
     assert '<option value="photo" selected>照片（平滑）</option>' in source
     assert '<option value="pixel">像素画（清晰）</option>' in source
@@ -173,6 +174,17 @@ def test_local_converter_keeps_optional_dithering() -> None:
     assert "let viewMode" not in source
     assert "id=\"viewMode\"" not in source
     assert "canvasPixelData" not in source
+    assert "IMPORT_SAFE_PIXEL_BUDGET = 6000000" in source
+    assert "IMPORT_SAFE_MAX_EDGE = 4096" in source
+    assert "readJpegDimensions" in source
+    assert "readPngDimensions" in source
+    assert "readWebpDimensions" in source
+    assert "window.createImageBitmap(file" in source
+    assert "resizeQuality: 'high'" in source
+    assert "reader.readAsDataURL" not in source
+    assert "new ResizeObserver" in source
+    assert "transformCropForViewportSize" in source
+    assert "initializeCropViewportResizeHandling();" in source
 
 
 def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
@@ -363,6 +375,8 @@ def test_import_ui_supports_local_retry_status_and_touch_crop() -> None:
     assert "onCropTouchMove" in source
     assert "resetCropTransform" in source
     assert "syncCropResetControl" in source
+    assert "decodeImportImage" in source
+    assert "disposeCropImage" in source
     assert "touch-action: none" in source
     assert 'id="cropZoomSlider" min="1" max="500"' in source
     assert "cropMinimumZoom = Math.min(10, cropZoom)" in source

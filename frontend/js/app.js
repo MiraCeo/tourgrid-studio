@@ -2156,6 +2156,7 @@ function bindStaticControls() {
   on('conversionRetryBtn', 'click', confirmCrop);
   on('cancelCropBtn', 'click', cancelCrop);
   on('confirmCropBtn', 'click', confirmCrop);
+  initializeCropViewportResizeHandling();
 
   on('publishWorkMenuBtn', 'click', function() {
     openWorkShareModal('publish');
@@ -2213,6 +2214,16 @@ function installTourgridTestApi() {
         moveCanvasActive: moveCanvasActive,
         hoveredCanvasCell: hoveredCanvasCell,
         converterVersion: documentMetadata.converterVersion,
+        cropImageSize: cropImg ? {
+          width: cropImg.width,
+          height: cropImg.height
+        } : null,
+        cropTransform: cropImg ? {
+          zoom: cropZoom,
+          x: cropImgX,
+          y: cropImgY,
+          viewportSize: cropViewportLastSize
+        } : null,
         conversionInProgress: conversionInProgress,
         historyOperationInProgress: historyOperationInProgress
       };
