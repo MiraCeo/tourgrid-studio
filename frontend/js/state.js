@@ -2,15 +2,19 @@ const GRID_SIZE = 24;
 const BASE_CELL_SIZE = 50 / 3; // 100% 为 400px，400% 为 1600px
 const NAV_CELL_SIZE = 4;
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
-const DEFAULT_PALETTE_ID = 'natural-64-v2';
-const DEFAULT_PALETTE_VERSION = TOURGRID_NATURAL_64_V2.version;
+const DEFAULT_PALETTE_ID = 'official-40-v1';
+const DEFAULT_PALETTE_VERSION = TOURGRID_OFFICIAL_40_V1.version;
 let documentMetadata = TourgridStorage.defaultMetadata();
+
+function normalizePixelValue(value) {
+  return String(value || '').toUpperCase();
+}
 
 function getUsedColors() {
   const colorCount = {};
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
-      const c = pixelData[y][x];
+      const c = normalizePixelValue(pixelData[y][x]);
       colorCount[c] = (colorCount[c] || 0) + 1;
     }
   }
@@ -19,7 +23,7 @@ function getUsedColors() {
     .sort((a, b) => b[1] - a[1])
     .map(([color]) => color);
 
-  if (!sorted.includes('#000000')) sorted.push('#000000');
+  if (!sorted.includes('#222222')) sorted.push('#222222');
   sorted.push('#FFFFFF');
   return sorted;
 }
@@ -31,7 +35,7 @@ function updateColorUsageSummary() {
   var total = 0;
   for (var y = 0; y < GRID_SIZE; y++) {
     for (var x = 0; x < GRID_SIZE; x++) {
-      var color = pixelData[y][x].toUpperCase();
+      var color = normalizePixelValue(pixelData[y][x]);
       counts[color] = (counts[color] || 0) + 1;
       total++;
     }
@@ -110,7 +114,7 @@ function markSharedWorkAsEdited() {
 let overlayVisible = false;   // overlay toggle state
 let overlayOpacity = 0.4;      // overlay opacity
 let referenceState = TourgridStorage.defaultReference();
-let currentColor = '#242424';
+let currentColor = '#222222';
 let currentTool = 'brush';
 let eyedropperActive = false;
 let moveCanvasActive = false;
@@ -136,8 +140,8 @@ let colorBeforeReplication = null;
 let replicationSelectionChanged = false;
 let canvasGuidesVisible = true;
 
-// 当前临时64色色板。
-const EXHIBITION_DATA = TOURGRID_NATURAL_64_V2.colors.map(function(color) {
+// 当前官方 40 色色板；#FFFFFF 同时用于白色与橡皮。
+const EXHIBITION_DATA = TOURGRID_OFFICIAL_40_V1.colors.map(function(color) {
   return {code: color.code, hex: color.hex, name: color.name};
 });
 
@@ -146,7 +150,7 @@ let OFFICIAL_COLORS = EXHIBITION_DATA;
 
 // 保留单项定义以兼容旧存档恢复流程；旧色板 ID 会回落到当前色板。
 const PALETTE_DEFS = [
-  { id: 'exhibition', label: '临时64色色板', colors: EXHIBITION_DATA, color: '#80D8F0' }
+  { id: 'exhibition', label: '官方40色色板', colors: EXHIBITION_DATA, color: '#80D8F0' }
 ];
 let currentPaletteId = 'exhibition';
 

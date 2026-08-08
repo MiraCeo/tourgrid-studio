@@ -21,9 +21,9 @@ from .helpers import (
 
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-BLACK = "#242424"
+BLACK = "#222222"
 WHITE = "#FFFFFF"
-RED = "#D22F34"
+RED = "#D32F36"
 
 
 pytestmark = pytest.mark.browser
@@ -39,8 +39,8 @@ def test_initial_editor_is_blank_and_uses_the_fixed_palette(
     assert len(state["pixels"]) == 24
     assert all(len(row) == 24 for row in state["pixels"])
     assert all(color == WHITE for row in state["pixels"] for color in row)
-    assert len(state["palette"]) == 64
-    assert len(set(state["palette"])) == 64
+    assert len(state["palette"]) == 40
+    assert len(set(state["palette"])) == 40
     assert state["reference"]["assetId"] is None
     assert editor_page.locator("#overlayControls").is_hidden()
 
@@ -64,7 +64,7 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
     )
     assert editor_page.locator(
         "#replacementGrid .color-statistics-color"
-    ).count() == 64
+    ).count() == 40
     related_button = editor_page.locator("#replacementRelatedBtn")
     expect(related_button).to_be_disabled()
     statistics_sort = editor_page.locator("#replacementSort")
@@ -191,7 +191,7 @@ def test_replacement_mode_replaces_multiple_colors_with_one_undo(
           };
         }"""
     )
-    assert overlay_feedback["sourcePreview"] == [210, 47, 52, 255]
+    assert overlay_feedback["sourcePreview"] == [211, 47, 54, 255]
     assert overlay_feedback["existingTargetCenter"][3] == 0
     assert overlay_feedback["existingTargetEdge"][3] == 0
 
@@ -332,7 +332,7 @@ def test_canvas_guides_toggle_hides_visual_aids_and_persists(
 
     editor_page.locator("#replicationTab").click()
     editor_page.locator(
-        '.statistics-color[data-color="#FFFFFF"]'
+        f'.statistics-color[data-color="{WHITE}"]'
     ).click()
     expect(editor_page.locator("#overlayCanvas")).to_be_hidden()
 
@@ -1878,7 +1878,7 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
             content_type="application/json",
             body=(
                 '{"code":"' + code + '","schemaVersion":1,'
-                '"paletteId":"natural-64-v2","paletteVersion":2,'
+                '"paletteId":"official-40-v1","paletteVersion":1,'
                 '"pixels":"' + published_payload["pixels"] + '",'
                 '"authorName":"博士","title":"很糊的画","viewCount":0,'
                 '"createdAt":"2026-07-27T00:00:00Z"}'
@@ -1891,7 +1891,7 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
             content_type="application/json",
             body=(
                 '{"code":"' + code + '","schemaVersion":1,'
-                '"paletteId":"natural-64-v2","paletteVersion":2,'
+                '"paletteId":"official-40-v1","paletteVersion":1,'
                 '"pixels":"' + all_black_payload + '",'
                 '"authorName":"博士","title":"很糊的画","viewCount":1,'
                 '"createdAt":"2026-07-27T00:00:00Z"}'
@@ -1938,8 +1938,8 @@ def test_shared_work_publish_and_load_round_trip(editor_page: Page) -> None:
     assert editor_page.evaluate("navigator.clipboard.readText()") == share_link
 
     assert published_payload["schemaVersion"] == 1
-    assert published_payload["paletteId"] == "natural-64-v2"
-    assert published_payload["paletteVersion"] == 2
+    assert published_payload["paletteId"] == "official-40-v1"
+    assert published_payload["paletteVersion"] == 1
     assert published_payload["title"] == "很糊的画"
     assert published_payload["authorName"] == "博士"
     encoded = str(published_payload["pixels"])

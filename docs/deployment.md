@@ -13,7 +13,7 @@
 FastAPI不向宿主机公开端口，只允许Caddy通过Compose内部网络访问。PostgreSQL
 只绑定宿主机回环地址，作品数据保存在 `postgres_data` 卷中。
 
-图片导入和64色转换完全在浏览器中执行，API容器不安装科学计算或图片解码依赖。
+图片导入和官方色板转换完全在浏览器中执行，API容器不安装科学计算或图片解码依赖。
 本地环境和正式环境的Web端口都只绑定 `127.0.0.1`；正式环境由同一宿主机上的
 Nginx终止公网TLS并代理到8081。测试环境示例可让Caddy直接监听 `0.0.0.0`
 接受外部流量。
@@ -238,16 +238,36 @@ FastAPI、Caddy、Redis、管理员接口或浏览器。该测试数据库由CI�
 
 ## 色板兼容规则
 
-当前运行时色板是候选版 `natural-64-v2`。旧 `natural-64-v1` 仅保存在
-`palettes/archive/` 和 `frontend/js/archive/` 作为早期探索记录，API和浏览器
-运行时均不读取；因此本次切换要求部署前清理旧作品数据，并使旧版浏览器存档失效。
+当前默认运行时色板是官方版 `official-40-v1`，包含40种颜色；`#FFFFFF` 同时
+用于白色、空白画布和橡皮。`natural-64-v2` 暂时保留为旧作品迁移所需的只读
+定义；旧 `natural-64-v1` 仅作为早期探索记录保存在归档目录。
 上线前验证：
 
-- `/api/v1/palettes/natural-64-v2` 返回64色且版本为2；
+- `/api/v1/palettes/official-40-v1` 返回40种颜色且版本为1；
 - `/api/v1/palettes/natural-64-v1` 返回404；
-- 新作品明确记录 `natural-64-v2` 和palette version 2；
-- 浏览器不会按v2颜色顺序解码旧v1索引；
-- 数据清理仅针对旧作品和相关引用，不应误删用户、管理员或审计等无关数据。
+- 新作品明确记录 `official-40-v1` 和palette version 1；
+- 部署默认色板前，先完成旧 `natural-64-v2` 作品的事务性映射迁移；
+- 迁移时保留作品分享码、作者、标题、浏览量和审核记录，只更新像素编码、色板
+  元数据与内容摘要。
 
-v2中的32个扩展色仍是项目预测色，不应在界面、文档或发布说明中称为官方颜色。
-以后以新增官方来源替换预测色时，应先设计明确的作品转换和兼容接口。
+不得只把旧记录的 `palette_id` 改名；旧索引必须先用64色色板解码，再映射到
+官方颜色并重新打包，否则同一索引会被解释成完全不同的颜色。
+
+迁移工具默认为只读预演。正式执行前先备份数据库：
+
+```bash
+docker compose --env-file deploy/production.env exec -T db \
+  pg_dump -U tourgrid -d tourgrid -Fc > tourgrid-before-official-40.dump
+
+docker compose --env-file deploy/production.env exec -T api \
+  python -m backend.palette_migration
+
+docker compose --env-file deploy/production.env exec -T api \
+  python -m backend.palette_migration --apply
+```
+
+脚本使用与前端一致的加权RGB距离（R×2、G×4、B×3），将旧色板的全部64色映射
+到距离最近的40种官方颜色；旧白色会精确映射到官方 `#FFFFFF`。它会在一个事务
+中更新 `works` 和对应的 `work_tombstones`，并在不同分享码映射成同一新内容、或
+与已有官方色板作品/墓碑冲突时完全中止。已彻底清除、没有像素数据的记录无法重建，
+会保留原色板元数据与墓碑。

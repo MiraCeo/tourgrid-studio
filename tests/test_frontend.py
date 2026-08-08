@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260808-8"
+    asset_version = "20260808-9"
 
     assert (
         f'<link rel="stylesheet" '
@@ -51,7 +51,7 @@ def test_frontend_is_split_into_ordered_assets() -> None:
         "storage.js",
         "reference-storage.js",
         "work-codec.js",
-        "natural-64-v2.js",
+        "official-40-v1.js",
         "state.js",
         "editor.js",
         "export.js",
@@ -103,7 +103,7 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert 'id="conversionCancelBtn"' not in source
     assert '<option value="none" selected>' in source
     assert "var fullPalette = EXHIBITION_DATA.map" in source
-    assert "fullPalette.length !== 64" in source
+    assert "fullPalette.length !== 40" in source
     assert "browser-weighted-rgb-hue-guard-dither-v6-" in source
     assert "paletteId: DEFAULT_PALETTE_ID" in source
     assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
@@ -238,7 +238,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert '<option value="count-desc" selected>' in html
     assert '<option value="count-asc">' in html
     assert '<option value="palette-order">' in html
-    assert "临时色板 · 64色" in html
+    assert "官方色板 · 40色" in html
     assert html.index('id="replicationGrid"') < html.index('id="colorUsageSummary"')
 
     assert "const MARD_DATA" not in state
@@ -342,7 +342,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "document.querySelectorAll('.conversion-result-summary')" in state
 
 
-def test_embedded_local_palette_matches_versioned_json() -> None:
+def test_embedded_official_palette_matches_versioned_json() -> None:
     script = r"""
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -350,7 +350,7 @@ const embedded = require(process.argv[1]);
 const source = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 assert.equal(embedded.id, source.id);
 assert.equal(embedded.version, source.version);
-assert.equal(embedded.colors.length, 64);
+assert.equal(embedded.colors.length, 40);
 assert.deepEqual(
   embedded.colors.map(({code, hex, name}) => ({code, hex, name})),
   source.colors.map(({id, hex, name}) => ({code: id, hex, name}))
@@ -358,8 +358,8 @@ assert.deepEqual(
 """
     run_node(
         script,
-        JAVASCRIPT_ROOT / "natural-64-v2.js",
-        PROJECT_ROOT / "palettes" / "natural-64-v2.json",
+        JAVASCRIPT_ROOT / "official-40-v1.js",
+        PROJECT_ROOT / "palettes" / "official-40-v1.json",
     )
 
 
@@ -473,9 +473,13 @@ def test_shared_work_codec_round_trips_432_byte_payload() -> None:
     script = r"""
 const assert = require('node:assert/strict');
 const codec = require(process.argv[1]);
-const palette = require(process.argv[2]).colors;
+const definition = require(process.argv[2]);
+const palette = definition.colors;
 const pixels = Array.from({length: 24}, (_, y) =>
-  Array.from({length: 24}, (_, x) => palette[(y * 24 + x) % 64].hex)
+  Array.from({length: 24}, (_, x) => {
+    const entry = palette[(y * 24 + x) % palette.length];
+    return entry.hex;
+  })
 );
 const encoded = codec.packPixels(pixels, palette);
 assert.equal(encoded.length, 576);
@@ -494,7 +498,7 @@ assert.throws(
     run_node(
         script,
         JAVASCRIPT_ROOT / "work-codec.js",
-        JAVASCRIPT_ROOT / "natural-64-v2.js",
+        JAVASCRIPT_ROOT / "official-40-v1.js",
     )
 
 
@@ -568,7 +572,7 @@ assert.equal(storage.migrate({gridSize: 2, pixels: [['#FFFFFF', '#000000'], ['#F
 const serialized = storage.serialize({
   gridSize: 24,
   pixels,
-  metadata: {sourceMode: 'server', paletteId: 'natural-64-v2'},
+  metadata: {sourceMode: 'server', paletteId: 'official-40-v1'},
   reference: {
     assetId: 'active-reference',
     mimeType: 'image/webp',
@@ -579,7 +583,7 @@ const serialized = storage.serialize({
   }
 });
 assert.equal(serialized.metadata.sourceMode, 'server');
-assert.equal(serialized.metadata.paletteId, 'natural-64-v2');
+assert.equal(serialized.metadata.paletteId, 'official-40-v1');
 assert.equal(serialized.reference.assetId, 'active-reference');
 assert.equal(serialized.reference.visible, true);
 assert.equal(serialized.reference.opacity, 0.75);

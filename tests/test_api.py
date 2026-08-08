@@ -27,7 +27,9 @@ def client(settings: ApiSettings):
 
 
 def packed_pixels(fill: int = 0) -> str:
-    return base64.b64encode(bytes([fill]) * 432).decode("ascii")
+    value = (fill << 18) | (fill << 12) | (fill << 6) | fill
+    group = value.to_bytes(3, "big")
+    return base64.b64encode(group * (24 * 24 // 4)).decode("ascii")
 
 
 def work_payload(
@@ -38,8 +40,8 @@ def work_payload(
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "schemaVersion": 1,
-        "paletteId": "natural-64-v2",
-        "paletteVersion": 2,
+        "paletteId": "official-40-v1",
+        "paletteVersion": 1,
         "pixels": packed_pixels(fill),
     }
     if title is not None:
@@ -56,7 +58,7 @@ def test_health_reports_application_version(client: TestClient) -> None:
     assert response.json() == {
         "status": "ok",
         "appVersion": APP_VERSION,
-        "defaultPaletteId": "natural-64-v2",
+        "defaultPaletteId": "official-40-v1",
     }
 
 
@@ -448,8 +450,18 @@ def test_shared_work_rejects_invalid_payload_and_palette_version(
     invalid_length = client.post("/api/v1/works", json=short_payload)
 
     wrong_palette = work_payload()
-    wrong_palette["paletteVersion"] = 1
+    wrong_palette["paletteVersion"] = 2
     palette_mismatch = client.post("/api/v1/works", json=wrong_palette)
+
+    invalid_index = client.post(
+        "/api/v1/works",
+        json=work_payload(fill=40),
+    )
+
+    legacy_palette = work_payload()
+    legacy_palette["paletteId"] = "natural-64-v2"
+    legacy_palette["paletteVersion"] = 2
+    legacy_publish = client.post("/api/v1/works", json=legacy_palette)
 
     assert invalid_length.status_code == 422
     assert (
@@ -461,6 +473,10 @@ def test_shared_work_rejects_invalid_payload_and_palette_version(
         palette_mismatch.json()["error"]["code"]
         == "palette_version_mismatch"
     )
+    assert invalid_index.status_code == 422
+    assert invalid_index.json()["error"]["code"] == "invalid_palette_index"
+    assert legacy_publish.status_code == 409
+    assert legacy_publish.json()["error"]["code"] == "palette_not_shareable"
 
 
 def test_unknown_shared_work_returns_404(client: TestClient) -> None:
@@ -512,7 +528,7 @@ def test_admin_interface_is_served_without_embedding_credentials(
 
 def test_palette_list_and_detail(client: TestClient) -> None:
     list_response = client.get("/api/v1/palettes")
-    detail_response = client.get("/api/v1/palettes/natural-64-v2")
+    detail_response = client.get("/api/v1/palettes/official-40-v1")
 
     assert list_response.status_code == 200
     assert list_response.json() == [
@@ -522,21 +538,29 @@ def test_palette_list_and_detail(client: TestClient) -> None:
             "version": 2,
             "status": "provisional",
             "colorCount": 64,
-        }
+        },
+        {
+            "id": "official-40-v1",
+            "name": "Official 40 v1",
+            "version": 1,
+            "status": "official",
+            "colorCount": 40,
+        },
     ]
 
     detail = detail_response.json()
     assert detail_response.status_code == 200
-    assert detail["sampledColorCount"] == 32
-    assert detail["predictedColorCount"] == 32
-    assert len(detail["colors"]) == 64
+    assert detail["sampledColorCount"] == 40
+    assert detail["predictedColorCount"] == 0
+    assert len(detail["colors"]) == 40
     assert detail["colors"][0] == {
-        "id": "C15",
-        "name": "Color 15",
-        "rgb": [36, 36, 36],
-        "hex": "#242424",
+        "id": "O01",
+        "name": "Official 01",
+        "rgb": [34, 34, 34],
+        "hex": "#222222",
         "confirmed": True,
     }
+    assert detail["colors"][3]["hex"] == "#FFFFFF"
 
 
 def test_unknown_palette_uses_error_envelope(client: TestClient) -> None:

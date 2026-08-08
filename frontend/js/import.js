@@ -29,7 +29,7 @@ let cropBrightness = 100;
 let cropSaturation = 100;
 let cropColorOverlay = '#4299E1';
 let cropColorOverlayOpacity = 0;
-let cropTargetColorCount = 64;
+let cropTargetColorCount = 40;
 let cropDitherStrength = 100;
 let cropSamplingMode = 'photo';
 let cropPreviewMode = 'processed';
@@ -52,10 +52,10 @@ async function loadExhibitionPalette() {
       data.id !== DEFAULT_PALETTE_ID ||
       data.version !== DEFAULT_PALETTE_VERSION ||
       !Array.isArray(data.colors) ||
-      data.colors.length !== 64
+      data.colors.length !== 40
     ) return;
     var matchesEmbeddedPalette = data.colors.every(function(color, index) {
-      var embedded = TOURGRID_NATURAL_64_V2.colors[index];
+      var embedded = TOURGRID_OFFICIAL_40_V1.colors[index];
       return color.id === embedded.code &&
         String(color.hex).toUpperCase() === embedded.hex.toUpperCase();
     });
@@ -75,7 +75,7 @@ async function loadExhibitionPalette() {
       renderColorGrid();
     }
   } catch (error) {
-    // API 不可用时继续使用内置的版本化 64 色色板。
+    // API 不可用时继续使用内置的版本化官方色板。
   }
 }
 
@@ -104,7 +104,7 @@ function resetCropAdjustments() {
   cropSaturation = 100;
   cropColorOverlay = '#4299E1';
   cropColorOverlayOpacity = 0;
-  cropTargetColorCount = 64;
+  cropTargetColorCount = 40;
   cropDitherStrength = 100;
   cropSamplingMode = 'photo';
   cropPreviewMode = 'processed';
@@ -118,7 +118,7 @@ function resetCropAdjustments() {
     cropSaturation: 100,
     cropColorOverlay: cropColorOverlay,
     cropColorOverlayOpacity: 0,
-    cropTargetColorCount: 64,
+    cropTargetColorCount: 40,
     cropDitherStrength: 100,
     cropSamplingMode: 'photo'
   };
@@ -429,8 +429,8 @@ function selectImportPalette(rawR, rawG, rawB, targetCount) {
       hueProfile: importHueProfile(rgb[0], rgb[1], rgb[2])
     };
   });
-  if (fullPalette.length !== 64) {
-    throw new Error('本地 natural-64-v2 色板加载失败。');
+  if (fullPalette.length !== 40) {
+    throw new Error('本地 official-40-v1 色板加载失败。');
   }
   if (targetCount >= fullPalette.length) return fullPalette;
 

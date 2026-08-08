@@ -31,8 +31,8 @@
   }
 
   function packPixels(pixels, palette) {
-    if (!Array.isArray(palette) || palette.length !== 64) {
-      throw new Error('分享编码需要严格64色色板。');
+    if (!Array.isArray(palette) || palette.length < 1 || palette.length > 64) {
+      throw new Error('分享编码需要1至64种颜色。');
     }
     if (!Array.isArray(pixels) || pixels.length !== GRID_SIZE) {
       throw new Error('分享编码需要24×24像素矩阵。');
@@ -76,8 +76,8 @@
   }
 
   function unpackPixels(encoded, palette) {
-    if (!Array.isArray(palette) || palette.length !== 64) {
-      throw new Error('分享解码需要严格64色色板。');
+    if (!Array.isArray(palette) || palette.length < 1 || palette.length > 64) {
+      throw new Error('分享解码需要1至64种颜色。');
     }
     var packed = base64ToBytes(encoded);
     if (packed.length !== PACKED_BYTE_LENGTH) {
@@ -101,7 +101,12 @@
     var pixels = [];
     for (var y = 0; y < GRID_SIZE; y++) {
       pixels[y] = indices.slice(y * GRID_SIZE, (y + 1) * GRID_SIZE).map(
-        function(index) { return colors[index]; }
+        function(index) {
+          if (index >= colors.length) {
+            throw new Error('分享数据包含当前色板之外的颜色索引。');
+          }
+          return colors[index];
+        }
       );
     }
     return pixels;

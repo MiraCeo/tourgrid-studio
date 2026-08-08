@@ -122,10 +122,10 @@ function getBlueprintData() {
   for (var y = 0; y < GRID_SIZE; y++) {
     cells[y] = [];
     for (var x = 0; x < GRID_SIZE; x++) {
-      var pixelHex = String(pixelData[y][x]).toUpperCase();
+      var pixelHex = normalizePixelValue(pixelData[y][x]);
       var paletteEntry = paletteByHex[pixelHex];
 
-      // 编辑器应始终只包含当前64色库中的颜色。导出时不做近似替换，
+      // 编辑器应始终只包含当前官方色板中的颜色。导出时不做近似替换，
       // 以免图纸与用户实际画布不一致。
       if (!paletteEntry) {
         return {
@@ -173,7 +173,7 @@ function currentPaletteLabel() {
   var definition = PALETTE_DEFS.find(function(item) {
     return item.id === currentPaletteId;
   });
-  return definition ? definition.label : '临时64色色板';
+  return definition ? definition.label : '官方40色色板';
 }
 
 function exportBeadBlueprint() {

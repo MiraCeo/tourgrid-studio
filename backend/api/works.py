@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Path, Request, Response
 
-from backend.palette import load_palette
+from backend.palette import DEFAULT_PALETTE_ID, load_palette
 
 from .errors import ApiError
 from .models import SaveWorkRequest, WorkResponse
@@ -46,6 +46,23 @@ def decode_pixel_payload(encoded: str) -> bytes:
             f"Packed pixel data must be exactly {PACKED_PIXEL_BYTES} bytes.",
         )
     return payload
+
+
+def validate_pixel_indices(payload: bytes, color_count: int) -> None:
+    for offset in range(0, len(payload), 3):
+        value = int.from_bytes(payload[offset : offset + 3], "big")
+        indices = (
+            (value >> 18) & 0x3F,
+            (value >> 12) & 0x3F,
+            (value >> 6) & 0x3F,
+            value & 0x3F,
+        )
+        if any(index >= color_count for index in indices):
+            raise ApiError(
+                422,
+                "invalid_palette_index",
+                "Pixel data contains an index outside the selected palette.",
+            )
 
 
 def content_digest(
@@ -117,6 +134,13 @@ def create_works_router() -> APIRouter:
                 f"Server supports work schema version {WORK_SCHEMA_VERSION}.",
             )
 
+        if payload.palette_id != DEFAULT_PALETTE_ID:
+            raise ApiError(
+                409,
+                "palette_not_shareable",
+                f"New shared works must use {DEFAULT_PALETTE_ID}.",
+            )
+
         try:
             palette = load_palette(payload.palette_id)
         except (FileNotFoundError, ValueError) as error:
@@ -134,14 +158,15 @@ def create_works_router() -> APIRouter:
                     f"server provides {palette.version}."
                 ),
             )
-        if len(palette.colors) != 64:
+        if not 1 <= len(palette.colors) <= 64:
             raise ApiError(
                 409,
                 "palette_not_shareable",
-                "Shared works require a 64-color palette.",
+                "Shared works require a palette with at most 64 colors.",
             )
 
         pixel_data = decode_pixel_payload(payload.pixels)
+        validate_pixel_indices(pixel_data, len(palette.colors))
         digest = content_digest(
             schema_version=payload.schema_version,
             palette_id=payload.palette_id,

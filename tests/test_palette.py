@@ -10,21 +10,21 @@ from backend.palette import DEFAULT_PALETTE_ID, PALETTES_DIR, list_palettes, loa
 def test_default_palette_has_expected_version_and_counts() -> None:
     palette = load_palette()
 
-    assert palette.palette_id == "natural-64-v2"
-    assert palette.version == 2
-    assert palette.status == "provisional"
-    assert len(palette.colors) == 64
-    assert palette.sampled_color_count == 32
-    assert palette.predicted_color_count == 32
-    assert sum(color.confirmed for color in palette.colors) == 32
+    assert palette.palette_id == "official-40-v1"
+    assert palette.version == 1
+    assert palette.status == "official"
+    assert len(palette.colors) == 40
+    assert palette.sampled_color_count == 40
+    assert palette.predicted_color_count == 0
+    assert sum(color.confirmed for color in palette.colors) == 40
 
 
 def test_default_palette_colors_are_unique_and_consistent() -> None:
     palette = load_palette()
 
-    assert len({color.color_id for color in palette.colors}) == 64
-    assert len({color.rgb for color in palette.colors}) == 64
-    assert len({color.hex for color in palette.colors}) == 64
+    assert len({color.color_id for color in palette.colors}) == 40
+    assert len({color.rgb for color in palette.colors}) == 40
+    assert len({color.hex for color in palette.colors}) == 40
 
     for color in palette.colors:
         assert color.hex == "#{:02X}{:02X}{:02X}".format(*color.rgb)
@@ -33,14 +33,17 @@ def test_default_palette_colors_are_unique_and_consistent() -> None:
 def test_default_palette_preserves_known_boundary_colors() -> None:
     palette = load_palette()
 
-    assert palette.colors[0].color_id == "C15"
-    assert palette.colors[0].rgb == (36, 36, 36)
-    assert palette.colors[-1].color_id == "C20"
-    assert palette.colors[-1].rgb == (186, 163, 212)
+    assert palette.colors[0].color_id == "O01"
+    assert palette.colors[0].rgb == (34, 34, 34)
+    assert palette.colors[-1].color_id == "O40"
+    assert palette.colors[-1].rgb == (39, 56, 100)
 
 
 def test_palette_listing_loads_the_default_palette() -> None:
-    assert [palette.palette_id for palette in list_palettes()] == [DEFAULT_PALETTE_ID]
+    assert [palette.palette_id for palette in list_palettes()] == [
+        "natural-64-v2",
+        DEFAULT_PALETTE_ID,
+    ]
     assert (PALETTES_DIR / "archive" / "natural-64-v1.json").is_file()
     with pytest.raises(FileNotFoundError, match="Palette does not exist"):
         load_palette("natural-64-v1")
@@ -48,7 +51,7 @@ def test_palette_listing_loads_the_default_palette() -> None:
 
 def test_palette_loader_rejects_path_traversal() -> None:
     with pytest.raises(ValueError, match="Invalid palette id"):
-        load_palette("../natural-64-v2")
+        load_palette("../official-40-v1")
 
 
 def test_palette_document_is_valid_utf8_json() -> None:

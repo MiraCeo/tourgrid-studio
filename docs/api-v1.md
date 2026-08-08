@@ -7,7 +7,7 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 - `/docs`：Swagger UI
 - `/openapi.json`：OpenAPI文档
 
-服务器不接收用户图片。图片裁切、64色转换和参考图保存均在浏览器本地完成。
+服务器不接收用户图片。图片裁切、官方色板转换和参考图保存均在浏览器本地完成。
 
 ## 启动
 
@@ -31,7 +31,7 @@ FastAPI提供版本化色板查询与不可变作品分享，并在本地开发�
 {
   "status": "ok",
   "appVersion": "0.3.2",
-  "defaultPaletteId": "natural-64-v2"
+  "defaultPaletteId": "official-40-v1"
 }
 ```
 
@@ -65,14 +65,14 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 
 ## `POST /api/v1/works`
 
-匿名保存不可变的24×24作品。浏览器按照64色色板顺序将每格编码为6位索引，
+匿名保存不可变的24×24作品。浏览器按照色板颜色顺序将每格编码为6位索引，
 每4格打包为3字节，最终得到严格432字节；JSON请求中使用Base64传输。
 
 ```json
 {
   "schemaVersion": 1,
-  "paletteId": "natural-64-v2",
-  "paletteVersion": 2,
+  "paletteId": "official-40-v1",
+  "paletteVersion": 1,
   "pixels": "<长度576的Base64字符串>",
   "title": "作品标题",
   "authorName": "作者名称"
@@ -82,8 +82,9 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 约束：
 
 - `schemaVersion` 当前必须为 `1`。
-- 色板必须存在、版本匹配且恰好包含64色。
+- 色板必须存在、版本匹配且包含1至64种颜色；当前默认色板为40种官方颜色。
 - Base64解码后必须严格为432字节。
+- 每个6位索引必须落在所选色板的颜色范围内。
 - `title` 和 `authorName` 可选，去除首尾空白后最长15个字符。
 - 空标题或作者按未填写处理。
 
@@ -97,8 +98,8 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 {
   "code": "7Kp3mXqB4NzR",
   "schemaVersion": 1,
-  "paletteId": "natural-64-v2",
-  "paletteVersion": 2,
+  "paletteId": "official-40-v1",
+  "paletteVersion": 1,
   "pixels": "<长度576的Base64字符串>",
   "authorName": "博士",
   "title": "很糊的画",

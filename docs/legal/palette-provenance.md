@@ -1,8 +1,23 @@
 # Palette Provenance
 
+## `official-40-v1`
+
+- Runtime status: current official default palette
+- Palette size: 40 colors; `#FFFFFF` is also used for the canvas background and eraser
+- Source type: palette data extracted from the released activity assets
+- Extraction location: the `TT_display_meta_table` asset metadata and its
+  associated serialized script data
+- Color order: preserved from the 40-entry serialized vector
+- Project-authored predicted colors: none
+- Redistribution authorization: none identified
+
+The source activity files are not redistributed in this repository. The
+palette values are factual compatibility data and are excluded from the
+project's Apache License 2.0 scope.
+
 ## `natural-64-v2`
 
-- Runtime status: current provisional candidate and default palette
+- Runtime status: legacy palette retained temporarily for old-work migration
 - Palette size: 64 colors
 - Colors with official-source observation evidence: 32
 - Provisional colors predicted by the project author: 32
@@ -47,9 +62,22 @@ is not exposed by the palette API or loaded by the browser.
 
 ## 中文参考说明
 
+### `official-40-v1`
+
+- 运行状态：当前默认官方色板
+- 色板规模：40种颜色；`#FFFFFF` 同时用于白色、画布背景和橡皮
+- 来源类型：正式活动资源中的色板数据
+- 提取位置：`TT_display_meta_table` 资源元数据及其关联序列化脚本数据
+- 颜色顺序：保持序列化数据中40项颜色向量的原始顺序
+- 项目预测颜色：0
+- 再分发授权：尚未发现明确授权
+
+本仓库不分发来源活动文件。色板数值作为兼容性事实数据，不属于项目
+Apache-2.0 授权范围。
+
 ### `natural-64-v2`
 
-- 运行状态：当前默认的临时候选色板
+- 运行状态：为旧作品迁移暂时保留的历史色板
 - 色板规模：64 色
 - 有官方来源观测依据：32 色
 - 项目作者暂时预测：32 色

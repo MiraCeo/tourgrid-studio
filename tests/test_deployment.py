@@ -117,6 +117,7 @@ def test_license_scope_excludes_palette_data_and_starts_at_v031() -> None:
     assert 'license = "Apache-2.0"' in project
     assert "`v0.3.1`" in scope
     assert "`palettes/`" in scope
+    assert "`frontend/js/official-40-v1.js`" in scope
     assert "`frontend/js/natural-64-v2.js`" in scope
     assert "official promotional" in notices
     assert "broadcast footage" in notices
@@ -244,9 +245,11 @@ def test_archived_palette_is_not_a_runtime_palette() -> None:
     deployment = (ROOT / "docs/deployment.md").read_text(encoding="utf-8")
 
     assert "natural-64-v2" in deployment
+    assert "official-40-v1" in deployment
     assert "natural-64-v1" in deployment
-    assert "仅保存在" in deployment
-    assert "预测色" in deployment
+    assert "旧作品迁移" in deployment
+    assert "40种颜色" in deployment
+    assert "#FFFFFF" in deployment
 
 
 def test_server_converter_removal_is_documented_as_complete() -> None:
