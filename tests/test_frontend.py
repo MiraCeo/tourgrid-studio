@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260808-2"
+    asset_version = "20260808-4"
 
     assert (
         f'<link rel="stylesheet" '
@@ -120,6 +120,7 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert '<option value="photo" selected>照片（平滑）</option>' in source
     assert '<option value="pixel">像素画（清晰）</option>' in source
     assert 'id="cropPreviewToggleBtn"' in source
+    assert 'id="cropSamplePreviewToggleBtn"' in source
     assert 'id="cropAlignmentGrid"' in source
     assert 'id="cropAlignmentGridToggleBtn"' in source
     assert 'id="cropDitherStrength"' in source

@@ -28,6 +28,7 @@ let cropTargetColorCount = 64;
 let cropDitherStrength = 100;
 let cropSamplingMode = 'photo';
 let cropPreviewMode = 'processed';
+let cropSamplePreviewReturnMode = 'processed';
 let cropAlignmentGridVisible = true;
 let cropPreviewTimer = null;
 let cropPreviewResult = null;
@@ -97,6 +98,7 @@ function resetCropAdjustments() {
   cropDitherStrength = 100;
   cropSamplingMode = 'photo';
   cropPreviewMode = 'processed';
+  cropSamplePreviewReturnMode = 'processed';
   cropAlignmentGridVisible = true;
   cropPreviewResult = null;
 
@@ -177,36 +179,42 @@ function updateCropSamplingMode() {
 
 function syncCropPreviewMode() {
   var button = document.getElementById('cropPreviewToggleBtn');
+  var sampleButton = document.getElementById('cropSamplePreviewToggleBtn');
   var badge = document.getElementById('cropPreviewBadge');
-  var states = {
-    processed: {
-      badge: '处理后原图',
-      nextLabel: '查看24×24采样'
-    },
-    sampled: {
-      badge: '24×24真彩采样',
-      nextLabel: '查看色板结果'
-    },
-    pixels: {
-      badge: '色板像素结果',
-      nextLabel: '查看原图'
-    }
-  };
-  var state = states[cropPreviewMode] || states.processed;
+  var showingPixels = cropPreviewMode === 'pixels';
+  var showingSample = cropPreviewMode === 'sampled';
   if (button) {
     button.dataset.previewMode = cropPreviewMode;
-    button.textContent = state.nextLabel;
+    button.setAttribute('aria-pressed', String(showingPixels));
+    button.textContent = showingPixels ? '查看原图' : '查看像素化结果';
   }
-  if (badge) badge.textContent = state.badge;
+  if (sampleButton) {
+    sampleButton.setAttribute('aria-pressed', String(showingSample));
+    sampleButton.textContent = showingSample
+      ? '退出采样参考'
+      : '查看采样中间结果';
+  }
+  if (badge) {
+    badge.dataset.previewMode = cropPreviewMode;
+    badge.textContent = showingSample
+      ? '中间采样 · 非最终效果'
+      : (showingPixels ? '色板像素结果' : '处理后原图');
+  }
 }
 
 function toggleCropPreviewMode() {
-  var nextMode = {
-    processed: 'sampled',
-    sampled: 'pixels',
-    pixels: 'processed'
-  };
-  cropPreviewMode = nextMode[cropPreviewMode] || 'processed';
+  cropPreviewMode = cropPreviewMode === 'pixels' ? 'processed' : 'pixels';
+  syncCropPreviewMode();
+  renderCropPreview();
+}
+
+function toggleCropSamplePreview() {
+  if (cropPreviewMode === 'sampled') {
+    cropPreviewMode = cropSamplePreviewReturnMode;
+  } else {
+    cropSamplePreviewReturnMode = cropPreviewMode === 'pixels' ? 'pixels' : 'processed';
+    cropPreviewMode = 'sampled';
+  }
   syncCropPreviewMode();
   renderCropPreview();
 }
@@ -683,7 +691,9 @@ function renderCropPreview() {
     }
 
     document.getElementById('cropPreviewSummary').textContent =
-      '实时预览 · 像素结果使用 ' + cropPreviewResult.usedColors + ' 色';
+      cropPreviewMode === 'sampled'
+        ? '中间过程仅供参考，最终效果需查看像素化结果'
+        : '实时预览 · 像素结果使用 ' + cropPreviewResult.usedColors + ' 色';
     setConversionStatus('', false, false);
   } catch (error) {
     setConversionStatus(

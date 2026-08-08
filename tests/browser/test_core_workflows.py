@@ -802,16 +802,23 @@ def test_import_adjustments_update_preview_and_limit_target_colors(
     editor_page.wait_for_timeout(150)
     assert preview.evaluate("canvas => canvas.toDataURL()") != baseline
 
-    editor_page.locator("#cropPreviewToggleBtn").click()
+    editor_page.locator("#cropSamplePreviewToggleBtn").click()
     expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_attribute(
         "data-preview-mode",
         "sampled",
     )
-    expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_text(
-        "查看色板结果"
+    expect(editor_page.locator("#cropSamplePreviewToggleBtn")).to_have_attribute(
+        "aria-pressed",
+        "true",
+    )
+    expect(editor_page.locator("#cropSamplePreviewToggleBtn")).to_have_text(
+        "退出采样参考"
     )
     expect(editor_page.locator("#cropPreviewBadge")).to_have_text(
-        "24×24真彩采样"
+        "中间采样 · 非最终效果"
+    )
+    expect(editor_page.locator("#cropPreviewSummary")).to_contain_text(
+        "中间过程仅供参考，最终效果需查看像素化结果"
     )
     editor_page.locator("#cropPreviewToggleBtn").click()
     expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_attribute(
@@ -819,6 +826,10 @@ def test_import_adjustments_update_preview_and_limit_target_colors(
         "pixels",
     )
     expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_text("查看原图")
+    expect(editor_page.locator("#cropSamplePreviewToggleBtn")).to_have_attribute(
+        "aria-pressed",
+        "false",
+    )
     expect(editor_page.locator("#cropPreviewBadge")).to_have_text("色板像素结果")
     expect(editor_page.locator("#cropPreviewSummary")).to_contain_text(
         "像素结果使用"
@@ -847,7 +858,6 @@ def test_import_dither_modes_and_strength_update_pixel_preview(
     expect(strength_control).to_be_visible()
     editor_page.locator("#cropDitherStrength").fill("0")
     expect(editor_page.locator("#cropDitherStrengthVal")).to_have_text("0%")
-    editor_page.locator("#cropPreviewToggleBtn").click()
     editor_page.locator("#cropPreviewToggleBtn").click()
     editor_page.wait_for_timeout(150)
     preview = editor_page.locator("#cropPreviewCanvas")
@@ -903,7 +913,7 @@ def test_pixel_sampling_uses_the_inner_representative_color(
     expect(editor_page.locator("#cropOverlay")).to_be_visible()
     expect(editor_page.locator("#cropSamplingMode")).to_have_value("photo")
     expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_hidden()
-    editor_page.locator("#cropPreviewToggleBtn").click()
+    editor_page.locator("#cropSamplePreviewToggleBtn").click()
     editor_page.wait_for_timeout(150)
     preview = editor_page.locator("#cropPreviewCanvas")
     photo_preview = preview.evaluate("canvas => canvas.toDataURL()")

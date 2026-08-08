@@ -2113,6 +2113,10 @@ body {
   pointer-events: none;
   z-index: 2;
 }
+.crop-preview-badge[data-preview-mode="sampled"] {
+  background: rgba(116, 78, 0, 0.88);
+  color: #FFF7DD;
+}
 .crop-preview-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2134,6 +2138,20 @@ body {
 .crop-preview-toggle[aria-pressed="true"] {
   background: #3A6BC5;
   color: #fff;
+}
+.crop-sample-preview-toggle {
+  min-height: 28px;
+  padding-inline: 10px;
+  border-color: #B9BEC5;
+  background: #F7F8F9;
+  color: #606872;
+  font-size: 10px;
+  font-weight: 600;
+}
+.crop-sample-preview-toggle[aria-pressed="true"] {
+  border-color: #C7922D;
+  background: #FFF3CF;
+  color: #704D08;
 }
 .crop-grid-toggle {
   padding-inline: 10px;

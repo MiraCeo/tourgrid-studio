@@ -2150,6 +2150,7 @@ function bindStaticControls() {
   on('cropDither', 'change', updateCropDitherMode);
   on('cropSamplingMode', 'change', updateCropSamplingMode);
   on('cropPreviewToggleBtn', 'click', toggleCropPreviewMode);
+  on('cropSamplePreviewToggleBtn', 'click', toggleCropSamplePreview);
   on('cropAlignmentGridToggleBtn', 'click', toggleCropAlignmentGrid);
   on('conversionRetryBtn', 'click', confirmCrop);
   on('cancelCropBtn', 'click', cancelCrop);
