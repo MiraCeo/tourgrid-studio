@@ -344,6 +344,64 @@ function representativePixelColor(imageData, canvasWidth, gx, gy, sample) {
   return best;
 }
 
+function importHueProfile(r, g, b) {
+  var red = Math.max(0, Math.min(255, r));
+  var green = Math.max(0, Math.min(255, g));
+  var blue = Math.max(0, Math.min(255, b));
+  var maximum = Math.max(red, green, blue);
+  var minimum = Math.min(red, green, blue);
+  var chroma = maximum - minimum;
+  var hue = 0;
+  if (chroma > 0) {
+    if (maximum === red) {
+      hue = 60 * (((green - blue) / chroma) % 6);
+    } else if (maximum === green) {
+      hue = 60 * ((blue - red) / chroma + 2);
+    } else {
+      hue = 60 * ((red - green) / chroma + 4);
+    }
+    if (hue < 0) hue += 360;
+  }
+  return {
+    hue: hue,
+    chroma: chroma,
+    saturation: maximum > 0 ? chroma / maximum : 0
+  };
+}
+
+function importPaletteDistance(r, g, b, entry) {
+  var baseDistance = colorDistRGB(
+    r,
+    g,
+    b,
+    entry.rgb[0],
+    entry.rgb[1],
+    entry.rgb[2]
+  );
+  var sourceProfile = importHueProfile(r, g, b);
+  if (sourceProfile.chroma < 40 || sourceProfile.saturation < 0.35) {
+    return baseDistance;
+  }
+
+  var candidateProfile = entry.hueProfile || importHueProfile(
+    entry.rgb[0],
+    entry.rgb[1],
+    entry.rgb[2]
+  );
+  var hueMismatch = 1;
+  if (candidateProfile.chroma >= 20 && candidateProfile.saturation >= 0.14) {
+    var hueDifference = Math.abs(sourceProfile.hue - candidateProfile.hue);
+    hueMismatch = Math.min(hueDifference, 360 - hueDifference) / 180;
+  }
+  var protectionStrength = Math.min(
+    1,
+    (sourceProfile.saturation - 0.35) / 0.45
+  );
+  // 加权 RGB 仍占主导；色相最多只改变 RGB 误差相差约 20% 的候选排序。
+  var huePenalty = 0.20 * protectionStrength * Math.pow(hueMismatch, 1.35);
+  return baseDistance * (1 + huePenalty);
+}
+
 function selectImportPalette(rawR, rawG, rawB, targetCount) {
   var fullPalette = EXHIBITION_DATA.map(function(color, index) {
     var hex = color.hex.toUpperCase();
@@ -355,7 +413,8 @@ function selectImportPalette(rawR, rawG, rawB, targetCount) {
     return {
       index: index,
       hex: hex,
-      rgb: rgb
+      rgb: rgb,
+      hueProfile: importHueProfile(rgb[0], rgb[1], rgb[2])
     };
   });
   if (fullPalette.length !== 64) {
@@ -369,13 +428,11 @@ function selectImportPalette(rawR, rawG, rawB, targetCount) {
   var distances = Array.from({ length: pixelCount }, function(_, pixelIndex) {
     var row = new Float64Array(fullPalette.length);
     fullPalette.forEach(function(entry, paletteIndex) {
-      row[paletteIndex] = colorDistRGB(
+      row[paletteIndex] = importPaletteDistance(
         rawR[pixelIndex],
         rawG[pixelIndex],
         rawB[pixelIndex],
-        entry.rgb[0],
-        entry.rgb[1],
-        entry.rgb[2]
+        entry
       );
     });
     return row;
@@ -545,13 +602,11 @@ function quantizeProcessedCrop(processedCanvas) {
     var best = palette[0];
     var bestDistance = Infinity;
     palette.forEach(function(entry) {
-      var distance = colorDistRGB(
+      var distance = importPaletteDistance(
         r,
         g,
         b,
-        entry.rgb[0],
-        entry.rgb[1],
-        entry.rgb[2]
+        entry
       );
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -1003,7 +1058,7 @@ async function confirmCropLocalWithAdjustments() {
     paletteId: DEFAULT_PALETTE_ID,
     editorPaletteId: 'exhibition',
     paletteVersion: DEFAULT_PALETTE_VERSION,
-    converterVersion: 'browser-weighted-rgb-dither-v5-' + cropSamplingMode,
+    converterVersion: 'browser-weighted-rgb-hue-guard-dither-v6-' + cropSamplingMode,
     importedAt: new Date().toISOString()
   };
   buildHexCodeMap();

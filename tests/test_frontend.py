@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260808-4"
+    asset_version = "20260808-5"
 
     assert (
         f'<link rel="stylesheet" '
@@ -104,7 +104,7 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert '<option value="none" selected>' in source
     assert "var fullPalette = EXHIBITION_DATA.map" in source
     assert "fullPalette.length !== 64" in source
-    assert "browser-weighted-rgb-dither-v5-" in source
+    assert "browser-weighted-rgb-hue-guard-dither-v6-" in source
     assert "paletteId: DEFAULT_PALETTE_ID" in source
     assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
     assert "confirmCropLocalWithAdjustments()" in image_import
@@ -159,6 +159,9 @@ def test_local_converter_keeps_optional_dithering() -> None:
     assert "cropSamplingMode === 'pixel'" in source
     assert "bestTotalError" in source
     assert "strongestEdge" in source
+    assert "importHueProfile" in source
+    assert "importPaletteDistance" in source
+    assert "0.20 * protectionStrength" in source
     assert "sampledPixels" in source
     assert "cropPreviewMode === 'sampled'" in source
     assert "var reverse = useSerpentine && y % 2 === 1" in source
