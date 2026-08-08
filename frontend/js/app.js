@@ -2152,6 +2152,7 @@ function bindStaticControls() {
   on('cropPreviewToggleBtn', 'click', toggleCropPreviewMode);
   on('cropSamplePreviewToggleBtn', 'click', toggleCropSamplePreview);
   on('cropAlignmentGridToggleBtn', 'click', toggleCropAlignmentGrid);
+  on('cropResetBtn', 'click', resetCropTransform);
   on('conversionRetryBtn', 'click', confirmCrop);
   on('cancelCropBtn', 'click', cancelCrop);
   on('confirmCropBtn', 'click', confirmCrop);

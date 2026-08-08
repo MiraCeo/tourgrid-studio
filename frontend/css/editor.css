@@ -2117,6 +2117,28 @@ body {
   background: rgba(116, 78, 0, 0.88);
   color: #FFF7DD;
 }
+.crop-reset-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid rgba(255,255,255,0.42);
+  border-radius: 13px;
+  background: rgba(18, 22, 28, 0.78);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.crop-reset-btn:hover {
+  background: rgba(18, 22, 28, 0.92);
+}
+.crop-reset-btn[hidden] {
+  display: none;
+}
 .crop-preview-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2159,6 +2181,15 @@ body {
 .crop-preview-summary {
   color: #666;
   font-size: 10px;
+}
+.crop-preview-summary[data-palette-fit="good"] {
+  color: #4F6F58;
+}
+.crop-preview-summary[data-palette-fit="fair"] {
+  color: #80672A;
+}
+.crop-preview-summary[data-palette-fit="poor"] {
+  color: #914D4D;
 }
 .crop-settings-grid {
   display: grid;

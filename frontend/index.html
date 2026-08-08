@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅行「像」框 | 24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260808-5">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260808-6">
 </head>
 <body>
 
@@ -681,6 +681,8 @@
         <div class="crop-alignment-grid" id="cropAlignmentGrid"
              aria-hidden="true" hidden></div>
         <span class="crop-preview-badge" id="cropPreviewBadge">处理后原图</span>
+        <button type="button" class="crop-reset-btn" id="cropResetBtn"
+                aria-label="复位裁切" title="恢复初始裁切位置" hidden>↺ 复位</button>
       </div>
       <div class="crop-options">
         <div class="crop-preview-toolbar">
@@ -766,16 +768,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260808-5"></script>
-<script src="/static/js/reference-storage.js?v=20260808-5"></script>
-<script src="/static/js/work-codec.js?v=20260808-5"></script>
-<script src="/static/js/natural-64-v2.js?v=20260808-5"></script>
-<script src="/static/js/state.js?v=20260808-5"></script>
-<script src="/static/js/editor.js?v=20260808-5"></script>
-<script src="/static/js/export.js?v=20260808-5"></script>
-<script src="/static/js/import.js?v=20260808-5"></script>
-<script src="/static/js/works.js?v=20260808-5"></script>
-<script src="/static/js/app.js?v=20260808-5"></script>
+<script src="/static/js/storage.js?v=20260808-6"></script>
+<script src="/static/js/reference-storage.js?v=20260808-6"></script>
+<script src="/static/js/work-codec.js?v=20260808-6"></script>
+<script src="/static/js/natural-64-v2.js?v=20260808-6"></script>
+<script src="/static/js/state.js?v=20260808-6"></script>
+<script src="/static/js/editor.js?v=20260808-6"></script>
+<script src="/static/js/export.js?v=20260808-6"></script>
+<script src="/static/js/import.js?v=20260808-6"></script>
+<script src="/static/js/works.js?v=20260808-6"></script>
+<script src="/static/js/app.js?v=20260808-6"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

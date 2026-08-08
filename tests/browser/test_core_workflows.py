@@ -834,6 +834,9 @@ def test_import_adjustments_update_preview_and_limit_target_colors(
     expect(editor_page.locator("#cropPreviewSummary")).to_contain_text(
         "像素结果使用"
     )
+    expect(editor_page.locator("#cropPreviewSummary")).to_contain_text(
+        "色板适配："
+    )
 
     editor_page.locator("#confirmCropBtn").click()
     expect(editor_page.locator("#cropOverlay")).to_be_hidden(timeout=15_000)
@@ -913,6 +916,17 @@ def test_pixel_sampling_uses_the_inner_representative_color(
     expect(editor_page.locator("#cropOverlay")).to_be_visible()
     expect(editor_page.locator("#cropSamplingMode")).to_have_value("photo")
     expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_hidden()
+    reset_button = editor_page.locator("#cropResetBtn")
+    zoom_slider = editor_page.locator("#cropZoomSlider")
+    expect(reset_button).to_be_hidden()
+    initial_zoom = int(zoom_slider.input_value())
+    maximum_zoom = int(zoom_slider.get_attribute("max") or "500")
+    adjusted_zoom = initial_zoom + 1 if initial_zoom < maximum_zoom else initial_zoom - 1
+    zoom_slider.fill(str(adjusted_zoom))
+    expect(reset_button).to_be_visible()
+    reset_button.click()
+    expect(reset_button).to_be_hidden()
+    expect(zoom_slider).to_have_value(str(initial_zoom))
     editor_page.locator("#cropSamplePreviewToggleBtn").click()
     editor_page.wait_for_timeout(150)
     preview = editor_page.locator("#cropPreviewCanvas")

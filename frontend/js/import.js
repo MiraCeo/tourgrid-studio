@@ -3,6 +3,8 @@ let cropZoom = 100;
 let cropMinimumZoom = 10;
 let cropMaximumZoom = 500;
 let cropImgX = 0, cropImgY = 0;
+let cropInitialZoom = 100;
+let cropInitialImgX = 0, cropInitialImgY = 0;
 let cropDragStartX = 0, cropDragStartY = 0;
 let cropImgStartX = 0, cropImgStartY = 0;
 let isCropping = false;
@@ -116,6 +118,8 @@ function resetCropAdjustments() {
     var element = document.getElementById(id);
     if (element) element.value = values[id];
   });
+  var resetButton = document.getElementById('cropResetBtn');
+  if (resetButton) resetButton.hidden = true;
   updateCropAdjustmentLabels();
   syncCropDitherControls();
   syncCropPreviewMode();
@@ -205,7 +209,7 @@ function syncCropPreviewMode() {
 function toggleCropPreviewMode() {
   cropPreviewMode = cropPreviewMode === 'pixels' ? 'processed' : 'pixels';
   syncCropPreviewMode();
-  renderCropPreview();
+  renderCropPreview(true);
 }
 
 function toggleCropSamplePreview() {
@@ -216,7 +220,7 @@ function toggleCropSamplePreview() {
     cropPreviewMode = 'sampled';
   }
   syncCropPreviewMode();
-  renderCropPreview();
+  renderCropPreview(true);
 }
 
 function syncCropAlignmentGrid() {
@@ -639,6 +643,26 @@ function quantizeProcessedCrop(processedCanvas) {
     );
   }
 
+  var totalPaletteError = 0;
+  for (var sourceIndex = 0; sourceIndex < total; sourceIndex++) {
+    var closestSourceEntry = nearestEntry(
+      rawR[sourceIndex],
+      rawG[sourceIndex],
+      rawB[sourceIndex]
+    );
+    totalPaletteError += colorDistRGB(
+      rawR[sourceIndex],
+      rawG[sourceIndex],
+      rawB[sourceIndex],
+      closestSourceEntry.rgb[0],
+      closestSourceEntry.rgb[1],
+      closestSourceEntry.rgb[2]
+    );
+  }
+  var normalizedPaletteError = Math.sqrt(
+    totalPaletteError / (total * 9 * 255 * 255)
+  );
+
   for (var y = 0; y < GRID_SIZE; y++) {
     var useSerpentine = ditherMode === 'floyd' || ditherMode === 'atkinson';
     var reverse = useSerpentine && y % 2 === 1;
@@ -690,6 +714,7 @@ function quantizeProcessedCrop(processedCanvas) {
   return {
     pixels: pixels,
     sampledPixels: sampledPixels,
+    paletteError: normalizedPaletteError,
     usedColors: new Set(pixels.flat()).size
   };
 }
@@ -704,6 +729,7 @@ function buildCropConversion() {
   return {
     pixels: quantized.pixels,
     sampledPixels: quantized.sampledPixels,
+    paletteError: quantized.paletteError,
     usedColors: quantized.usedColors,
     processedPreview: processedPreview
   };
@@ -724,10 +750,29 @@ function drawCropPixelMatrix(ctx, matrix, viewportSize) {
   ctx.drawImage(pixelCanvas, 0, 0, viewportSize, viewportSize);
 }
 
-function renderCropPreview() {
+function cropPaletteFit(error) {
+  if (error <= 0.08) return { key: 'good', label: '较好' };
+  if (error <= 0.14) return { key: 'fair', label: '一般' };
+  return { key: 'poor', label: '偏差较大' };
+}
+
+function resolveCropConversion(reuseConversion) {
+  var canReuse = Boolean(
+    reuseConversion && cropPreviewResult && !cropPreviewTimer
+  );
+  if (cropPreviewTimer) clearTimeout(cropPreviewTimer);
+  cropPreviewTimer = null;
+  if (!canReuse) {
+    cropPreviewResult = null;
+    cropPreviewResult = buildCropConversion();
+  }
+  return cropPreviewResult;
+}
+
+function renderCropPreview(reuseConversion) {
   if (!cropImg) return;
   try {
-    cropPreviewResult = buildCropConversion();
+    resolveCropConversion(reuseConversion);
     var previewCanvas = document.getElementById('cropPreviewCanvas');
     var viewportSize = document.getElementById('cropViewport').clientWidth;
     previewCanvas.width = viewportSize;
@@ -745,10 +790,18 @@ function renderCropPreview() {
       ctx.drawImage(cropPreviewResult.processedPreview, 0, 0, viewportSize, viewportSize);
     }
 
-    document.getElementById('cropPreviewSummary').textContent =
-      cropPreviewMode === 'sampled'
-        ? '中间过程仅供参考，最终效果需查看像素化结果'
-        : '实时预览 · 像素结果使用 ' + cropPreviewResult.usedColors + ' 色';
+    var summary = document.getElementById('cropPreviewSummary');
+    if (cropPreviewMode === 'sampled') {
+      summary.dataset.paletteFit = 'reference';
+      summary.title = '';
+      summary.textContent = '中间过程仅供参考，最终效果需查看像素化结果';
+    } else {
+      var fit = cropPaletteFit(cropPreviewResult.paletteError);
+      summary.dataset.paletteFit = fit.key;
+      summary.title = '根据24×24真彩采样到当前目标色板的加权RGB误差估算';
+      summary.textContent = '像素结果使用 ' + cropPreviewResult.usedColors +
+        ' 色 · 色板适配：' + fit.label;
+    }
     setConversionStatus('', false, false);
   } catch (error) {
     setConversionStatus(
@@ -793,6 +846,9 @@ function startImport(e) {
         var initialScale = cropZoom / 100;
         cropImgX = (vpW - cropImg.width * initialScale) / 2;
         cropImgY = (vpW - cropImg.height * initialScale) / 2;
+        cropInitialZoom = cropZoom;
+        cropInitialImgX = cropImgX;
+        cropInitialImgY = cropImgY;
         var zoomSlider = document.getElementById('cropZoomSlider');
         zoomSlider.min = cropMinimumZoom;
         zoomSlider.max = cropMaximumZoom;
@@ -814,6 +870,40 @@ function startImport(e) {
   e.target.value = '';
 }
 
+function isCropResetControlTarget(target) {
+  return Boolean(
+    target && target.closest && target.closest('#cropResetBtn')
+  );
+}
+
+function syncCropResetControl() {
+  var button = document.getElementById('cropResetBtn');
+  if (!button) return;
+  var changed = cropZoom !== cropInitialZoom ||
+    Math.abs(cropImgX - cropInitialImgX) > 0.5 ||
+    Math.abs(cropImgY - cropInitialImgY) > 0.5;
+  button.hidden = !cropImg || !changed;
+}
+
+function resetCropTransform(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  if (!cropImg) return;
+  isCropping = false;
+  cropTouchState = null;
+  cropZoom = cropInitialZoom;
+  cropImgX = cropInitialImgX;
+  cropImgY = cropInitialImgY;
+  var slider = document.getElementById('cropZoomSlider');
+  slider.value = cropZoom;
+  document.getElementById('cropZoomVal').textContent = cropZoom + '%';
+  document.getElementById('cropViewport').style.cursor = 'grab';
+  applyCropTransform();
+  scheduleCropPreview(true);
+}
+
 function applyCropTransform() {
   const img = document.getElementById('cropImage');
   img.src = cropImg.src;
@@ -823,6 +913,7 @@ function applyCropTransform() {
   img.style.height = (cropImg.height * scale) + 'px';
   img.style.left = cropImgX + 'px';
   img.style.top = cropImgY + 'px';
+  syncCropResetControl();
   scheduleCropPreview();
 }
 
@@ -849,6 +940,7 @@ function updateCropZoom(val) {
 function onCropMouseDown(e) {
   if (e.button !== 0) return;
   if (!cropImg) return;
+  if (isCropResetControlTarget(e.target)) return;
   isCropping = true;
   cropDragStartX = e.clientX;
   cropDragStartY = e.clientY;
@@ -863,6 +955,7 @@ function onCropMouseMove(e) {
   applyCropTransform();
 }
 function onCropMouseUp(e) {
+  if (isCropResetControlTarget(e.target)) return;
   isCropping = false;
   document.getElementById('cropViewport').style.cursor = 'grab';
   scheduleCropPreview(true);
@@ -885,6 +978,7 @@ function cropTouchMidpoint(touches) {
 
 function onCropTouchStart(e) {
   if (!cropImg) return;
+  if (isCropResetControlTarget(e.target)) return;
   e.preventDefault();
   if (e.touches.length === 1) {
     cropTouchState = {
@@ -944,6 +1038,7 @@ function onCropTouchMove(e) {
 }
 
 function onCropTouchEnd(e) {
+  if (isCropResetControlTarget(e.target)) return;
   e.preventDefault();
   if (e.touches.length === 0) {
     cropTouchState = null;
@@ -954,6 +1049,7 @@ function onCropTouchEnd(e) {
 
 function onCropWheel(e) {
   if (!cropImg) return;
+  if (isCropResetControlTarget(e.target)) return;
   e.preventDefault();
   e.stopPropagation();
   var step = Math.max(1, Math.round(cropZoom * 0.1));
@@ -1009,7 +1105,7 @@ async function confirmCrop() {
 async function confirmCropLocalWithAdjustments() {
   if (!cropImg) return;
   var beforeImport = makeEditorSnapshot();
-  var conversion = buildCropConversion();
+  var conversion = resolveCropConversion(true);
   importedPixelData = conversion.pixels.map(function(row) { return row.slice(); });
 
   var preparedReference = await installAndPersistReference(

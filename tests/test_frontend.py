@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260808-5"
+    asset_version = "20260808-6"
 
     assert (
         f'<link rel="stylesheet" '
@@ -123,6 +123,7 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert 'id="cropSamplePreviewToggleBtn"' in source
     assert 'id="cropAlignmentGrid"' in source
     assert 'id="cropAlignmentGridToggleBtn"' in source
+    assert 'id="cropResetBtn"' in source
     assert 'id="cropDitherStrength"' in source
     assert '<option value="bayer2">Bayer 2×2</option>' in source
     assert '<option value="bayer4">Bayer 4×4</option>' in source
@@ -162,6 +163,10 @@ def test_local_converter_keeps_optional_dithering() -> None:
     assert "importHueProfile" in source
     assert "importPaletteDistance" in source
     assert "0.20 * protectionStrength" in source
+    assert "normalizedPaletteError" in source
+    assert "cropPaletteFit" in source
+    assert "reuseConversion && cropPreviewResult && !cropPreviewTimer" in source
+    assert source.count("renderCropPreview(true)") >= 2
     assert "sampledPixels" in source
     assert "cropPreviewMode === 'sampled'" in source
     assert "var reverse = useSerpentine && y % 2 === 1" in source
@@ -356,6 +361,8 @@ def test_import_ui_supports_local_retry_status_and_touch_crop() -> None:
     assert "服务器正在转换" not in source
     assert "onCropTouchStart" in source
     assert "onCropTouchMove" in source
+    assert "resetCropTransform" in source
+    assert "syncCropResetControl" in source
     assert "touch-action: none" in source
     assert 'id="cropZoomSlider" min="1" max="500"' in source
     assert "cropMinimumZoom = Math.min(10, cropZoom)" in source
