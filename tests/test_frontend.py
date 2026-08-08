@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260729-22"
+    asset_version = "20260808-2"
 
     assert (
         f'<link rel="stylesheet" '
@@ -104,7 +104,7 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert '<option value="none" selected>' in source
     assert "var fullPalette = EXHIBITION_DATA.map" in source
     assert "fullPalette.length !== 64" in source
-    assert "browser-weighted-rgb-dither-v3" in source
+    assert "browser-weighted-rgb-dither-v5-" in source
     assert "paletteId: DEFAULT_PALETTE_ID" in source
     assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
     assert "confirmCropLocalWithAdjustments()" in image_import
@@ -116,7 +116,12 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert not (JAVASCRIPT_ROOT / "conversion-api.js").exists()
     assert "K-means" not in image_import
     assert 'id="cropTargetColorCount"' in source
+    assert 'id="cropSamplingMode"' in source
+    assert '<option value="photo" selected>照片（平滑）</option>' in source
+    assert '<option value="pixel">像素画（清晰）</option>' in source
     assert 'id="cropPreviewToggleBtn"' in source
+    assert 'id="cropAlignmentGrid"' in source
+    assert 'id="cropAlignmentGridToggleBtn"' in source
     assert 'id="cropDitherStrength"' in source
     assert '<option value="bayer2">Bayer 2×2</option>' in source
     assert '<option value="bayer4">Bayer 4×4</option>' in source
@@ -149,6 +154,12 @@ def test_local_converter_keeps_optional_dithering() -> None:
     assert "colorDistRGB" in source
     assert "rgbToOklab" not in source
     assert "srgbByteToLinear" in source
+    assert "representativePixelColor" in source
+    assert "cropSamplingMode === 'pixel'" in source
+    assert "bestTotalError" in source
+    assert "strongestEdge" in source
+    assert "sampledPixels" in source
+    assert "cropPreviewMode === 'sampled'" in source
     assert "var reverse = useSerpentine && y % 2 === 1" in source
     assert "let viewMode" not in source
     assert "id=\"viewMode\"" not in source

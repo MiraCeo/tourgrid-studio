@@ -804,11 +804,22 @@ def test_import_adjustments_update_preview_and_limit_target_colors(
 
     editor_page.locator("#cropPreviewToggleBtn").click()
     expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_attribute(
-        "aria-pressed",
-        "true",
+        "data-preview-mode",
+        "sampled",
+    )
+    expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_text(
+        "查看色板结果"
+    )
+    expect(editor_page.locator("#cropPreviewBadge")).to_have_text(
+        "24×24真彩采样"
+    )
+    editor_page.locator("#cropPreviewToggleBtn").click()
+    expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_attribute(
+        "data-preview-mode",
+        "pixels",
     )
     expect(editor_page.locator("#cropPreviewToggleBtn")).to_have_text("查看原图")
-    expect(editor_page.locator("#cropPreviewBadge")).to_have_text("像素化结果")
+    expect(editor_page.locator("#cropPreviewBadge")).to_have_text("色板像素结果")
     expect(editor_page.locator("#cropPreviewSummary")).to_contain_text(
         "像素结果使用"
     )
@@ -836,6 +847,7 @@ def test_import_dither_modes_and_strength_update_pixel_preview(
     expect(strength_control).to_be_visible()
     editor_page.locator("#cropDitherStrength").fill("0")
     expect(editor_page.locator("#cropDitherStrengthVal")).to_have_text("0%")
+    editor_page.locator("#cropPreviewToggleBtn").click()
     editor_page.locator("#cropPreviewToggleBtn").click()
     editor_page.wait_for_timeout(150)
     preview = editor_page.locator("#cropPreviewCanvas")
@@ -867,6 +879,60 @@ def test_import_dither_modes_and_strength_update_pixel_preview(
     used_colors = {color for row in state["pixels"] for color in row}
     assert len(used_colors) <= 12
     assert used_colors.issubset(set(state["palette"]))
+
+
+def test_pixel_sampling_uses_the_inner_representative_color(
+    editor_page: Page,
+    tmp_path: Path,
+) -> None:
+    source = Image.new("RGB", (192, 192), WHITE)
+    pixels = source.load()
+    for cell_y in range(24):
+        for cell_x in range(24):
+            for offset_y in range(2, 6):
+                for offset_x in range(2, 6):
+                    pixels[cell_x * 8 + offset_x, cell_y * 8 + offset_y] = (
+                        36,
+                        36,
+                        36,
+                    )
+    source_path = tmp_path / "pixel-grid-with-light-borders.png"
+    source.save(source_path)
+
+    editor_page.locator("#importFileInput").set_input_files(str(source_path))
+    expect(editor_page.locator("#cropOverlay")).to_be_visible()
+    expect(editor_page.locator("#cropSamplingMode")).to_have_value("photo")
+    expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_hidden()
+    editor_page.locator("#cropPreviewToggleBtn").click()
+    editor_page.wait_for_timeout(150)
+    preview = editor_page.locator("#cropPreviewCanvas")
+    photo_preview = preview.evaluate("canvas => canvas.toDataURL()")
+
+    editor_page.locator("#cropSamplingMode").select_option("pixel")
+    expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_visible()
+    expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_have_attribute(
+        "aria-pressed",
+        "true",
+    )
+    expect(editor_page.locator("#cropAlignmentGrid")).to_be_visible()
+    editor_page.wait_for_timeout(150)
+    pixel_preview = preview.evaluate("canvas => canvas.toDataURL()")
+    assert pixel_preview != photo_preview
+
+    editor_page.locator("#cropAlignmentGridToggleBtn").click()
+    expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_have_attribute(
+        "aria-pressed",
+        "false",
+    )
+    expect(editor_page.locator("#cropAlignmentGrid")).to_be_hidden()
+
+    editor_page.locator("#confirmCropBtn").click()
+    expect(editor_page.locator("#cropOverlay")).to_be_hidden(timeout=15_000)
+    state = editor_state(editor_page)
+    assert {
+        color for row in state["pixels"] for color in row
+    } == {BLACK}
+    assert state["converterVersion"].endswith("-pixel")
 
 
 def test_import_clear_undo_and_redo_restore_the_complete_document(

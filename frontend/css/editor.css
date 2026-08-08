@@ -2085,6 +2085,20 @@ body {
   height: 100%;
   pointer-events: none;
 }
+.crop-alignment-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(26, 31, 38, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(26, 31, 38, 0.18) 1px, transparent 1px);
+  background-size: calc(100% / 24) calc(100% / 24);
+  box-shadow: inset -1px -1px rgba(26, 31, 38, 0.18);
+}
+.crop-alignment-grid[hidden] {
+  display: none;
+}
 .crop-preview-badge {
   position: absolute;
   top: 8px;
@@ -2097,9 +2111,11 @@ body {
   font-weight: 700;
   letter-spacing: 0.4px;
   pointer-events: none;
+  z-index: 2;
 }
 .crop-preview-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -2118,6 +2134,9 @@ body {
 .crop-preview-toggle[aria-pressed="true"] {
   background: #3A6BC5;
   color: #fff;
+}
+.crop-grid-toggle {
+  padding-inline: 10px;
 }
 .crop-preview-summary {
   color: #666;
@@ -2143,9 +2162,6 @@ body {
 }
 .crop-setting[hidden] {
   display: none;
-}
-.crop-setting-wide {
-  grid-column: 1 / -1;
 }
 .crop-setting input[type="range"] {
   width: 100%;

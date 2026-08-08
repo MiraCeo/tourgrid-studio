@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅行「像」框 | 24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260729-22">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260808-2">
 </head>
 <body>
 
@@ -678,16 +678,27 @@
       <div class="crop-viewport" id="cropViewport">
         <img id="cropImage" draggable="false" style="display:none">
         <canvas id="cropPreviewCanvas" aria-label="图片导入实时预览"></canvas>
+        <div class="crop-alignment-grid" id="cropAlignmentGrid"
+             aria-hidden="true" hidden></div>
         <span class="crop-preview-badge" id="cropPreviewBadge">处理后原图</span>
       </div>
       <div class="crop-options">
         <div class="crop-preview-toolbar">
           <button type="button" class="crop-preview-toggle" id="cropPreviewToggleBtn"
-                  aria-pressed="false">查看像素化结果</button>
+                  data-preview-mode="processed">查看24×24采样</button>
+          <button type="button" class="crop-preview-toggle crop-grid-toggle"
+                  id="cropAlignmentGridToggleBtn" aria-pressed="true" hidden>隐藏对齐网格</button>
           <span class="crop-preview-summary" id="cropPreviewSummary">实时预览 · 输出 24×24</span>
         </div>
         <div class="crop-settings-grid">
-          <label class="crop-setting crop-setting-wide" for="cropZoomSlider">
+          <label class="crop-setting" for="cropSamplingMode">
+            <span>采样方式</span>
+            <select id="cropSamplingMode">
+              <option value="photo" selected>照片（平滑）</option>
+              <option value="pixel">像素画（清晰）</option>
+            </select>
+          </label>
+          <label class="crop-setting" for="cropZoomSlider">
             <span>缩放</span>
             <input type="range" id="cropZoomSlider" min="1" max="500" value="100">
             <output id="cropZoomVal">100%</output>
@@ -753,16 +764,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260729-22"></script>
-<script src="/static/js/reference-storage.js?v=20260729-22"></script>
-<script src="/static/js/work-codec.js?v=20260729-22"></script>
-<script src="/static/js/natural-64-v2.js?v=20260729-22"></script>
-<script src="/static/js/state.js?v=20260729-22"></script>
-<script src="/static/js/editor.js?v=20260729-22"></script>
-<script src="/static/js/export.js?v=20260729-22"></script>
-<script src="/static/js/import.js?v=20260729-22"></script>
-<script src="/static/js/works.js?v=20260729-22"></script>
-<script src="/static/js/app.js?v=20260729-22"></script>
+<script src="/static/js/storage.js?v=20260808-2"></script>
+<script src="/static/js/reference-storage.js?v=20260808-2"></script>
+<script src="/static/js/work-codec.js?v=20260808-2"></script>
+<script src="/static/js/natural-64-v2.js?v=20260808-2"></script>
+<script src="/static/js/state.js?v=20260808-2"></script>
+<script src="/static/js/editor.js?v=20260808-2"></script>
+<script src="/static/js/export.js?v=20260808-2"></script>
+<script src="/static/js/import.js?v=20260808-2"></script>
+<script src="/static/js/works.js?v=20260808-2"></script>
+<script src="/static/js/app.js?v=20260808-2"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

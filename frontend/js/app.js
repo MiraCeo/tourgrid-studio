@@ -2148,7 +2148,9 @@ function bindStaticControls() {
     on(id, 'input', updateCropAdjustments);
   });
   on('cropDither', 'change', updateCropDitherMode);
+  on('cropSamplingMode', 'change', updateCropSamplingMode);
   on('cropPreviewToggleBtn', 'click', toggleCropPreviewMode);
+  on('cropAlignmentGridToggleBtn', 'click', toggleCropAlignmentGrid);
   on('conversionRetryBtn', 'click', confirmCrop);
   on('cancelCropBtn', 'click', cancelCrop);
   on('confirmCropBtn', 'click', confirmCrop);
@@ -2208,6 +2210,7 @@ function installTourgridTestApi() {
         eyedropperActive: eyedropperActive,
         moveCanvasActive: moveCanvasActive,
         hoveredCanvasCell: hoveredCanvasCell,
+        converterVersion: documentMetadata.converterVersion,
         conversionInProgress: conversionInProgress,
         historyOperationInProgress: historyOperationInProgress
       };
