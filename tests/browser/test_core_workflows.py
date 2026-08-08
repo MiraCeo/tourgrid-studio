@@ -359,7 +359,7 @@ def test_replication_mode_tracks_completed_colors_and_persists_locally(
     editor_page.locator("#replicationSort").select_option("palette-order")
     sort_state = editor_state(editor_page)
     assert sort_state["replicationSortMode"] == "palette-order"
-    assert sort_state["replacementSortMode"] == "count-desc"
+    assert sort_state["replacementSortMode"] == "palette-order"
     black_stat = editor_page.locator(
         f'.statistics-color[data-color="{BLACK}"]'
     )
@@ -914,8 +914,8 @@ def test_pixel_sampling_uses_the_inner_representative_color(
 
     editor_page.locator("#importFileInput").set_input_files(str(source_path))
     expect(editor_page.locator("#cropOverlay")).to_be_visible()
-    expect(editor_page.locator("#cropSamplingMode")).to_have_value("photo")
-    expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_hidden()
+    expect(editor_page.locator("#cropSamplingMode")).to_have_value("pixel")
+    expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_visible()
     reset_button = editor_page.locator("#cropResetBtn")
     zoom_slider = editor_page.locator("#cropZoomSlider")
     expect(reset_button).to_be_hidden()
@@ -930,7 +930,13 @@ def test_pixel_sampling_uses_the_inner_representative_color(
     editor_page.locator("#cropSamplePreviewToggleBtn").click()
     editor_page.wait_for_timeout(150)
     preview = editor_page.locator("#cropPreviewCanvas")
+    pixel_preview = preview.evaluate("canvas => canvas.toDataURL()")
+
+    editor_page.locator("#cropSamplingMode").select_option("photo")
+    expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_hidden()
+    editor_page.wait_for_timeout(150)
     photo_preview = preview.evaluate("canvas => canvas.toDataURL()")
+    assert pixel_preview != photo_preview
 
     editor_page.locator("#cropSamplingMode").select_option("pixel")
     expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_be_visible()
@@ -939,9 +945,6 @@ def test_pixel_sampling_uses_the_inner_representative_color(
         "true",
     )
     expect(editor_page.locator("#cropAlignmentGrid")).to_be_visible()
-    editor_page.wait_for_timeout(150)
-    pixel_preview = preview.evaluate("canvas => canvas.toDataURL()")
-    assert pixel_preview != photo_preview
 
     editor_page.locator("#cropAlignmentGridToggleBtn").click()
     expect(editor_page.locator("#cropAlignmentGridToggleBtn")).to_have_attribute(

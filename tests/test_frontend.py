@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260808-9"
+    asset_version = "20260808-11"
 
     assert (
         f'<link rel="stylesheet" '
@@ -118,8 +118,8 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert 'id="cropTargetColorCount"' in source
     assert 'accept="image/png,image/jpeg,image/webp"' in source
     assert 'id="cropSamplingMode"' in source
-    assert '<option value="photo" selected>照片（平滑）</option>' in source
-    assert '<option value="pixel">像素画（清晰）</option>' in source
+    assert '<option value="photo">照片（平滑）</option>' in source
+    assert '<option value="pixel" selected>像素画（清晰）</option>' in source
     assert 'id="cropPreviewToggleBtn"' in source
     assert 'id="cropSamplePreviewToggleBtn"' in source
     assert 'id="cropAlignmentGrid"' in source
@@ -139,6 +139,17 @@ def test_v2_palette_uses_isolated_local_storage_keys() -> None:
     assert "var REPLICATION_PROGRESS_STORAGE_KEY = 'tourgrid_replication_progress_v2';" in state
     assert "var STORAGE_KEY = 'pixel_editor_save';" not in state
     assert "var MANUAL_CHECKPOINT_KEY = 'pixel_editor_manual_checkpoint';" not in state
+
+
+def test_legacy_v2_local_documents_are_mapped_to_the_official_palette() -> None:
+    state = (JAVASCRIPT_ROOT / "state.js").read_text(encoding="utf-8")
+
+    assert "function migrateLegacyLocalPaletteDocument(documentState)" in state
+    assert "documentState.metadata.paletteId !== 'natural-64-v2'" in state
+    assert "row.map(mapLegacyPixelToOfficialPalette)" in state
+    assert "paletteId: DEFAULT_PALETTE_ID" in state
+    assert "paletteVersion: DEFAULT_PALETTE_VERSION" in state
+    assert "converterVersion: null" in state
 
 
 def test_first_run_canvas_is_blank_white_instead_of_a_demo_pattern() -> None:
@@ -235,9 +246,11 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert 'id="replicationResetBtn"' in html
     assert "目标图案" in html
     assert "已拼图案" in html
-    assert '<option value="count-desc" selected>' in html
-    assert '<option value="count-asc">' in html
-    assert '<option value="palette-order">' in html
+    assert html.count('<option value="palette-order" selected>色板位置顺序</option>') == 2
+    assert html.count('<option value="count-desc">数量：多 → 少</option>') == 2
+    assert html.count('<option value="count-asc">数量：少 → 多</option>') == 2
+    assert "let replacementSortMode = 'palette-order';" in state
+    assert "let replicationSortMode = 'palette-order';" in state
     assert "官方色板 · 40色" in html
     assert html.index('id="replicationGrid"') < html.index('id="colorUsageSummary"')
 

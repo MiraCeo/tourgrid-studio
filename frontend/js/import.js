@@ -31,7 +31,7 @@ let cropColorOverlay = '#4299E1';
 let cropColorOverlayOpacity = 0;
 let cropTargetColorCount = 40;
 let cropDitherStrength = 100;
-let cropSamplingMode = 'photo';
+let cropSamplingMode = 'pixel';
 let cropPreviewMode = 'processed';
 let cropSamplePreviewReturnMode = 'processed';
 let cropAlignmentGridVisible = true;
@@ -106,7 +106,7 @@ function resetCropAdjustments() {
   cropColorOverlayOpacity = 0;
   cropTargetColorCount = 40;
   cropDitherStrength = 100;
-  cropSamplingMode = 'photo';
+  cropSamplingMode = 'pixel';
   cropPreviewMode = 'processed';
   cropSamplePreviewReturnMode = 'processed';
   cropAlignmentGridVisible = true;
@@ -120,7 +120,7 @@ function resetCropAdjustments() {
     cropColorOverlayOpacity: 0,
     cropTargetColorCount: 40,
     cropDitherStrength: 100,
-    cropSamplingMode: 'photo'
+    cropSamplingMode: 'pixel'
   };
   Object.keys(values).forEach(function(id) {
     var element = document.getElementById(id);
@@ -184,7 +184,7 @@ function updateCropDitherMode() {
 
 function updateCropSamplingMode() {
   var control = document.getElementById('cropSamplingMode');
-  cropSamplingMode = control && control.value === 'pixel' ? 'pixel' : 'photo';
+  cropSamplingMode = control && control.value === 'photo' ? 'photo' : 'pixel';
   syncCropAlignmentGrid();
   scheduleCropPreview();
 }

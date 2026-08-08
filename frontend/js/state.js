@@ -128,8 +128,8 @@ let replacementOrderedColors = [];
 let replacementRelatedColors = [];
 let replacementRelatedSourceColor = null;
 let replicationHighlightColor = null;
-let replacementSortMode = 'count-desc';
-let replicationSortMode = 'count-desc';
+let replacementSortMode = 'palette-order';
+let replicationSortMode = 'palette-order';
 let replicationCompletedCells = new Set();
 let replicationEditSourceFingerprint = null;
 let replicationEditRemovedCellCount = 0;
@@ -144,6 +144,63 @@ let canvasGuidesVisible = true;
 const EXHIBITION_DATA = TOURGRID_OFFICIAL_40_V1.colors.map(function(color) {
   return {code: color.code, hex: color.hex, name: color.name};
 });
+
+function legacyPaletteDistance(source, target) {
+  var dr = source[0] - target[0];
+  var dg = source[1] - target[1];
+  var db = source[2] - target[2];
+  return 2 * dr * dr + 4 * dg * dg + 3 * db * db;
+}
+
+function mapLegacyPixelToOfficialPalette(color) {
+  var normalized = normalizePixelValue(color);
+  var exact = EXHIBITION_DATA.find(function(entry) {
+    return entry.hex === normalized;
+  });
+  if (exact) return exact.hex;
+
+  var source = [
+    parseInt(normalized.slice(1, 3), 16),
+    parseInt(normalized.slice(3, 5), 16),
+    parseInt(normalized.slice(5, 7), 16)
+  ];
+  var closest = EXHIBITION_DATA[0];
+  var closestDistance = Infinity;
+  EXHIBITION_DATA.forEach(function(entry) {
+    var target = [
+      parseInt(entry.hex.slice(1, 3), 16),
+      parseInt(entry.hex.slice(3, 5), 16),
+      parseInt(entry.hex.slice(5, 7), 16)
+    ];
+    var distance = legacyPaletteDistance(source, target);
+    if (distance < closestDistance) {
+      closest = entry;
+      closestDistance = distance;
+    }
+  });
+  return closest.hex;
+}
+
+function migrateLegacyLocalPaletteDocument(documentState) {
+  if (
+    !documentState ||
+    !documentState.metadata ||
+    documentState.metadata.paletteId !== 'natural-64-v2'
+  ) {
+    return false;
+  }
+
+  documentState.pixels = documentState.pixels.map(function(row) {
+    return row.map(mapLegacyPixelToOfficialPalette);
+  });
+  documentState.metadata = Object.assign({}, documentState.metadata, {
+    paletteId: DEFAULT_PALETTE_ID,
+    paletteVersion: DEFAULT_PALETTE_VERSION,
+    editorPaletteId: 'exhibition',
+    converterVersion: null
+  });
+  return true;
+}
 
 // 编辑器只使用当前版本化色板。
 let OFFICIAL_COLORS = EXHIBITION_DATA;
@@ -275,7 +332,11 @@ function loadFromStorage() {
   try {
     var raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return TourgridStorage.migrate(JSON.parse(raw));
+    var saved = TourgridStorage.migrate(JSON.parse(raw));
+    if (migrateLegacyLocalPaletteDocument(saved)) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    }
+    return saved;
   } catch(e) {
     return null;
   }
@@ -285,7 +346,11 @@ function loadManualCheckpoint() {
   try {
     var raw = localStorage.getItem(MANUAL_CHECKPOINT_KEY);
     if (!raw) return null;
-    return TourgridStorage.migrate(JSON.parse(raw));
+    var checkpoint = TourgridStorage.migrate(JSON.parse(raw));
+    if (migrateLegacyLocalPaletteDocument(checkpoint)) {
+      localStorage.setItem(MANUAL_CHECKPOINT_KEY, JSON.stringify(checkpoint));
+    }
+    return checkpoint;
   } catch(e) {
     return null;
   }

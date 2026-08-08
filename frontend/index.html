@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅行「像」框 | 24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260808-9">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260808-11">
 </head>
 <body>
 
@@ -335,9 +335,9 @@
         <label class="statistics-sort-control" for="replacementSort">
           <span>排序</span>
           <select id="replacementSort">
-            <option value="count-desc" selected>数量：多 → 少</option>
+            <option value="palette-order" selected>色板位置顺序</option>
+            <option value="count-desc">数量：多 → 少</option>
             <option value="count-asc">数量：少 → 多</option>
-            <option value="palette-order">色板位置顺序</option>
           </select>
         </label>
         <div class="color-statistics-scroll" id="replacementColorScroll" tabindex="0">
@@ -393,9 +393,9 @@
         <label class="statistics-sort-control" for="replicationSort">
           <span>排序</span>
           <select id="replicationSort">
-            <option value="count-desc" selected>数量：多 → 少</option>
+            <option value="palette-order" selected>色板位置顺序</option>
+            <option value="count-desc">数量：多 → 少</option>
             <option value="count-asc">数量：少 → 多</option>
-            <option value="palette-order">色板位置顺序</option>
           </select>
         </label>
         <div class="statistics-color-scroll" id="replicationColorScroll" tabindex="0">
@@ -699,8 +699,8 @@
           <label class="crop-setting" for="cropSamplingMode">
             <span>采样方式</span>
             <select id="cropSamplingMode">
-              <option value="photo" selected>照片（平滑）</option>
-              <option value="pixel">像素画（清晰）</option>
+              <option value="photo">照片（平滑）</option>
+              <option value="pixel" selected>像素画（清晰）</option>
             </select>
           </label>
           <label class="crop-setting" for="cropZoomSlider">
@@ -769,16 +769,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260808-9"></script>
-<script src="/static/js/reference-storage.js?v=20260808-9"></script>
-<script src="/static/js/work-codec.js?v=20260808-9"></script>
-<script src="/static/js/official-40-v1.js?v=20260808-9"></script>
-<script src="/static/js/state.js?v=20260808-9"></script>
-<script src="/static/js/editor.js?v=20260808-9"></script>
-<script src="/static/js/export.js?v=20260808-9"></script>
-<script src="/static/js/import.js?v=20260808-9"></script>
-<script src="/static/js/works.js?v=20260808-9"></script>
-<script src="/static/js/app.js?v=20260808-9"></script>
+<script src="/static/js/storage.js?v=20260808-11"></script>
+<script src="/static/js/reference-storage.js?v=20260808-11"></script>
+<script src="/static/js/work-codec.js?v=20260808-11"></script>
+<script src="/static/js/official-40-v1.js?v=20260808-11"></script>
+<script src="/static/js/state.js?v=20260808-11"></script>
+<script src="/static/js/editor.js?v=20260808-11"></script>
+<script src="/static/js/export.js?v=20260808-11"></script>
+<script src="/static/js/import.js?v=20260808-11"></script>
+<script src="/static/js/works.js?v=20260808-11"></script>
+<script src="/static/js/app.js?v=20260808-11"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
