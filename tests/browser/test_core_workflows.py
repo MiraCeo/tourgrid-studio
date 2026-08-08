@@ -1713,7 +1713,7 @@ def test_mobile_landscape_crop_keeps_large_image_zoom_and_actions_visible(
     slider = editor_page.locator("#cropZoomSlider")
     expect(overlay).to_be_visible()
     editor_page.wait_for_function(
-        "() => TourgridTest.getState().cropImageSize !== null"
+        "() => window.__TOURGRID_TEST__.getState().cropImageSize !== null"
     )
 
     crop_image_size = editor_state(editor_page)["cropImageSize"]
@@ -1810,7 +1810,7 @@ def test_crop_keeps_same_source_region_when_viewport_resizes(
     expect(editor_page.locator("#cropOverlay")).to_be_visible()
     editor_page.wait_for_function(
         """() => {
-          const crop = TourgridTest.getState().cropTransform;
+          const crop = window.__TOURGRID_TEST__.getState().cropTransform;
           return crop && crop.viewportSize > 0;
         }"""
     )
@@ -1833,7 +1833,7 @@ def test_crop_keeps_same_source_region_when_viewport_resizes(
     editor_page.set_viewport_size({"width": 800, "height": 500})
     editor_page.wait_for_function(
         """previousSize => {
-          const crop = TourgridTest.getState().cropTransform;
+          const crop = window.__TOURGRID_TEST__.getState().cropTransform;
           return crop && crop.viewportSize !== previousSize;
         }""",
         before["viewportSize"],
