@@ -11,7 +11,7 @@ class ApiSettings:
     rate_limit_window_seconds: float = 60.0
     rate_limit_max_clients: int = 10_000
     environment: str = "development"
-    release: str = "0.3.1"
+    release: str = "0.3.2"
     database_url: str | None = None
     redis_url: str | None = None
     admin_token: str | None = None

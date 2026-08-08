@@ -128,8 +128,8 @@ docker compose --env-file deploy/local.env up --detach --build --wait
 ```
 
 本地示例通过 `TOURGRID_BIND_ADDRESS=127.0.0.1` 只允许当前电脑访问。访问
-`http://localhost:8080/`。测试和生产环境必须显式设置监听地址；正式域名、
-HTTPS、备份和回滚见
+`http://localhost:8080/`。正式模板同样只绑定回环地址，由宿主机Nginx代理到
+8081；测试环境可让Caddy直接接受外部流量。正式域名、HTTPS、备份和回滚见
 [部署与发布](docs/deployment.md)。
 
 ## API

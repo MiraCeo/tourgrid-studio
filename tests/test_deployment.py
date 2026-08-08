@@ -63,7 +63,7 @@ def test_postgres_is_persistent_and_only_bound_to_loopback() -> None:
     assert "TOURGRID_DB_PASSWORD=" in production
 
 
-def test_local_web_is_loopback_only_and_deployments_open_explicitly() -> None:
+def test_local_and_production_proxy_ports_are_loopback_only() -> None:
     compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
     local = (ROOT / "deploy/.env.example").read_text(encoding="utf-8")
     staging = (ROOT / "deploy/staging.env.example").read_text(encoding="utf-8")
@@ -81,7 +81,9 @@ def test_local_web_is_loopback_only_and_deployments_open_explicitly() -> None:
     ) in compose
     assert "TOURGRID_BIND_ADDRESS=127.0.0.1" in local
     assert "TOURGRID_BIND_ADDRESS=0.0.0.0" in staging
-    assert "TOURGRID_BIND_ADDRESS=0.0.0.0" in production
+    assert "TOURGRID_SITE_ADDRESS=:80" in production
+    assert "TOURGRID_BIND_ADDRESS=127.0.0.1" in production
+    assert "TOURGRID_HTTP_PORT=8081" in production
 
 
 def test_frontend_image_includes_only_versioned_frontend_sources() -> None:
@@ -111,7 +113,7 @@ def test_license_scope_excludes_palette_data_and_starts_at_v031() -> None:
     scope = (ROOT / "LICENSE_SCOPE.md").read_text(encoding="utf-8")
     notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
 
-    assert 'version = "0.3.1"' in project
+    assert 'version = "0.3.2"' in project
     assert 'license = "Apache-2.0"' in project
     assert "`v0.3.1`" in scope
     assert "`palettes/`" in scope
@@ -126,6 +128,7 @@ def test_rate_limiter_client_cap_is_configured_for_deployment() -> None:
     staging = (ROOT / "deploy/staging.env.example").read_text(encoding="utf-8")
 
     assert "TOURGRID_RATE_LIMIT_MAX_CLIENTS" in compose
+    assert "TOURGRID_RATE_LIMIT_REQUESTS=20" in production
     assert "TOURGRID_RATE_LIMIT_MAX_CLIENTS=10000" in production
     assert "TOURGRID_RATE_LIMIT_MAX_CLIENTS=10000" in staging
 

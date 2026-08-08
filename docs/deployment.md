@@ -3,17 +3,19 @@
 ## 架构
 
 ```text
-浏览器 -> Caddy (:80/:443) -> 静态前端
-                         \-> /api、/docs、/openapi.json -> FastAPI
-                                                             ├-> PostgreSQL
-                                                             \-> Redis
+浏览器 -> 宿主机 Nginx (:80/:443) -> 127.0.0.1:8081 -> Caddy (:80)
+                                                        ├-> 静态前端
+                                                        \-> /api、/docs、/openapi.json -> FastAPI
+                                                                                          ├-> PostgreSQL
+                                                                                          \-> Redis
 ```
 
 FastAPI不向宿主机公开端口，只允许Caddy通过Compose内部网络访问。PostgreSQL
 只绑定宿主机回环地址，作品数据保存在 `postgres_data` 卷中。
 
 图片导入和64色转换完全在浏览器中执行，API容器不安装科学计算或图片解码依赖。
-本地环境的Web端口只绑定 `127.0.0.1`；测试和生产示例显式使用 `0.0.0.0`
+本地环境和正式环境的Web端口都只绑定 `127.0.0.1`；正式环境由同一宿主机上的
+Nginx终止公网TLS并代理到8081。测试环境示例可让Caddy直接监听 `0.0.0.0`
 接受外部流量。
 
 ## 本地容器验收
@@ -69,7 +71,7 @@ docker compose --env-file "$ENV_FILE" up --detach --build --wait
 ## 测试环境
 
 1. 将 `deploy/staging.env.example` 复制为不提交的 `deploy/staging.env`。
-2. 设置测试域名、数据库强密码和不可变版本标签，例如 `0.3.1-rc.1`。
+2. 设置测试域名、数据库强密码和不可变版本标签，例如 `0.3.2-rc.1`。
 3. 确认 `TOURGRID_BIND_ADDRESS=0.0.0.0`，将域名A记录指向服务器并开放
    TCP 80和443；若需要AAAA记录，应另行确认宿主机和容器的IPv6发布配置。
 4. 运行完整测试并启动Compose。
@@ -99,8 +101,48 @@ docker compose --env-file deploy/staging.env up --detach --build --wait
 - PostgreSQL备份位置与恢复验证结果；
 - Caddy数据卷状态。
 
-正式环境必须显式设置 `TOURGRID_BIND_ADDRESS=0.0.0.0`，不能依赖Compose的
-本地安全默认值。
+正式模板假设宿主机Nginx负责公网TLS，关键网络设置为：
+
+```dotenv
+TOURGRID_SITE_ADDRESS=:80
+TOURGRID_BIND_ADDRESS=127.0.0.1
+TOURGRID_HTTP_PORT=8081
+TOURGRID_HTTPS_PORT=8444
+```
+
+其中8444仅保留为回环端口映射兼容项；在 `TOURGRID_SITE_ADDRESS=:80` 下公网HTTPS
+完全由Nginx提供，不应对外开放8444。
+
+Nginx站点配置只保留一个启用版本，并代理到回环端口：
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name tourgrid.miraceo.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+```
+
+不要把 `.bak` 文件留在 `/etc/nginx/sites-enabled/`：该目录中的所有文件都会被
+Nginx当作有效配置加载。备份应移到未被 `nginx.conf` 包含的目录。修改后先运行
+`nginx -t`，成功后再重新加载Nginx。
+
+活动期间生产发布限流建议从每客户端IP每分钟20次开始：
+
+```dotenv
+TOURGRID_RATE_LIMIT_REQUESTS=20
+TOURGRID_RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+上线后根据访问日志中的429数量调整。共享出口网络可能让不同用户表现为同一个IP，
+因此不建议在没有日志依据时立刻降低该值。
 
 单台Compose主机不提供按百分比灰度。需要灰度时，运行互相隔离的旧版和候选版，
 由上游负载均衡器或CDN分配流量；没有流量治理设施时，采用“测试域名→正式域名”

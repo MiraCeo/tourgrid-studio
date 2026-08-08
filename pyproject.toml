@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # This metadata supports dependency tooling and editable source checkouts.
 # Built wheel artifacts are not a supported runtime distribution.
 name = "tourgrid-studio"
-version = "0.3.1"
+version = "0.3.2"
 description = "Source-only browser-based 24x24 pixel art editor and immutable work sharing service."
 readme = "README.md"
 license = "Apache-2.0"
