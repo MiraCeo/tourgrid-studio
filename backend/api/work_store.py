@@ -139,6 +139,7 @@ class WorkStore(Protocol):
         self,
         *,
         status: str | None,
+        sort: str,
         page: int,
         page_size: int,
     ) -> tuple[list[AdminWorkRecord], int, int]: ...
@@ -466,18 +467,26 @@ class InMemoryWorkStore:
         self,
         *,
         status: str | None,
+        sort: str,
         page: int,
         page_size: int,
     ) -> tuple[list[AdminWorkRecord], int, int]:
         async with self._lock:
-            candidates = sorted(
-                (
-                    (record_id, code)
-                    for code, record_id in self._id_by_code.items()
-                    if status is None or self._status_by_code[code] == status
-                ),
-                reverse=True,
-            )
+            candidates = [
+                (record_id, code)
+                for code, record_id in self._id_by_code.items()
+                if status is None or self._status_by_code[code] == status
+            ]
+            if sort == "views_desc":
+                candidates.sort(
+                    key=lambda item: (
+                        self._by_code[item[1]].view_count,
+                        item[0],
+                    ),
+                    reverse=True,
+                )
+            else:
+                candidates.sort(reverse=True)
             total_count = len(candidates)
             total_pages = (total_count + page_size - 1) // page_size
             actual_page = min(page, max(1, total_pages))
@@ -934,6 +943,7 @@ class PostgresWorkStore:
         self,
         *,
         status: str | None,
+        sort: str,
         page: int,
         page_size: int,
     ) -> tuple[list[AdminWorkRecord], int, int]:
@@ -941,6 +951,7 @@ class PostgresWorkStore:
             return await asyncio.to_thread(
                 self._list_admin_works_page_sync,
                 status,
+                sort,
                 page,
                 page_size,
             )
@@ -993,6 +1004,7 @@ class PostgresWorkStore:
     def _list_admin_works_page_sync(
         self,
         status: str | None,
+        sort: str,
         page: int,
         page_size: int,
     ) -> tuple[list[AdminWorkRecord], int, int]:
@@ -1009,23 +1021,28 @@ class PostgresWorkStore:
             total_pages = (total_count + page_size - 1) // page_size
             actual_page = min(page, max(1, total_pages))
             offset = (actual_page - 1) * page_size
+            order_by = (
+                "view_count DESC, id DESC"
+                if sort == "views_desc"
+                else "id DESC"
+            )
             if status is None:
                 rows = connection.execute(
-                    """
+                    f"""
                     SELECT
                         code, schema_version, palette_id, palette_version,
                         pixel_data, author_name, title, view_count, created_at,
                         moderation_status, moderated_at, moderation_reason,
                         purged_at
                     FROM works
-                    ORDER BY id DESC
+                    ORDER BY {order_by}
                     LIMIT %s OFFSET %s
                     """,
                     (page_size, offset),
                 ).fetchall()
             else:
                 rows = connection.execute(
-                    """
+                    f"""
                     SELECT
                         code, schema_version, palette_id, palette_version,
                         pixel_data, author_name, title, view_count, created_at,
@@ -1033,7 +1050,7 @@ class PostgresWorkStore:
                         purged_at
                     FROM works
                     WHERE moderation_status = %s
-                    ORDER BY id DESC
+                    ORDER BY {order_by}
                     LIMIT %s OFFSET %s
                     """,
                     (status, page_size, offset),

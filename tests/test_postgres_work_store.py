@@ -154,6 +154,7 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             page_items, total_count, actual_page = (
                 await store.list_admin_works_page(
                     status=None,
+                    sort="created_desc",
                     page=1,
                     page_size=50,
                 )

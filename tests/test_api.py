@@ -268,6 +268,18 @@ def test_admin_can_list_preview_and_manage_every_work() -> None:
             headers=headers,
             params={"page": 99, "pageSize": 2},
         )
+        viewed_code = created[0]["code"]
+        admin_client.get(f"/api/v1/works/{viewed_code}")
+        views_sorted = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={"page": 1, "pageSize": 3, "sort": "views_desc"},
+        )
+        invalid_sort = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={"page": 1, "sort": "arbitrary"},
+        )
         favorite_codes = [created[0]["code"], created[2]["code"]]
         batch = admin_client.post(
             "/api/v1/admin/works/batch",
@@ -316,6 +328,9 @@ def test_admin_can_list_preview_and_manage_every_work() -> None:
     assert len(numbered_second_page.json()["works"]) == 1
     assert clamped_page.json()["page"] == 2
     assert len(clamped_page.json()["works"]) == 1
+    assert views_sorted.json()["works"][0]["code"] == viewed_code
+    assert views_sorted.json()["works"][0]["viewCount"] == 1
+    assert invalid_sort.status_code == 422
     assert [item["code"] for item in batch.json()["works"]] == favorite_codes
     assert duplicate_batch.status_code == 422
     assert all(item["pixels"] for item in listed.json()["works"])

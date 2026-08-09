@@ -10,6 +10,7 @@
   var totalCount = 0;
   var pageSize = 50;
   var favoriteCodes = [];
+  var databaseSort = 'created_desc';
   var selectedWork = null;
   var pendingAction = null;
   var paletteCache = {};
@@ -25,6 +26,7 @@
   var pagination = document.getElementById('pagination');
   var pageButtons = document.getElementById('pageButtons');
   var statusFilter = document.getElementById('statusFilter');
+  var sortFilter = document.getElementById('sortFilter');
   var detailPlaceholder = document.getElementById('detailPlaceholder');
   var detailContent = document.getElementById('detailContent');
   var actionDialog = document.getElementById('actionDialog');
@@ -99,6 +101,24 @@
 
   function isFavorite(code) {
     return favoriteCodes.indexOf(code) >= 0;
+  }
+
+  function syncSortFilter() {
+    var favoriteView = statusFilter.value === 'favorite';
+    if (favoriteView) {
+      if (sortFilter.value !== 'favorite_order') {
+        databaseSort = sortFilter.value;
+      }
+      sortFilter.value = 'favorite_order';
+      sortFilter.disabled = true;
+      sortFilter.title = '喜爱作品固定按照添加顺序排列';
+      return;
+    }
+    sortFilter.disabled = false;
+    sortFilter.title = '';
+    if (sortFilter.value === 'favorite_order') {
+      sortFilter.value = databaseSort;
+    }
   }
 
   function toggleFavorite(code) {
@@ -271,7 +291,8 @@
     setMessage('正在读取第 ' + page + ' 页作品…');
     var parameters = new URLSearchParams({
       page: String(page),
-      pageSize: String(pageSize)
+      pageSize: String(pageSize),
+      sort: sortFilter.value
     });
     if (statusFilter.value) parameters.set('status', statusFilter.value);
     return api('/api/v1/admin/works?' + parameters.toString())
@@ -505,6 +526,9 @@
     totalPages = 0;
     totalCount = 0;
     favoriteCodes = [];
+    databaseSort = 'created_desc';
+    sortFilter.value = databaseSort;
+    syncSortFilter();
     selectedWork = null;
     adminApp.hidden = true;
     loginPanel.hidden = false;
@@ -514,6 +538,12 @@
   document.getElementById('refreshButton').addEventListener('click', function() { loadWorks(currentPage); });
   document.getElementById('auditRefreshButton').addEventListener('click', loadAudit);
   statusFilter.addEventListener('change', function() {
+    syncSortFilter();
+    totalPages = 0;
+    loadWorks(1);
+  });
+  sortFilter.addEventListener('change', function() {
+    databaseSort = sortFilter.value;
     totalPages = 0;
     loadWorks(1);
   });

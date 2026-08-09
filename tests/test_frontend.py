@@ -119,6 +119,26 @@ def test_admin_uses_numbered_fifty_work_pages_with_direct_jump() -> None:
     assert ".page-button.current" in css
 
 
+def test_admin_can_sort_database_views_by_popularity() -> None:
+    html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (FRONTEND_ROOT / "admin" / "admin.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'id="sortFilter"' in html
+    assert '<option value="created_desc">最新发布</option>' in html
+    assert '<option value="views_desc">浏览量最多</option>' in html
+    assert '<option value="favorite_order" hidden>喜爱添加顺序</option>' in html
+    assert "sort: sortFilter.value" in javascript
+    assert "function syncSortFilter()" in javascript
+    assert "sortFilter.disabled = true" in javascript
+    assert "databaseSort = sortFilter.value" in javascript
+    assert "sortFilter.addEventListener('change'" in javascript
+    assert "loadWorks(1);" in javascript
+
+
 def test_admin_favorites_are_local_ordered_and_batch_loaded() -> None:
     html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
         encoding="utf-8"

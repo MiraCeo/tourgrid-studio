@@ -190,6 +190,10 @@ def create_admin_router() -> APIRouter:
             Literal["active", "hidden", "purged"] | None,
             Query(),
         ] = None,
+        sort: Annotated[
+            Literal["created_desc", "views_desc"],
+            Query(),
+        ] = "created_desc",
         limit: Annotated[int, Query(ge=1, le=100)] = 48,
         cursor: Annotated[int | None, Query(ge=1)] = None,
         page: Annotated[int | None, Query(ge=1)] = None,
@@ -205,6 +209,7 @@ def create_admin_router() -> APIRouter:
                 records, total_count, actual_page = (
                     await store.list_admin_works_page(
                         status=status,
+                        sort=sort,
                         page=page,
                         page_size=page_size,
                     )
