@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅行「像」框 | 24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260810-03">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260810-04">
 </head>
 <body>
 
@@ -407,6 +407,36 @@
         </div>
       </div>
     </div>
+
+    <nav class="portrait-workspace-nav" id="portraitWorkspaceNav"
+         aria-label="竖屏编辑面板">
+      <button class="portrait-workspace-nav-btn" id="portraitReferenceBtn"
+              type="button" data-portrait-panel="reference"
+              aria-controls="leftPanel" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8"></circle>
+          <path d="m12 6 2.2 5.8L12 18l-2.2-6.2z"></path>
+        </svg>
+        <span>参考</span>
+      </button>
+      <button class="portrait-workspace-nav-btn" id="portraitToolsBtn"
+              type="button" data-portrait-panel="tools"
+              aria-controls="rightPanel" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 19 19 5M14 5h5v5"></path>
+          <path d="M4 14v6h6"></path>
+        </svg>
+        <span>工具</span>
+      </button>
+      <button class="portrait-workspace-nav-btn" id="portraitPaletteBtn"
+              type="button" data-portrait-panel="palette"
+              aria-controls="rightPanel" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m12 3 8 9-8 9-8-9z"></path>
+        </svg>
+        <span>色板</span>
+      </button>
+    </nav>
   </div>
 </div>
 
@@ -738,16 +768,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260810-03"></script>
-<script src="/static/js/reference-storage.js?v=20260810-03"></script>
-<script src="/static/js/work-codec.js?v=20260810-03"></script>
-<script src="/static/js/official-40-v1.js?v=20260810-03"></script>
-<script src="/static/js/state.js?v=20260810-03"></script>
-<script src="/static/js/editor.js?v=20260810-03"></script>
-<script src="/static/js/export.js?v=20260810-03"></script>
-<script src="/static/js/import.js?v=20260810-03"></script>
-<script src="/static/js/works.js?v=20260810-03"></script>
-<script src="/static/js/app.js?v=20260810-03"></script>
+<script src="/static/js/storage.js?v=20260810-04"></script>
+<script src="/static/js/reference-storage.js?v=20260810-04"></script>
+<script src="/static/js/work-codec.js?v=20260810-04"></script>
+<script src="/static/js/official-40-v1.js?v=20260810-04"></script>
+<script src="/static/js/state.js?v=20260810-04"></script>
+<script src="/static/js/editor.js?v=20260810-04"></script>
+<script src="/static/js/export.js?v=20260810-04"></script>
+<script src="/static/js/import.js?v=20260810-04"></script>
+<script src="/static/js/works.js?v=20260810-04"></script>
+<script src="/static/js/app.js?v=20260810-04"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">
@@ -811,8 +841,8 @@
 </div>
 
 
-<!-- 移动端竖屏提示 -->
-<div class="rotate-hint" id="rotateHint">
+<!-- 移动端竖屏建议：不阻断编辑，方向锁定失败时继续使用竖屏布局 -->
+<aside class="rotate-hint" id="rotateHint" aria-label="横屏体验建议">
   <div class="rotate-icon" aria-hidden="true">
     <svg viewBox="0 0 64 64">
       <rect x="20" y="14" width="24" height="36" rx="3"></rect>
@@ -821,9 +851,17 @@
       <path d="m46 9 2 8-8 1"></path>
     </svg>
   </div>
-  <div class="rotate-text">请横屏使用</div>
-  <div class="rotate-sub">旋转手机以获得最佳体验</div>
-</div>
+  <div class="rotate-hint-copy">
+    <div class="rotate-text">横屏体验更佳</div>
+    <div class="rotate-sub">也可以继续使用当前竖屏编辑布局</div>
+  </div>
+  <div class="rotate-hint-actions">
+    <button type="button" class="rotate-action rotate-action-primary"
+            id="tryLandscapeBtn">尝试横屏</button>
+    <button type="button" class="rotate-action"
+            id="continuePortraitBtn">继续竖屏</button>
+  </div>
+</aside>
 
 </body>
 </html>

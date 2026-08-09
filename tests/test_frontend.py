@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260810-03"
+    asset_version = "20260810-04"
 
     assert (
         f'<link rel="stylesheet" '
@@ -547,6 +547,7 @@ def test_import_ui_supports_local_retry_status_and_touch_crop() -> None:
 
 
 def test_phone_and_tablet_responsive_contract() -> None:
+    html = INDEX_HTML.read_text(encoding="utf-8")
     css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
 
@@ -554,8 +555,17 @@ def test_phone_and_tablet_responsive_contract() -> None:
     assert "width: min(320px, 42dvh)" in css
     assert "height: min(320px, 42dvh)" in css
     assert "function checkOrientation()" in app
+    assert "function getUsableViewportSize()" in app
+    assert "window.visualViewport.addEventListener('resize', checkOrientation)" in app
     assert "window.addEventListener('resize', checkOrientation)" in app
     assert "window.addEventListener('orientationchange'" in app
+    assert 'id="portraitWorkspaceNav"' in html
+    assert 'id="tryLandscapeBtn"' in html
+    assert 'id="continuePortraitBtn"' in html
+    assert "body.mobile-portrait-layout .portrait-workspace-nav" in css
+    assert "function setPortraitWorkspacePanel(panel)" in app
+    assert "function tryLandscapeExperience()" in app
+    assert "await orientation.lock('landscape')" in app
 
 
 def test_primary_interface_text_keeps_readable_hierarchy() -> None:
@@ -1117,7 +1127,10 @@ def test_mobile_workspace_mode_preserves_original_layout_and_adds_focus_controls
     assert "body.mobile-focus-mode #replacementHint" in css
     assert "body.mobile-focus-mode .center-panel" in css
     assert "body.mobile-focus-mode.mobile-toolbar-collapsed .top-bar" in css
-    assert "function setMobileWorkspaceMode(active, announce)" in app
+    assert (
+        "function setMobileWorkspaceMode(active, announce, persistPreference)"
+        in app
+    )
     assert "function setMobileWorkspaceDrawer(side)" in app
     assert "on('workspaceDrawerBackdrop', 'click'" not in app
     assert "function setMobileToolbarCollapsed(collapsed)" in app

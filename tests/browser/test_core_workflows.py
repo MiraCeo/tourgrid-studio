@@ -1294,6 +1294,68 @@ def test_mobile_portrait_hint_covers_extended_phone_breakpoint(
     expect(editor_page.locator("#rotateHint")).to_be_hidden()
 
 
+def test_mobile_portrait_layout_keeps_canvas_and_bottom_panels_usable(
+    editor_page: Page,
+) -> None:
+    width = 390
+    height = 844
+    editor_page.set_viewport_size({"width": width, "height": height})
+    editor_page.evaluate("checkOrientation()")
+
+    body = editor_page.locator("body")
+    center = editor_page.locator("#centerPanel")
+    nav = editor_page.locator("#portraitWorkspaceNav")
+    reference_button = editor_page.locator("#portraitReferenceBtn")
+    tools_button = editor_page.locator("#portraitToolsBtn")
+    palette_button = editor_page.locator("#portraitPaletteBtn")
+
+    expect(body).to_have_class(re.compile(r"\bmobile-portrait-layout\b"))
+    expect(body).to_have_class(re.compile(r"\bmobile-focus-mode\b"))
+    expect(nav).to_be_visible()
+    expect(editor_page.locator("#rotateHint")).to_be_visible()
+
+    editor_page.locator("#continuePortraitBtn").click()
+    expect(editor_page.locator("#rotateHint")).to_be_hidden()
+
+    center_box = center.bounding_box()
+    nav_box = nav.bounding_box()
+    assert center_box is not None
+    assert nav_box is not None
+    assert center_box["x"] == pytest.approx(0, abs=1)
+    assert center_box["width"] == pytest.approx(width, abs=1)
+    assert nav_box["y"] + nav_box["height"] <= height + 1
+
+    reference_button.click()
+    expect(reference_button).to_have_attribute("aria-expanded", "true")
+    expect(body).to_have_class(re.compile(r"\bmobile-left-drawer-open\b"))
+    editor_page.wait_for_timeout(220)
+    reference_box = editor_page.locator("#leftPanel").bounding_box()
+    assert reference_box is not None
+    assert reference_box["x"] == pytest.approx(0, abs=1)
+    assert reference_box["width"] == pytest.approx(width, abs=1)
+    assert reference_box["y"] + reference_box["height"] <= nav_box["y"] + 1
+
+    tools_button.click()
+    expect(reference_button).to_have_attribute("aria-expanded", "false")
+    expect(tools_button).to_have_attribute("aria-expanded", "true")
+    expect(body).to_have_class(re.compile(r"\bportrait-tools-panel\b"))
+    editor_page.wait_for_timeout(220)
+    expect(editor_page.locator("#rightPanel .tool-icons")).to_be_visible()
+    expect(editor_page.locator("#rightPanel .palette-tabs")).to_be_hidden()
+    tools_box = editor_page.locator("#rightPanel").bounding_box()
+    assert tools_box is not None
+    assert tools_box["height"] <= 105
+
+    palette_button.click()
+    expect(tools_button).to_have_attribute("aria-expanded", "false")
+    expect(palette_button).to_have_attribute("aria-expanded", "true")
+    expect(body).to_have_class(re.compile(r"\bportrait-palette-panel\b"))
+    editor_page.wait_for_timeout(220)
+    expect(editor_page.locator("#rightPanel .tool-icons")).to_be_hidden()
+    expect(editor_page.locator("#rightPanel .palette-tabs")).to_be_visible()
+    expect(editor_page.locator("#coloringPanelView")).to_be_visible()
+
+
 def test_second_touch_rolls_back_unconfirmed_paint_stroke(
     editor_page: Page,
 ) -> None:

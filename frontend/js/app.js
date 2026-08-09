@@ -1785,6 +1785,25 @@ function syncFullscreenControl() {
   button.title = active ? '退出全屏' : '进入全屏';
 }
 
+async function requestEditorFullscreen() {
+  if (getFullscreenElement()) return true;
+  if (!isFullscreenSupported()) return false;
+  var root = document.documentElement;
+  var requestFullscreen =
+    root.requestFullscreen || root.webkitRequestFullscreen;
+  if (root.requestFullscreen) {
+    try {
+      await requestFullscreen.call(root, { navigationUI: 'hide' });
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      await requestFullscreen.call(root);
+    }
+  } else {
+    await requestFullscreen.call(root);
+  }
+  return true;
+}
+
 async function toggleFullscreen() {
   try {
     if (!isFullscreenSupported()) {
@@ -1797,19 +1816,7 @@ async function toggleFullscreen() {
       if (!exitFullscreen) throw new Error('fullscreen-exit-unsupported');
       await exitFullscreen.call(document);
     } else {
-      var root = document.documentElement;
-      var requestFullscreen =
-        root.requestFullscreen || root.webkitRequestFullscreen;
-      if (root.requestFullscreen) {
-        try {
-          await requestFullscreen.call(root, { navigationUI: 'hide' });
-        } catch (error) {
-          if (!(error instanceof TypeError)) throw error;
-          await requestFullscreen.call(root);
-        }
-      } else {
-        await requestFullscreen.call(root);
-      }
+      await requestEditorFullscreen();
     }
   } catch (error) {
     showToast('无法切换全屏，请检查浏览器权限');
@@ -1823,7 +1830,10 @@ document.addEventListener('webkitfullscreenchange', syncFullscreenControl);
 
 var mobileWorkspaceModeActive = false;
 var mobileWorkspaceGesture = null;
+var mobilePortraitPanel = null;
+var portraitWorkspacePreviousFocus = null;
 var MOBILE_WORKSPACE_MODE_KEY = 'tourgrid.mobileWorkspaceMode';
+var PORTRAIT_HINT_DISMISSED_KEY = 'tourgrid.portraitHintDismissed';
 var MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40;
 var MOBILE_TOOLBAR_HANDLE_POSITION_KEY =
   'tourgrid.mobileToolbarHandlePosition';
@@ -2015,6 +2025,9 @@ function syncMobileWorkspaceControls() {
   var toolbarCollapsed = body.classList.contains('mobile-toolbar-collapsed');
   var leftOpen = body.classList.contains('mobile-left-drawer-open');
   var rightOpen = body.classList.contains('mobile-right-drawer-open');
+  var portraitButtons = document.querySelectorAll(
+    '[data-portrait-panel]'
+  );
 
   if (modeButton) {
     modeButton.classList.toggle('is-focus-mode', mobileWorkspaceModeActive);
@@ -2065,6 +2078,11 @@ function syncMobileWorkspaceControls() {
       rightOpen ? '关闭工具与上色面板' : '打开工具与上色面板'
     );
   }
+  portraitButtons.forEach(function(button) {
+    var active = button.dataset.portraitPanel === mobilePortraitPanel;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-expanded', active ? 'true' : 'false');
+  });
 }
 
 function closeMobileWorkspaceDrawers() {
@@ -2074,10 +2092,32 @@ function closeMobileWorkspaceDrawers() {
     body.classList.contains('mobile-right-drawer-open');
   body.classList.remove(
     'mobile-left-drawer-open',
-    'mobile-right-drawer-open'
+    'mobile-right-drawer-open',
+    'portrait-tools-panel',
+    'portrait-palette-panel'
   );
+  mobilePortraitPanel = null;
   syncMobileWorkspaceControls();
   return wasOpen;
+}
+
+function setPortraitWorkspacePanel(panel) {
+  if (!document.body.classList.contains('mobile-portrait-layout')) return;
+  var shouldOpen = mobilePortraitPanel !== panel;
+  closeMobileWorkspaceDrawers();
+  if (shouldOpen) {
+    mobilePortraitPanel = panel;
+    if (panel === 'reference') {
+      document.body.classList.add('mobile-left-drawer-open');
+    } else {
+      document.body.classList.add('mobile-right-drawer-open');
+      document.body.classList.add(
+        panel === 'tools' ? 'portrait-tools-panel' : 'portrait-palette-panel'
+      );
+    }
+  }
+  syncMobileWorkspaceControls();
+  scheduleMobileWorkspaceLayoutSync();
 }
 
 function setMobileWorkspaceDrawer(side) {
@@ -2107,7 +2147,7 @@ function setMobileToolbarCollapsed(collapsed) {
   scheduleMobileWorkspaceLayoutSync();
 }
 
-function setMobileWorkspaceMode(active, announce) {
+function setMobileWorkspaceMode(active, announce, persistPreference) {
   mobileWorkspaceModeActive = Boolean(active);
   document.body.classList.toggle(
     'mobile-focus-mode',
@@ -2120,14 +2160,16 @@ function setMobileWorkspaceMode(active, announce) {
       'mobile-right-drawer-open'
     );
   }
-  try {
-    if (mobileWorkspaceModeActive) {
-      sessionStorage.setItem(MOBILE_WORKSPACE_MODE_KEY, 'focus');
-    } else {
-      sessionStorage.removeItem(MOBILE_WORKSPACE_MODE_KEY);
+  if (persistPreference !== false) {
+    try {
+      if (mobileWorkspaceModeActive) {
+        sessionStorage.setItem(MOBILE_WORKSPACE_MODE_KEY, 'focus');
+      } else {
+        sessionStorage.removeItem(MOBILE_WORKSPACE_MODE_KEY);
+      }
+    } catch (error) {
+      // 隐私模式可能禁用会话存储；布局仍在当前页面内生效。
     }
-  } catch (error) {
-    // 隐私模式可能禁用会话存储；布局仍在当前页面内生效。
   }
   syncMobileWorkspaceControls();
   scheduleMobileWorkspaceLayoutSync();
@@ -2255,6 +2297,17 @@ function bindStaticControls() {
   on('mobileRightPanelBtn', 'click', function() {
     setMobileWorkspaceDrawer('right');
   });
+  on('portraitReferenceBtn', 'click', function() {
+    setPortraitWorkspacePanel('reference');
+  });
+  on('portraitToolsBtn', 'click', function() {
+    setPortraitWorkspacePanel('tools');
+  });
+  on('portraitPaletteBtn', 'click', function() {
+    setPortraitWorkspacePanel('palette');
+  });
+  on('tryLandscapeBtn', 'click', tryLandscapeExperience);
+  on('continuePortraitBtn', 'click', dismissPortraitHint);
   on('centerPanel', 'pointerdown', onMobileWorkspacePointerDown);
   on('centerPanel', 'pointermove', onMobileWorkspacePointerMove);
   on('centerPanel', 'pointerup', finishMobileWorkspaceGesture);
@@ -2451,21 +2504,102 @@ document.addEventListener('DOMContentLoaded', function() {
   openAnnouncementOnEntry();
 });
 
-// --- 移动端横竖屏检测（比CSS orientation更可靠）---
-function checkOrientation() {
-  var hint = document.getElementById('rotateHint');
-  if (!hint) return;
-  var isPortrait = window.innerWidth < window.innerHeight;
-  var isNarrow = window.innerWidth <= 960;
-  if (isNarrow && isPortrait) {
-    hint.classList.add('show');
-  } else {
-    hint.classList.remove('show');
+// --- 移动端可用空间检测与竖屏降级布局 ---
+function getUsableViewportSize() {
+  var viewport = window.visualViewport;
+  return {
+    width: viewport ? viewport.width : window.innerWidth,
+    height: viewport ? viewport.height : window.innerHeight
+  };
+}
+
+function syncAppViewportHeight() {
+  var size = getUsableViewportSize();
+  document.documentElement.style.setProperty(
+    '--app-height',
+    Math.round(size.height) + 'px'
+  );
+  return size;
+}
+
+function isPortraitHintDismissed() {
+  try {
+    return sessionStorage.getItem(PORTRAIT_HINT_DISMISSED_KEY) === 'true';
+  } catch (error) {
+    return false;
   }
 }
+
+function dismissPortraitHint() {
+  try {
+    sessionStorage.setItem(PORTRAIT_HINT_DISMISSED_KEY, 'true');
+  } catch (error) {
+    // 无会话存储时仅隐藏当前页面中的提示。
+  }
+  var hint = document.getElementById('rotateHint');
+  if (hint) hint.classList.remove('show');
+}
+
+function setPortraitWorkspaceLayout(active) {
+  var body = document.body;
+  if (!body) return;
+  var wasActive = body.classList.contains('mobile-portrait-layout');
+  body.classList.toggle('mobile-portrait-layout', active);
+  if (active && !wasActive) {
+    portraitWorkspacePreviousFocus = mobileWorkspaceModeActive;
+    if (!mobileWorkspaceModeActive) {
+      setMobileWorkspaceMode(true, false, false);
+    }
+  } else if (!active && wasActive) {
+    closeMobileWorkspaceDrawers();
+    if (portraitWorkspacePreviousFocus !== null) {
+      setMobileWorkspaceMode(
+        portraitWorkspacePreviousFocus,
+        false,
+        false
+      );
+      portraitWorkspacePreviousFocus = null;
+    }
+  }
+}
+
+function checkOrientation() {
+  var size = syncAppViewportHeight();
+  var isPortrait = size.width < size.height;
+  var isNarrow = size.width <= 960;
+  var usePortraitLayout = isNarrow && isPortrait;
+  setPortraitWorkspaceLayout(usePortraitLayout);
+  var hint = document.getElementById('rotateHint');
+  if (!hint) return;
+  hint.classList.toggle(
+    'show',
+    usePortraitLayout && !isPortraitHintDismissed()
+  );
+}
+
+async function tryLandscapeExperience() {
+  dismissPortraitHint();
+  var orientation = window.screen && window.screen.orientation;
+  try {
+    await requestEditorFullscreen();
+    if (!orientation || typeof orientation.lock !== 'function') {
+      throw new Error('orientation-lock-unsupported');
+    }
+    await orientation.lock('landscape');
+    showToast('已请求切换到横屏');
+  } catch (error) {
+    showToast('浏览器无法锁定横屏，请手动旋转或继续竖屏');
+  } finally {
+    window.setTimeout(checkOrientation, 220);
+  }
+}
+
 window.addEventListener('load', checkOrientation);
 window.addEventListener('resize', checkOrientation);
 window.addEventListener('orientationchange', function() {
-  // orientationchange回调时尺寸可能还没更新，延迟检查
-  setTimeout(checkOrientation, 200);
+  // orientationchange 回调时尺寸可能还没更新，延迟检查。
+  window.setTimeout(checkOrientation, 200);
 });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', checkOrientation);
+}
