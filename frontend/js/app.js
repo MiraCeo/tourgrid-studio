@@ -2004,13 +2004,56 @@ function onMobileToolbarHandleClick(event) {
 
 function scheduleMobileWorkspaceLayoutSync() {
   window.requestAnimationFrame(function() {
+    syncPortraitCanvasAvoidance();
     updateNavigatorViewport();
     syncMobileToolbarHandlePosition();
   });
   window.setTimeout(function() {
+    syncPortraitCanvasAvoidance();
     updateNavigatorViewport();
     syncMobileToolbarHandlePosition();
   }, 220);
+}
+
+function syncPortraitCanvasAvoidance() {
+  var body = document.body;
+  if (!body) return;
+  var portraitLayout = body.classList.contains('mobile-portrait-layout');
+  var panel = null;
+  if (portraitLayout && body.classList.contains('mobile-left-drawer-open')) {
+    panel = document.getElementById('leftPanel');
+  } else if (
+    portraitLayout &&
+    body.classList.contains('mobile-right-drawer-open') &&
+    body.classList.contains('portrait-palette-panel')
+  ) {
+    panel = document.getElementById('rightPanel');
+  }
+  if (!panel) {
+    body.classList.remove('portrait-canvas-avoid-panel');
+    return;
+  }
+
+  var center = document.getElementById('centerPanel');
+  var canvas = document.getElementById('canvasContainer');
+  if (!center || !canvas) return;
+  var centerRect = center.getBoundingClientRect();
+  var canvasRect = canvas.getBoundingClientRect();
+  var panelRect = panel.getBoundingClientRect();
+  var style = window.getComputedStyle(center);
+  var paddingTop = parseFloat(style.paddingTop) || 0;
+  var paddingBottom = parseFloat(style.paddingBottom) || 0;
+  var contentHeight = Math.max(
+    0,
+    centerRect.height - paddingTop - paddingBottom
+  );
+  var centeredTop = centerRect.top + paddingTop + Math.max(
+    0,
+    (contentHeight - canvasRect.height) / 2
+  );
+  var overlapsPanel =
+    centeredTop + canvasRect.height > panelRect.top - 8;
+  body.classList.toggle('portrait-canvas-avoid-panel', overlapsPanel);
 }
 
 function syncMobileWorkspaceControls() {
@@ -2097,6 +2140,7 @@ function closeMobileWorkspaceDrawers() {
     'portrait-palette-panel'
   );
   mobilePortraitPanel = null;
+  body.classList.remove('portrait-canvas-avoid-panel');
   syncMobileWorkspaceControls();
   return wasOpen;
 }
@@ -2575,6 +2619,7 @@ function checkOrientation() {
     'show',
     usePortraitLayout && !isPortraitHintDismissed()
   );
+  scheduleMobileWorkspaceLayoutSync();
 }
 
 async function tryLandscapeExperience() {

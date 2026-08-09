@@ -1318,8 +1318,10 @@ def test_mobile_portrait_layout_keeps_canvas_and_bottom_panels_usable(
     expect(editor_page.locator("#rotateHint")).to_be_hidden()
 
     center_box = center.bounding_box()
+    original_canvas_box = editor_page.locator("#canvasContainer").bounding_box()
     nav_box = nav.bounding_box()
     assert center_box is not None
+    assert original_canvas_box is not None
     assert nav_box is not None
     assert center_box["x"] == pytest.approx(0, abs=1)
     assert center_box["width"] == pytest.approx(width, abs=1)
@@ -1329,17 +1331,31 @@ def test_mobile_portrait_layout_keeps_canvas_and_bottom_panels_usable(
     expect(reference_button).to_have_attribute("aria-expanded", "true")
     expect(body).to_have_class(re.compile(r"\bmobile-left-drawer-open\b"))
     editor_page.wait_for_timeout(220)
+    expect(body).to_have_class(re.compile(r"\bportrait-canvas-avoid-panel\b"))
     reference_box = editor_page.locator("#leftPanel").bounding_box()
+    reference_canvas_box = editor_page.locator(
+        "#canvasContainer"
+    ).bounding_box()
     assert reference_box is not None
+    assert reference_canvas_box is not None
     assert reference_box["x"] == pytest.approx(0, abs=1)
     assert reference_box["width"] == pytest.approx(width, abs=1)
+    assert reference_box["height"] <= min(height * 0.32, 280) + 1
     assert reference_box["y"] + reference_box["height"] <= nav_box["y"] + 1
+    assert reference_canvas_box["y"] < original_canvas_box["y"]
+    assert (
+        reference_canvas_box["y"] + reference_canvas_box["height"]
+        <= reference_box["y"] + 1
+    )
 
     tools_button.click()
     expect(reference_button).to_have_attribute("aria-expanded", "false")
     expect(tools_button).to_have_attribute("aria-expanded", "true")
     expect(body).to_have_class(re.compile(r"\bportrait-tools-panel\b"))
     editor_page.wait_for_timeout(220)
+    expect(body).not_to_have_class(
+        re.compile(r"\bportrait-canvas-avoid-panel\b")
+    )
     expect(editor_page.locator("#rightPanel .tool-icons")).to_be_visible()
     expect(editor_page.locator("#rightPanel .palette-tabs")).to_be_hidden()
     tools_box = editor_page.locator("#rightPanel").bounding_box()
@@ -1351,9 +1367,18 @@ def test_mobile_portrait_layout_keeps_canvas_and_bottom_panels_usable(
     expect(palette_button).to_have_attribute("aria-expanded", "true")
     expect(body).to_have_class(re.compile(r"\bportrait-palette-panel\b"))
     editor_page.wait_for_timeout(220)
+    expect(body).to_have_class(re.compile(r"\bportrait-canvas-avoid-panel\b"))
     expect(editor_page.locator("#rightPanel .tool-icons")).to_be_hidden()
     expect(editor_page.locator("#rightPanel .palette-tabs")).to_be_visible()
     expect(editor_page.locator("#coloringPanelView")).to_be_visible()
+
+    editor_page.locator("#mobileToolbarCollapseBtn").click()
+    editor_page.wait_for_timeout(220)
+    canvas_box = editor_page.locator("#canvasContainer").bounding_box()
+    handle_box = editor_page.locator("#mobileToolbarHandle").bounding_box()
+    assert canvas_box is not None
+    assert handle_box is not None
+    assert canvas_box["y"] >= handle_box["y"] + handle_box["height"]
 
 
 def test_second_touch_rolls_back_unconfirmed_paint_stroke(

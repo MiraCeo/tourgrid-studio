@@ -2994,6 +2994,7 @@ body {
     left: 0;
     width: 100%;
     max-width: none;
+    height: min(48vh, 460px);
     height: min(48dvh, 460px);
     max-height: calc(var(--app-height, 100dvh) - 118px);
     border: 1px solid #45454a;
@@ -3018,6 +3019,10 @@ body {
     column-gap: 10px;
     row-gap: 8px;
     padding: 10px;
+    height: min(32vh, 280px);
+    height: min(32dvh, 280px);
+    min-height: min(210px, 32vh);
+    min-height: min(210px, 32dvh);
   }
 
   body.mobile-portrait-layout .left-panel .nav-title {
@@ -3073,6 +3078,15 @@ body {
   body.mobile-portrait-layout.portrait-palette-panel .right-panel
     .tool-icons {
     display: none;
+  }
+
+  body.mobile-portrait-layout.portrait-canvas-avoid-panel .center-panel {
+    align-items: flex-start;
+  }
+
+  body.mobile-portrait-layout.mobile-toolbar-collapsed.portrait-canvas-avoid-panel
+    .center-panel {
+    padding-top: 34px;
   }
 }
 
