@@ -145,8 +145,10 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 避免同一出口IP中的恶意请求把持有正确令牌的管理员永久锁在后台外。
 
 - `GET /api/v1/admin/session`：验证管理员令牌。
-- `GET /api/v1/admin/works?status=...&limit=48&cursor=...`：按创建顺序分页读取
-  全部作品，可按 `active`、`hidden` 或 `purged` 筛选。
+- `GET /api/v1/admin/works?page=1&pageSize=50&status=...`：按创建顺序进行页码
+  分页，响应包含 `page`、`pageSize`、`totalCount` 和 `totalPages`；可按
+  `active`、`hidden` 或 `purged` 筛选。原有 `limit`、`cursor` 游标参数继续保留
+  供兼容调用使用。
 - `GET /api/v1/admin/works/{code}`：读取单个作品的完整管理信息和可用画面。
 - `POST /api/v1/admin/works/{code}/hide`：隐藏作品。公共分享码立即返回404，
   内容仍保留并可恢复，相同像素不能重新发布。处理原因会向分享码访问者公开。

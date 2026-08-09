@@ -135,6 +135,14 @@ class WorkStore(Protocol):
         cursor: int | None,
     ) -> tuple[list[AdminWorkRecord], int | None]: ...
 
+    async def list_admin_works_page(
+        self,
+        *,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[AdminWorkRecord], int, int]: ...
+
     async def get_admin_work(self, code: str) -> AdminWorkRecord | None: ...
 
     async def hide_work(
@@ -229,6 +237,9 @@ class UnavailableWorkStore:
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
     async def list_admin_works(self, **_values: object):
+        raise WorkStoreUnavailable("PostgreSQL storage is not configured")
+
+    async def list_admin_works_page(self, **_values: object):
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
     async def get_admin_work(self, _code: str):
@@ -441,6 +452,33 @@ class InMemoryWorkStore:
             return (
                 [self._admin_record(code) for _record_id, code in selected],
                 next_cursor,
+            )
+
+    async def list_admin_works_page(
+        self,
+        *,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[AdminWorkRecord], int, int]:
+        async with self._lock:
+            candidates = sorted(
+                (
+                    (record_id, code)
+                    for code, record_id in self._id_by_code.items()
+                    if status is None or self._status_by_code[code] == status
+                ),
+                reverse=True,
+            )
+            total_count = len(candidates)
+            total_pages = (total_count + page_size - 1) // page_size
+            actual_page = min(page, max(1, total_pages))
+            offset = (actual_page - 1) * page_size
+            selected = candidates[offset:offset + page_size]
+            return (
+                [self._admin_record(code) for _record_id, code in selected],
+                total_count,
+                actual_page,
             )
 
     async def get_admin_work(self, code: str) -> AdminWorkRecord | None:
@@ -872,6 +910,79 @@ class PostgresWorkStore:
             raise WorkStoreUnavailable(
                 "PostgreSQL administration list operation failed"
             ) from error
+
+    async def list_admin_works_page(
+        self,
+        *,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[AdminWorkRecord], int, int]:
+        try:
+            return await asyncio.to_thread(
+                self._list_admin_works_page_sync,
+                status,
+                page,
+                page_size,
+            )
+        except (PsycopgError, PoolTimeout) as error:
+            raise WorkStoreUnavailable(
+                "PostgreSQL administration page operation failed"
+            ) from error
+
+    def _list_admin_works_page_sync(
+        self,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[AdminWorkRecord], int, int]:
+        with self._pool.connection() as connection:
+            if status is None:
+                total_count = connection.execute(
+                    "SELECT COUNT(*) FROM works"
+                ).fetchone()[0]
+            else:
+                total_count = connection.execute(
+                    "SELECT COUNT(*) FROM works WHERE moderation_status = %s",
+                    (status,),
+                ).fetchone()[0]
+            total_pages = (total_count + page_size - 1) // page_size
+            actual_page = min(page, max(1, total_pages))
+            offset = (actual_page - 1) * page_size
+            if status is None:
+                rows = connection.execute(
+                    """
+                    SELECT
+                        code, schema_version, palette_id, palette_version,
+                        pixel_data, author_name, title, view_count, created_at,
+                        moderation_status, moderated_at, moderation_reason,
+                        purged_at
+                    FROM works
+                    ORDER BY id DESC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (page_size, offset),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT
+                        code, schema_version, palette_id, palette_version,
+                        pixel_data, author_name, title, view_count, created_at,
+                        moderation_status, moderated_at, moderation_reason,
+                        purged_at
+                    FROM works
+                    WHERE moderation_status = %s
+                    ORDER BY id DESC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (status, page_size, offset),
+                ).fetchall()
+            return (
+                [self._admin_record_from_row(row) for row in rows],
+                total_count,
+                actual_page,
+            )
 
     def _list_admin_works_sync(
         self,

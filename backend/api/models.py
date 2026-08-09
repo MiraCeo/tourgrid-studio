@@ -164,6 +164,10 @@ class AdminWorkResponse(ApiModel):
 class AdminWorkListResponse(ApiModel):
     works: list[AdminWorkResponse]
     next_cursor: int | None = None
+    page: int | None = None
+    page_size: int | None = None
+    total_count: int | None = None
+    total_pages: int | None = None
 
 
 class ModerationEventResponse(ApiModel):

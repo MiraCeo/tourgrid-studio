@@ -176,7 +176,11 @@ def create_admin_router() -> APIRouter:
         await _require_admin(request, authorization)
         return AdminSessionResponse(authenticated=True)
 
-    @router.get("/works", response_model=AdminWorkListResponse)
+    @router.get(
+        "/works",
+        response_model=AdminWorkListResponse,
+        response_model_exclude_none=True,
+    )
     async def list_works(
         request: Request,
         authorization: AuthorizationHeader = None,
@@ -186,10 +190,33 @@ def create_admin_router() -> APIRouter:
         ] = None,
         limit: Annotated[int, Query(ge=1, le=100)] = 48,
         cursor: Annotated[int | None, Query(ge=1)] = None,
+        page: Annotated[int | None, Query(ge=1)] = None,
+        page_size: Annotated[
+            int,
+            Query(alias="pageSize", ge=1, le=100),
+        ] = 50,
     ) -> AdminWorkListResponse:
         await _require_admin(request, authorization)
         store: WorkStore = request.app.state.work_store
         try:
+            if page is not None:
+                records, total_count, actual_page = (
+                    await store.list_admin_works_page(
+                        status=status,
+                        page=page,
+                        page_size=page_size,
+                    )
+                )
+                total_pages = (
+                    total_count + page_size - 1
+                ) // page_size
+                return AdminWorkListResponse(
+                    works=[_admin_work_response(record) for record in records],
+                    page=actual_page,
+                    page_size=page_size,
+                    total_count=total_count,
+                    total_pages=total_pages,
+                )
             records, next_cursor = await store.list_admin_works(
                 status=status,
                 limit=limit,

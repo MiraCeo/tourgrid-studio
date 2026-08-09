@@ -66,8 +66,20 @@
           </div>
           <div class="work-grid" id="workGrid"></div>
           <div class="empty-state" id="emptyState" hidden>当前筛选下没有作品。</div>
-          <button class="load-more secondary" id="loadMoreButton"
-                  type="button" hidden>加载更多</button>
+          <nav class="pagination" id="pagination" aria-label="作品分页" hidden>
+            <button class="secondary small" id="previousPageButton"
+                    type="button">上一页</button>
+            <div class="page-buttons" id="pageButtons"></div>
+            <button class="secondary small" id="nextPageButton"
+                    type="button">下一页</button>
+            <form class="page-jump" id="pageJumpForm">
+              <label for="pageJumpInput">跳至</label>
+              <input id="pageJumpInput" type="number" min="1" step="1"
+                     inputmode="numeric" required>
+              <span id="pageTotalLabel">/ 1 页</span>
+              <button class="secondary small" type="submit">跳转</button>
+            </form>
+          </nav>
         </section>
 
         <aside class="detail-panel" id="detailPanel" aria-labelledby="detailHeading">

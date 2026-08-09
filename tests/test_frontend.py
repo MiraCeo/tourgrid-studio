@@ -94,6 +94,31 @@ def test_frontend_and_admin_reference_the_project_favicon() -> None:
     assert "COPY frontend/favicon.ico /srv/favicon.ico" in dockerfile
 
 
+def test_admin_uses_numbered_fifty_work_pages_with_direct_jump() -> None:
+    html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (FRONTEND_ROOT / "admin" / "admin.js").read_text(
+        encoding="utf-8"
+    )
+    css = (FRONTEND_ROOT / "admin" / "admin.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'id="pagination"' in html
+    assert 'id="previousPageButton"' in html
+    assert 'id="nextPageButton"' in html
+    assert 'id="pageJumpForm"' in html
+    assert 'id="pageJumpInput" type="number"' in html
+    assert "var pageSize = 50;" in javascript
+    assert "pageSize: String(pageSize)" in javascript
+    assert "function paginationItems(page, pageCount)" in javascript
+    assert "function jumpToPage(event)" in javascript
+    assert "loadMoreButton" not in javascript
+    assert ".pagination {" in css
+    assert ".page-button.current" in css
+
+
 def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     source = read_frontend()
     image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")

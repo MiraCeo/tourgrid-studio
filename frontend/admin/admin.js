@@ -3,7 +3,10 @@
 
   var token = '';
   var works = [];
-  var nextCursor = null;
+  var currentPage = 1;
+  var totalPages = 0;
+  var totalCount = 0;
+  var pageSize = 50;
   var selectedWork = null;
   var pendingAction = null;
   var paletteCache = {};
@@ -16,7 +19,8 @@
   var workGrid = document.getElementById('workGrid');
   var emptyState = document.getElementById('emptyState');
   var visibleCount = document.getElementById('visibleCount');
-  var loadMoreButton = document.getElementById('loadMoreButton');
+  var pagination = document.getElementById('pagination');
+  var pageButtons = document.getElementById('pageButtons');
   var statusFilter = document.getElementById('statusFilter');
   var detailPlaceholder = document.getElementById('detailPlaceholder');
   var detailContent = document.getElementById('detailContent');
@@ -107,9 +111,11 @@
 
   function renderWorks() {
     workGrid.replaceChildren();
-    visibleCount.textContent = works.length + ' 项已加载';
+    visibleCount.textContent = totalCount === 0
+      ? '0 项'
+      : totalCount + ' 项 · 第 ' + currentPage + ' / ' + totalPages + ' 页';
     emptyState.hidden = works.length !== 0;
-    loadMoreButton.hidden = nextCursor === null;
+    renderPagination();
 
     works.forEach(function(work) {
       var card = document.createElement('button');
@@ -147,29 +153,89 @@
     });
   }
 
-  function loadWorks(reset) {
-    if (reset) {
-      works = [];
-      nextCursor = null;
-      selectedWork = null;
-      renderDetail();
-    }
-    setMessage('正在读取作品…');
-    var parameters = new URLSearchParams({ limit: '48' });
+  function paginationItems(page, pageCount) {
+    var candidates = [1, pageCount, page - 2, page - 1, page, page + 1, page + 2]
+      .filter(function(value) { return value >= 1 && value <= pageCount; })
+      .filter(function(value, index, values) { return values.indexOf(value) === index; })
+      .sort(function(left, right) { return left - right; });
+    var items = [];
+    candidates.forEach(function(value, index) {
+      if (index > 0 && value - candidates[index - 1] > 1) items.push(null);
+      items.push(value);
+    });
+    return items;
+  }
+
+  function renderPagination() {
+    pagination.hidden = totalPages <= 1;
+    pageButtons.replaceChildren();
+    if (totalPages <= 1) return;
+
+    paginationItems(currentPage, totalPages).forEach(function(page) {
+      if (page === null) {
+        pageButtons.appendChild(createText('span', 'page-ellipsis', '…'));
+        return;
+      }
+      var button = createText('button', 'secondary small page-button', String(page));
+      button.type = 'button';
+      button.classList.toggle('current', page === currentPage);
+      button.setAttribute('aria-current', page === currentPage ? 'page' : 'false');
+      button.addEventListener('click', function() { loadWorks(page); });
+      pageButtons.appendChild(button);
+    });
+
+    document.getElementById('previousPageButton').disabled = currentPage <= 1;
+    document.getElementById('nextPageButton').disabled = currentPage >= totalPages;
+    document.getElementById('pageJumpInput').max = String(totalPages);
+    document.getElementById('pageTotalLabel').textContent = '/ ' + totalPages + ' 页';
+  }
+
+  function loadWorks(page) {
+    works = [];
+    selectedWork = null;
+    renderDetail();
+    if (page === undefined) page = 1;
+    if (totalPages > 0) page = Math.min(page, totalPages);
+    page = Math.max(1, page);
+    setMessage('正在读取第 ' + page + ' 页作品…');
+    var parameters = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize)
+    });
     if (statusFilter.value) parameters.set('status', statusFilter.value);
-    if (!reset && nextCursor !== null) {
-      parameters.set('cursor', String(nextCursor));
-    }
     return api('/api/v1/admin/works?' + parameters.toString())
       .then(function(body) {
-        works = reset ? body.works : works.concat(body.works);
-        nextCursor = body.nextCursor === undefined ? null : body.nextCursor;
+        works = body.works;
+        currentPage = body.page;
+        totalPages = body.totalPages;
+        totalCount = body.totalCount;
         renderWorks();
-        setMessage('已加载 ' + works.length + ' 个作品。');
+        setMessage(
+          totalCount === 0
+            ? '当前筛选下没有作品。'
+            : '第 ' + currentPage + ' 页，共 ' + totalPages + ' 页。'
+        );
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       })
       .catch(function(error) {
         setMessage(error.message, true);
       });
+  }
+
+  function changePage(delta) {
+    var target = currentPage + delta;
+    if (target >= 1 && target <= totalPages) loadWorks(target);
+  }
+
+  function jumpToPage(event) {
+    event.preventDefault();
+    var target = Number(document.getElementById('pageJumpInput').value);
+    if (!Number.isInteger(target) || target < 1 || target > totalPages) {
+      setMessage('请输入 1 到 ' + totalPages + ' 之间的页码。', true);
+      return;
+    }
+    document.getElementById('pageJumpInput').value = '';
+    loadWorks(target);
   }
 
   function selectWork(code) {
@@ -263,7 +329,10 @@
       var index = works.findIndex(function(item) { return item.code === work.code; });
       if (index >= 0) works[index] = work;
       if (statusFilter.value && statusFilter.value !== work.moderationStatus) {
-        works = works.filter(function(item) { return item.code !== work.code; });
+        actionDialog.close();
+        setMessage('作品状态已更新，正在刷新当前页。');
+        loadAudit();
+        return loadWorks(currentPage);
       }
       renderWorks();
       renderDetail();
@@ -307,7 +376,7 @@
       document.getElementById('adminToken').value = '';
       loginPanel.hidden = true;
       adminApp.hidden = false;
-      loadWorks(true);
+      loadWorks(1);
       loadAudit();
     }).catch(function(error) {
       token = '';
@@ -319,16 +388,24 @@
   document.getElementById('logoutButton').addEventListener('click', function() {
     token = '';
     works = [];
+    currentPage = 1;
+    totalPages = 0;
+    totalCount = 0;
     selectedWork = null;
     adminApp.hidden = true;
     loginPanel.hidden = false;
     renderWorks();
     renderDetail();
   });
-  document.getElementById('refreshButton').addEventListener('click', function() { loadWorks(true); });
+  document.getElementById('refreshButton').addEventListener('click', function() { loadWorks(currentPage); });
   document.getElementById('auditRefreshButton').addEventListener('click', loadAudit);
-  statusFilter.addEventListener('change', function() { loadWorks(true); });
-  loadMoreButton.addEventListener('click', function() { loadWorks(false); });
+  statusFilter.addEventListener('change', function() {
+    totalPages = 0;
+    loadWorks(1);
+  });
+  document.getElementById('previousPageButton').addEventListener('click', function() { changePage(-1); });
+  document.getElementById('nextPageButton').addEventListener('click', function() { changePage(1); });
+  document.getElementById('pageJumpForm').addEventListener('submit', jumpToPage);
   document.getElementById('hideButton').addEventListener('click', function() { openAction('hide'); });
   document.getElementById('restoreButton').addEventListener('click', function() { openAction('restore'); });
   document.getElementById('purgeButton').addEventListener('click', function() { openAction('purge'); });

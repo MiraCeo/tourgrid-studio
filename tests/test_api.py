@@ -253,6 +253,21 @@ def test_admin_can_list_preview_and_manage_every_work() -> None:
                 "cursor": listed.json()["nextCursor"],
             },
         )
+        numbered_first_page = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={"page": 1, "pageSize": 2},
+        )
+        numbered_second_page = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={"page": 2, "pageSize": 2},
+        )
+        clamped_page = admin_client.get(
+            "/api/v1/admin/works",
+            headers=headers,
+            params={"page": 99, "pageSize": 2},
+        )
         code = created[0]["code"]
         detail = admin_client.get(
             f"/api/v1/admin/works/{code}",
@@ -281,6 +296,15 @@ def test_admin_can_list_preview_and_manage_every_work() -> None:
         for item in listed.json()["works"] + second_page.json()["works"]
     }
     assert all_codes == {item["code"] for item in created}
+    assert numbered_first_page.json()["page"] == 1
+    assert numbered_first_page.json()["pageSize"] == 2
+    assert numbered_first_page.json()["totalCount"] == 3
+    assert numbered_first_page.json()["totalPages"] == 2
+    assert len(numbered_first_page.json()["works"]) == 2
+    assert numbered_second_page.json()["page"] == 2
+    assert len(numbered_second_page.json()["works"]) == 1
+    assert clamped_page.json()["page"] == 2
+    assert len(clamped_page.json()["works"]) == 1
     assert all(item["pixels"] for item in listed.json()["works"])
     assert detail.json()["pixels"] == created[0]["pixels"]
     assert detail.json()["title"] == "作品0"
