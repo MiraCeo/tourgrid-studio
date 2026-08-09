@@ -111,6 +111,7 @@ h2 { margin-bottom: 0; font-size: 20px; }
 .status-badge.purged { background: #4d2729; color: #ff9b9f; }
 
 .pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.pagination-top { margin: 0 0 20px; }
 .page-buttons { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .page-button { min-width: 36px; padding: 0 10px; }
 .page-button.current { border-color: var(--accent); background: var(--accent); color: #0d2222; }
@@ -125,7 +126,8 @@ h2 { margin-bottom: 0; font-size: 20px; }
 .metadata { display: grid; grid-template-columns: 92px 1fr; gap: 10px 8px; margin: 0; font-size: 13px; }
 .metadata dt { color: var(--muted); }
 .metadata dd { margin: 0; overflow-wrap: anywhere; }
-.favorite-detail-button { width: 100%; margin-top: 22px; color: #ffd96b; }
+.detail-utility-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 22px; }
+.favorite-detail-button { color: #ffd96b; }
 .favorite-detail-button.active { border-color: #f4c85b; background: #3a321c; }
 .moderation-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 22px; }
 .moderation-actions .danger { grid-column: 1 / -1; }

@@ -73,6 +73,21 @@
             </div>
             <span class="count" id="visibleCount">0 项</span>
           </div>
+          <nav class="pagination pagination-top" id="topPagination"
+               aria-label="作品顶部分页" hidden>
+            <button class="secondary small" id="topPreviousPageButton"
+                    type="button">上一页</button>
+            <div class="page-buttons" id="topPageButtons"></div>
+            <button class="secondary small" id="topNextPageButton"
+                    type="button">下一页</button>
+            <form class="page-jump" id="topPageJumpForm">
+              <label for="topPageJumpInput">跳至</label>
+              <input id="topPageJumpInput" type="number" min="1" step="1"
+                     inputmode="numeric" required>
+              <span id="topPageTotalLabel">/ 1 页</span>
+              <button class="secondary small" type="submit">跳转</button>
+            </form>
+          </nav>
           <div class="work-grid" id="workGrid"></div>
           <div class="empty-state" id="emptyState" hidden>当前筛选下没有作品。</div>
           <nav class="pagination" id="pagination" aria-label="作品分页" hidden>
@@ -109,8 +124,12 @@
               <p id="purgedNotice" hidden>作品内容已经永久清除</p>
             </div>
             <dl class="metadata" id="detailMetadata"></dl>
-            <button class="secondary favorite-detail-button"
-                    id="detailFavoriteButton" type="button">添加喜爱</button>
+            <div class="detail-utility-actions">
+              <button class="secondary" id="copyShareCodeButton"
+                      type="button">复制分享码</button>
+              <button class="secondary favorite-detail-button"
+                      id="detailFavoriteButton" type="button">添加喜爱</button>
+            </div>
             <div class="moderation-actions" id="moderationActions">
               <button id="hideButton" type="button">隐藏作品</button>
               <button class="secondary" id="restoreButton"

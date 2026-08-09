@@ -2,6 +2,7 @@
   'use strict';
 
   var FAVORITES_STORAGE_KEY = 'tourgrid_admin_favorite_works_v1';
+  var BROWSE_STATE_KEY = 'tourgrid_admin_browse_state_v1';
   var SHARE_CODE_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{12}$/;
   var token = '';
   var works = [];
@@ -14,6 +15,8 @@
   var selectedWork = null;
   var pendingAction = null;
   var paletteCache = {};
+  var worksRequestSequence = 0;
+  var worksLoading = false;
 
   var loginPanel = document.getElementById('loginPanel');
   var adminApp = document.getElementById('adminApp');
@@ -25,12 +28,33 @@
   var visibleCount = document.getElementById('visibleCount');
   var pagination = document.getElementById('pagination');
   var pageButtons = document.getElementById('pageButtons');
+  var topPagination = document.getElementById('topPagination');
   var statusFilter = document.getElementById('statusFilter');
   var sortFilter = document.getElementById('sortFilter');
   var detailPlaceholder = document.getElementById('detailPlaceholder');
   var detailContent = document.getElementById('detailContent');
   var actionDialog = document.getElementById('actionDialog');
   var dialogError = document.getElementById('dialogError');
+  var paginationControls = [
+    {
+      root: topPagination,
+      pageButtons: document.getElementById('topPageButtons'),
+      previousButton: document.getElementById('topPreviousPageButton'),
+      nextButton: document.getElementById('topNextPageButton'),
+      jumpForm: document.getElementById('topPageJumpForm'),
+      jumpInput: document.getElementById('topPageJumpInput'),
+      totalLabel: document.getElementById('topPageTotalLabel')
+    },
+    {
+      root: pagination,
+      pageButtons: pageButtons,
+      previousButton: document.getElementById('previousPageButton'),
+      nextButton: document.getElementById('nextPageButton'),
+      jumpForm: document.getElementById('pageJumpForm'),
+      jumpInput: document.getElementById('pageJumpInput'),
+      totalLabel: document.getElementById('pageTotalLabel')
+    }
+  ];
 
   function api(path, options) {
     var request = options || {};
@@ -70,6 +94,41 @@
 
   function statusLabel(status) {
     return { active: '正常', hidden: '已隐藏', purged: '已清除' }[status] || status;
+  }
+
+  function restoreBrowseState() {
+    var fallback = { status: '', sort: 'created_desc', page: 1 };
+    try {
+      var value = JSON.parse(sessionStorage.getItem(BROWSE_STATE_KEY) || '{}');
+      var statuses = ['', 'active', 'hidden', 'purged', 'favorite'];
+      var sorts = ['created_desc', 'views_desc'];
+      var status = statuses.indexOf(value.status) >= 0 ? value.status : fallback.status;
+      var sort = sorts.indexOf(value.sort) >= 0 ? value.sort : fallback.sort;
+      var page = Number.isInteger(value.page) && value.page > 0 ? value.page : fallback.page;
+      statusFilter.value = status;
+      databaseSort = sort;
+      sortFilter.value = sort;
+      syncSortFilter();
+      return page;
+    } catch (_error) {
+      statusFilter.value = fallback.status;
+      databaseSort = fallback.sort;
+      sortFilter.value = fallback.sort;
+      syncSortFilter();
+      return fallback.page;
+    }
+  }
+
+  function saveBrowseState() {
+    try {
+      sessionStorage.setItem(BROWSE_STATE_KEY, JSON.stringify({
+        status: statusFilter.value,
+        sort: databaseSort,
+        page: currentPage
+      }));
+    } catch (_error) {
+      // Browsing still works when session storage is unavailable.
+    }
   }
 
   function loadFavoriteCodes() {
@@ -255,36 +314,73 @@
   }
 
   function renderPagination() {
-    pagination.hidden = totalPages <= 1;
-    pageButtons.replaceChildren();
-    if (totalPages <= 1) return;
+    paginationControls.forEach(function(control) {
+      control.root.hidden = totalPages <= 1;
+      control.pageButtons.replaceChildren();
+      if (totalPages <= 1) return;
 
-    paginationItems(currentPage, totalPages).forEach(function(page) {
-      if (page === null) {
-        pageButtons.appendChild(createText('span', 'page-ellipsis', '…'));
-        return;
-      }
-      var button = createText('button', 'secondary small page-button', String(page));
-      button.type = 'button';
-      button.classList.toggle('current', page === currentPage);
-      button.setAttribute('aria-current', page === currentPage ? 'page' : 'false');
-      button.addEventListener('click', function() { loadWorks(page); });
-      pageButtons.appendChild(button);
+      paginationItems(currentPage, totalPages).forEach(function(page) {
+        if (page === null) {
+          control.pageButtons.appendChild(createText('span', 'page-ellipsis', '…'));
+          return;
+        }
+        var button = createText('button', 'secondary small page-button', String(page));
+        button.type = 'button';
+        button.classList.toggle('current', page === currentPage);
+        button.setAttribute('aria-current', page === currentPage ? 'page' : 'false');
+        button.disabled = worksLoading || page === currentPage;
+        button.addEventListener('click', function() {
+          loadWorks(page, capturePaginationAnchor(control));
+        });
+        control.pageButtons.appendChild(button);
+      });
+
+      control.previousButton.disabled = worksLoading || currentPage <= 1;
+      control.nextButton.disabled = worksLoading || currentPage >= totalPages;
+      control.jumpInput.disabled = worksLoading;
+      control.jumpInput.max = String(totalPages);
+      control.totalLabel.textContent = '/ ' + totalPages + ' 页';
+      control.jumpForm.querySelector('button[type="submit"]').disabled = worksLoading;
     });
-
-    document.getElementById('previousPageButton').disabled = currentPage <= 1;
-    document.getElementById('nextPageButton').disabled = currentPage >= totalPages;
-    document.getElementById('pageJumpInput').max = String(totalPages);
-    document.getElementById('pageTotalLabel').textContent = '/ ' + totalPages + ' 页';
   }
 
-  function loadWorks(page) {
+  function setWorksLoading(value) {
+    worksLoading = value;
+    renderPagination();
+  }
+
+  function capturePaginationAnchor(control) {
+    return {
+      id: control.root.id,
+      viewportTop: control.root.getBoundingClientRect().top
+    };
+  }
+
+  function restorePaginationAnchor(anchor) {
+    if (!anchor) return;
+    window.requestAnimationFrame(function() {
+      var element = document.getElementById(anchor.id);
+      if (!element || element.hidden) return;
+      var difference = element.getBoundingClientRect().top - anchor.viewportTop;
+      if (difference) window.scrollBy(0, difference);
+    });
+  }
+
+  function finishWorksRender(anchor) {
+    renderWorks();
+    saveBrowseState();
+    restorePaginationAnchor(anchor);
+  }
+
+  function loadWorks(page, anchor) {
+    var requestId = ++worksRequestSequence;
+    setWorksLoading(true);
     works = [];
     selectedWork = null;
     renderDetail();
     if (page === undefined) page = 1;
     if (statusFilter.value === 'favorite') {
-      return loadFavoriteWorks(page);
+      return loadFavoriteWorks(page, anchor, requestId);
     }
     if (totalPages > 0) page = Math.min(page, totalPages);
     page = Math.max(1, page);
@@ -297,31 +393,36 @@
     if (statusFilter.value) parameters.set('status', statusFilter.value);
     return api('/api/v1/admin/works?' + parameters.toString())
       .then(function(body) {
+        if (requestId !== worksRequestSequence) return;
         works = body.works;
         currentPage = body.page;
         totalPages = body.totalPages;
         totalCount = body.totalCount;
-        renderWorks();
+        finishWorksRender(anchor);
         setMessage(
           totalCount === 0
             ? '当前筛选下没有作品。'
             : '第 ' + currentPage + ' 页，共 ' + totalPages + ' 页。'
         );
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       })
       .catch(function(error) {
+        if (requestId !== worksRequestSequence) return;
         setMessage(error.message, true);
+      })
+      .finally(function() {
+        if (requestId === worksRequestSequence) setWorksLoading(false);
       });
   }
 
-  function loadFavoriteWorks(page) {
+  function loadFavoriteWorks(page, anchor, requestId) {
     totalCount = favoriteCodes.length;
     totalPages = Math.ceil(totalCount / pageSize);
     currentPage = Math.min(Math.max(1, page), Math.max(1, totalPages));
     if (totalCount === 0) {
       works = [];
-      renderWorks();
+      finishWorksRender(anchor);
       setMessage('本机喜爱名单为空。');
+      if (requestId === worksRequestSequence) setWorksLoading(false);
       return Promise.resolve();
     }
 
@@ -332,37 +433,42 @@
       method: 'POST',
       body: JSON.stringify({ codes: pageCodes })
     }).then(function(body) {
+      if (requestId !== worksRequestSequence) return;
       var worksByCode = {};
       body.works.forEach(function(work) { worksByCode[work.code] = work; });
       works = pageCodes
         .map(function(code) { return worksByCode[code]; })
         .filter(Boolean);
-      renderWorks();
+      finishWorksRender(anchor);
       var missingCount = pageCodes.length - works.length;
       setMessage(
         '第 ' + currentPage + ' 页，共 ' + totalPages + ' 页。' +
         (missingCount ? ' ' + missingCount + ' 个喜爱作品已不存在。' : '')
       );
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }).catch(function(error) {
+      if (requestId !== worksRequestSequence) return;
       setMessage(error.message, true);
+    }).finally(function() {
+      if (requestId === worksRequestSequence) setWorksLoading(false);
     });
   }
 
-  function changePage(delta) {
+  function changePage(delta, control) {
     var target = currentPage + delta;
-    if (target >= 1 && target <= totalPages) loadWorks(target);
+    if (target >= 1 && target <= totalPages) {
+      loadWorks(target, capturePaginationAnchor(control));
+    }
   }
 
-  function jumpToPage(event) {
+  function jumpToPage(event, control) {
     event.preventDefault();
-    var target = Number(document.getElementById('pageJumpInput').value);
+    var target = Number(control.jumpInput.value);
     if (!Number.isInteger(target) || target < 1 || target > totalPages) {
       setMessage('请输入 1 到 ' + totalPages + ' 之间的页码。', true);
       return;
     }
-    document.getElementById('pageJumpInput').value = '';
-    loadWorks(target);
+    control.jumpInput.value = '';
+    loadWorks(target, capturePaginationAnchor(control));
   }
 
   function selectWork(code) {
@@ -420,6 +526,21 @@
     document.getElementById('hideButton').hidden = selectedWork.moderationStatus !== 'active';
     document.getElementById('restoreButton').hidden = selectedWork.moderationStatus !== 'hidden';
     document.getElementById('purgeButton').hidden = selectedWork.moderationStatus === 'purged';
+  }
+
+  function copySelectedShareCode() {
+    if (!selectedWork) return;
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+      setMessage('当前浏览器不支持剪贴板写入，请手动复制分享码。', true);
+      return;
+    }
+    navigator.clipboard.writeText(selectedWork.code)
+      .then(function() {
+        setMessage('分享码 ' + selectedWork.code + ' 已复制。');
+      })
+      .catch(function() {
+        setMessage('复制失败，请检查浏览器剪贴板权限。', true);
+      });
   }
 
   function openAction(action) {
@@ -507,10 +628,11 @@
     loginError.hidden = true;
     api('/api/v1/admin/session').then(function() {
       favoriteCodes = loadFavoriteCodes();
+      var savedPage = restoreBrowseState();
       document.getElementById('adminToken').value = '';
       loginPanel.hidden = true;
       adminApp.hidden = false;
-      loadWorks(1);
+      loadWorks(savedPage);
       loadAudit();
     }).catch(function(error) {
       token = '';
@@ -520,15 +642,14 @@
   });
 
   document.getElementById('logoutButton').addEventListener('click', function() {
+    worksRequestSequence += 1;
+    worksLoading = false;
     token = '';
     works = [];
     currentPage = 1;
     totalPages = 0;
     totalCount = 0;
     favoriteCodes = [];
-    databaseSort = 'created_desc';
-    sortFilter.value = databaseSort;
-    syncSortFilter();
     selectedWork = null;
     adminApp.hidden = true;
     loginPanel.hidden = false;
@@ -547,12 +668,21 @@
     totalPages = 0;
     loadWorks(1);
   });
-  document.getElementById('previousPageButton').addEventListener('click', function() { changePage(-1); });
-  document.getElementById('nextPageButton').addEventListener('click', function() { changePage(1); });
-  document.getElementById('pageJumpForm').addEventListener('submit', jumpToPage);
+  paginationControls.forEach(function(control) {
+    control.previousButton.addEventListener('click', function() {
+      changePage(-1, control);
+    });
+    control.nextButton.addEventListener('click', function() {
+      changePage(1, control);
+    });
+    control.jumpForm.addEventListener('submit', function(event) {
+      jumpToPage(event, control);
+    });
+  });
   document.getElementById('detailFavoriteButton').addEventListener('click', function() {
     if (selectedWork) toggleFavorite(selectedWork.code);
   });
+  document.getElementById('copyShareCodeButton').addEventListener('click', copySelectedShareCode);
   document.getElementById('hideButton').addEventListener('click', function() { openAction('hide'); });
   document.getElementById('restoreButton').addEventListener('click', function() { openAction('restore'); });
   document.getElementById('purgeButton').addEventListener('click', function() { openAction('purge'); });

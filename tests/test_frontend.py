@@ -106,6 +106,11 @@ def test_admin_uses_numbered_fifty_work_pages_with_direct_jump() -> None:
     )
 
     assert 'id="pagination"' in html
+    assert 'id="topPagination"' in html
+    assert 'id="topPreviousPageButton"' in html
+    assert 'id="topNextPageButton"' in html
+    assert 'id="topPageJumpForm"' in html
+    assert 'id="topPageJumpInput" type="number"' in html
     assert 'id="previousPageButton"' in html
     assert 'id="nextPageButton"' in html
     assert 'id="pageJumpForm"' in html
@@ -113,10 +118,34 @@ def test_admin_uses_numbered_fifty_work_pages_with_direct_jump() -> None:
     assert "var pageSize = 50;" in javascript
     assert "pageSize: String(pageSize)" in javascript
     assert "function paginationItems(page, pageCount)" in javascript
-    assert "function jumpToPage(event)" in javascript
+    assert "function jumpToPage(event, control)" in javascript
     assert "loadMoreButton" not in javascript
     assert ".pagination {" in css
+    assert ".pagination-top {" in css
     assert ".page-button.current" in css
+
+
+def test_admin_pagination_preserves_anchor_and_session_browse_state() -> None:
+    javascript = (FRONTEND_ROOT / "admin" / "admin.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "tourgrid_admin_browse_state_v1" in javascript
+    assert "sessionStorage.getItem(BROWSE_STATE_KEY)" in javascript
+    assert "sessionStorage.setItem(BROWSE_STATE_KEY" in javascript
+    assert "status: statusFilter.value" in javascript
+    assert "sort: databaseSort" in javascript
+    assert "page: currentPage" in javascript
+    assert "var savedPage = restoreBrowseState();" in javascript
+    assert "loadWorks(savedPage);" in javascript
+    assert "function capturePaginationAnchor(control)" in javascript
+    assert "function restorePaginationAnchor(anchor)" in javascript
+    assert "element.getBoundingClientRect().top - anchor.viewportTop" in javascript
+    assert "window.scrollBy(0, difference)" in javascript
+    assert "window.scrollTo" not in javascript
+    assert "var requestId = ++worksRequestSequence;" in javascript
+    assert "if (requestId !== worksRequestSequence) return;" in javascript
+    assert "paginationControls.forEach(function(control)" in javascript
 
 
 def test_admin_can_sort_database_views_by_popularity() -> None:
@@ -162,6 +191,26 @@ def test_admin_favorites_are_local_ordered_and_batch_loaded() -> None:
     assert ".map(function(code) { return worksByCode[code]; })" in javascript
     assert ".favorite-toggle" in css
     assert ".favorite-detail-button" in css
+
+
+def test_admin_detail_can_copy_the_selected_share_code() -> None:
+    html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (FRONTEND_ROOT / "admin" / "admin.js").read_text(
+        encoding="utf-8"
+    )
+    css = (FRONTEND_ROOT / "admin" / "admin.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'id="copyShareCodeButton"' in html
+    assert ">复制分享码</button>" in html
+    assert "function copySelectedShareCode()" in javascript
+    assert "navigator.clipboard.writeText(selectedWork.code)" in javascript
+    assert "分享码 ' + selectedWork.code + ' 已复制" in javascript
+    assert "addEventListener('click', copySelectedShareCode)" in javascript
+    assert ".detail-utility-actions" in css
 
 
 def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:

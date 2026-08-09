@@ -578,7 +578,11 @@ def test_admin_interface_is_served_without_embedding_credentials(
     assert 'localStorage.setItem("adminToken"' not in script.text
     assert "localStorage.setItem('token'" not in script.text
     assert 'localStorage.setItem("token"' not in script.text
-    assert "sessionStorage" not in script.text
+    assert "sessionStorage.setItem(BROWSE_STATE_KEY" in script.text
+    assert "sessionStorage.setItem('adminToken'" not in script.text
+    assert 'sessionStorage.setItem("adminToken"' not in script.text
+    assert "sessionStorage.setItem('token'" not in script.text
+    assert 'sessionStorage.setItem("token"' not in script.text
     assert "Authorization" in script.text
 
 
