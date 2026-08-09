@@ -390,7 +390,8 @@ body {
 .btn-toolbar-collapse,
 .mobile-toolbar-handle,
 .mobile-panel-toggle,
-.portrait-workspace-nav {
+.portrait-workspace-nav,
+.portrait-palette-resize-handle {
   display: none;
 }
 
@@ -3078,6 +3079,55 @@ body {
   body.mobile-portrait-layout.portrait-palette-panel .right-panel
     .tool-icons {
     display: none;
+  }
+
+  body.mobile-portrait-layout.portrait-palette-panel .right-panel {
+    height: var(--portrait-palette-height, min(48vh, 460px));
+    height: var(--portrait-palette-height, min(48dvh, 460px));
+    padding-top: 38px;
+  }
+
+  body.mobile-portrait-layout.portrait-palette-panel
+    .portrait-palette-resize-handle {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    z-index: 3;
+    display: grid;
+    width: 58px;
+    height: 27px;
+    border: 1px solid rgba(114, 245, 242, 0.52);
+    border-radius: 14px;
+    place-items: center;
+    background: #353a3f;
+    color: #72f5f2;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: translateX(-50%);
+    touch-action: none;
+    cursor: ns-resize;
+  }
+
+  body.mobile-portrait-layout.portrait-palette-panel
+    .portrait-palette-resize-handle::before {
+    content: '';
+    position: absolute;
+    inset: -6px -14px;
+  }
+
+  body.mobile-portrait-layout.portrait-palette-panel
+    .portrait-palette-resize-handle svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  body.portrait-palette-resizing .portrait-palette-resize-handle {
+    background: #72f5f2;
+    color: #202428;
   }
 
   body.mobile-portrait-layout.portrait-canvas-avoid-panel .center-panel {

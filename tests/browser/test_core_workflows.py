@@ -1372,6 +1372,41 @@ def test_mobile_portrait_layout_keeps_canvas_and_bottom_panels_usable(
     expect(editor_page.locator("#rightPanel .palette-tabs")).to_be_visible()
     expect(editor_page.locator("#coloringPanelView")).to_be_visible()
 
+    resize_handle = editor_page.locator("#portraitPaletteResizeHandle")
+    expect(resize_handle).to_be_visible()
+    expect(resize_handle).to_have_attribute("role", "slider")
+    initial_palette_box = editor_page.locator("#rightPanel").bounding_box()
+    resize_handle_box = resize_handle.bounding_box()
+    assert initial_palette_box is not None
+    assert resize_handle_box is not None
+    pointer_y = resize_handle_box["y"] + resize_handle_box["height"] / 2
+    resize_handle.dispatch_event(
+        "pointerdown",
+        {"pointerId": 17, "button": 0, "clientY": pointer_y},
+    )
+    resize_handle.dispatch_event(
+        "pointermove",
+        {"pointerId": 17, "button": 0, "clientY": pointer_y + 90},
+    )
+    resize_handle.dispatch_event(
+        "pointerup",
+        {"pointerId": 17, "button": 0, "clientY": pointer_y + 90},
+    )
+    editor_page.wait_for_timeout(220)
+    resized_palette_box = editor_page.locator("#rightPanel").bounding_box()
+    assert resized_palette_box is not None
+    assert resized_palette_box["height"] < initial_palette_box["height"]
+    assert editor_page.evaluate(
+        "sessionStorage.getItem('tourgrid.portraitPaletteHeight')"
+    ) is not None
+
+    height_before_keyboard = resized_palette_box["height"]
+    resize_handle.press("ArrowUp")
+    editor_page.wait_for_timeout(220)
+    keyboard_palette_box = editor_page.locator("#rightPanel").bounding_box()
+    assert keyboard_palette_box is not None
+    assert keyboard_palette_box["height"] > height_before_keyboard
+
     editor_page.locator("#mobileToolbarCollapseBtn").click()
     editor_page.wait_for_timeout(220)
     canvas_box = editor_page.locator("#canvasContainer").bounding_box()

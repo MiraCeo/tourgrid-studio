@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅行「像」框 | 24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260810-05">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260810-06">
 </head>
 <body>
 
@@ -243,6 +243,16 @@
     </div>
 
     <div class="right-panel" id="rightPanel">
+      <button class="portrait-palette-resize-handle"
+              id="portraitPaletteResizeHandle" type="button"
+              role="slider" aria-orientation="vertical"
+              aria-label="上下拖动调整色板高度"
+              title="上下拖动调整色板高度">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m8 10 4-4 4 4"></path>
+          <path d="m8 14 4 4 4-4"></path>
+        </svg>
+      </button>
       <div class="editorial-area-label">Editorial Area</div>
       <div class="tool-icons">
         <button class="tool-icon-btn" id="canvasGuidesBtn" type="button"
@@ -768,16 +778,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260810-05"></script>
-<script src="/static/js/reference-storage.js?v=20260810-05"></script>
-<script src="/static/js/work-codec.js?v=20260810-05"></script>
-<script src="/static/js/official-40-v1.js?v=20260810-05"></script>
-<script src="/static/js/state.js?v=20260810-05"></script>
-<script src="/static/js/editor.js?v=20260810-05"></script>
-<script src="/static/js/export.js?v=20260810-05"></script>
-<script src="/static/js/import.js?v=20260810-05"></script>
-<script src="/static/js/works.js?v=20260810-05"></script>
-<script src="/static/js/app.js?v=20260810-05"></script>
+<script src="/static/js/storage.js?v=20260810-06"></script>
+<script src="/static/js/reference-storage.js?v=20260810-06"></script>
+<script src="/static/js/work-codec.js?v=20260810-06"></script>
+<script src="/static/js/official-40-v1.js?v=20260810-06"></script>
+<script src="/static/js/state.js?v=20260810-06"></script>
+<script src="/static/js/editor.js?v=20260810-06"></script>
+<script src="/static/js/export.js?v=20260810-06"></script>
+<script src="/static/js/import.js?v=20260810-06"></script>
+<script src="/static/js/works.js?v=20260810-06"></script>
+<script src="/static/js/app.js?v=20260810-06"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

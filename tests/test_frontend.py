@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260810-05"
+    asset_version = "20260810-06"
 
     assert (
         f'<link rel="stylesheet" '
@@ -560,12 +560,17 @@ def test_phone_and_tablet_responsive_contract() -> None:
     assert "window.addEventListener('resize', checkOrientation)" in app
     assert "window.addEventListener('orientationchange'" in app
     assert 'id="portraitWorkspaceNav"' in html
+    assert 'id="portraitPaletteResizeHandle"' in html
     assert 'id="tryLandscapeBtn"' in html
     assert 'id="continuePortraitBtn"' in html
     assert "body.mobile-portrait-layout .portrait-workspace-nav" in css
     assert "function setPortraitWorkspacePanel(panel)" in app
     assert "function syncPortraitCanvasAvoidance()" in app
+    assert "function onPortraitPaletteResizePointerMove(event)" in app
+    assert "PORTRAIT_PALETTE_HEIGHT_KEY" in app
     assert "portrait-canvas-avoid-panel" in css
+    assert ".portrait-palette-resize-handle" in css
+    assert "--portrait-palette-height" in css
     assert "height: min(32dvh, 280px)" in css
     assert "function tryLandscapeExperience()" in app
     assert "await orientation.lock('landscape')" in app

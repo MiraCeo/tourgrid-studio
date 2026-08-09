@@ -1834,6 +1834,7 @@ var mobilePortraitPanel = null;
 var portraitWorkspacePreviousFocus = null;
 var MOBILE_WORKSPACE_MODE_KEY = 'tourgrid.mobileWorkspaceMode';
 var PORTRAIT_HINT_DISMISSED_KEY = 'tourgrid.portraitHintDismissed';
+var PORTRAIT_PALETTE_HEIGHT_KEY = 'tourgrid.portraitPaletteHeight';
 var MOBILE_WORKSPACE_SWIPE_THRESHOLD = 40;
 var MOBILE_TOOLBAR_HANDLE_POSITION_KEY =
   'tourgrid.mobileToolbarHandlePosition';
@@ -1842,6 +1843,10 @@ var mobileToolbarHandlePosition = 0.5;
 var mobileToolbarHandlePositionLoaded = false;
 var mobileToolbarHandleDrag = null;
 var suppressMobileToolbarHandleClick = false;
+var portraitPaletteHeight = null;
+var portraitPaletteHeightLoaded = false;
+var portraitPaletteResizeDrag = null;
+var portraitPaletteResizeFrame = null;
 
 function restoreMobileToolbarHandlePosition() {
   if (mobileToolbarHandlePositionLoaded) return;
@@ -2002,16 +2007,179 @@ function onMobileToolbarHandleClick(event) {
   toggleMobileToolbar();
 }
 
+function getPortraitPaletteHeightBounds() {
+  var size = getUsableViewportSize();
+  var nav = document.getElementById('portraitWorkspaceNav');
+  var editorBody = document.querySelector('.editor-body');
+  var navRect = nav ? nav.getBoundingClientRect() : null;
+  var bodyRect = editorBody ? editorBody.getBoundingClientRect() : null;
+  var safeTop = bodyRect ? bodyRect.top + 8 : 8;
+  if (document.body.classList.contains('mobile-toolbar-collapsed')) {
+    safeTop = bodyRect ? bodyRect.top + 34 : 34;
+  }
+  var available = navRect
+    ? navRect.top - safeTop - 8
+    : size.height * 0.72;
+  var minimum = Math.min(190, size.height * 0.32);
+  var maximum = Math.max(
+    minimum,
+    Math.min(size.height * 0.72, available)
+  );
+  return { minimum: minimum, maximum: maximum };
+}
+
+function syncPortraitPaletteResizeControl() {
+  var handle = document.getElementById('portraitPaletteResizeHandle');
+  if (!handle) return;
+  var panel = document.getElementById('rightPanel');
+  var bounds = getPortraitPaletteHeightBounds();
+  var height = panel ? panel.getBoundingClientRect().height : 0;
+  handle.setAttribute('aria-valuemin', String(Math.round(bounds.minimum)));
+  handle.setAttribute('aria-valuemax', String(Math.round(bounds.maximum)));
+  handle.setAttribute('aria-valuenow', String(Math.round(height)));
+}
+
+function applyPortraitPaletteHeight(height, persist) {
+  var bounds = getPortraitPaletteHeightBounds();
+  portraitPaletteHeight = Math.max(
+    bounds.minimum,
+    Math.min(bounds.maximum, Number(height) || bounds.minimum)
+  );
+  document.documentElement.style.setProperty(
+    '--portrait-palette-height',
+    Math.round(portraitPaletteHeight) + 'px'
+  );
+  if (persist) {
+    try {
+      sessionStorage.setItem(
+        PORTRAIT_PALETTE_HEIGHT_KEY,
+        String(Math.round(portraitPaletteHeight))
+      );
+    } catch (error) {
+      // 无会话存储时仍保留当前页面中的高度。
+    }
+  }
+  syncPortraitPaletteResizeControl();
+}
+
+function restorePortraitPaletteHeight() {
+  if (!portraitPaletteHeightLoaded) {
+    portraitPaletteHeightLoaded = true;
+    try {
+      var stored = Number(sessionStorage.getItem(PORTRAIT_PALETTE_HEIGHT_KEY));
+      if (Number.isFinite(stored) && stored > 0) {
+        portraitPaletteHeight = stored;
+      }
+    } catch (error) {
+      portraitPaletteHeight = null;
+    }
+  }
+  if (portraitPaletteHeight !== null) {
+    applyPortraitPaletteHeight(portraitPaletteHeight, false);
+  } else {
+    syncPortraitPaletteResizeControl();
+  }
+}
+
+function schedulePortraitPaletteResizeSync() {
+  if (portraitPaletteResizeFrame !== null) return;
+  portraitPaletteResizeFrame = window.requestAnimationFrame(function() {
+    portraitPaletteResizeFrame = null;
+    syncPortraitCanvasAvoidance();
+    updateNavigatorViewport();
+    syncPortraitPaletteResizeControl();
+  });
+}
+
+function onPortraitPaletteResizePointerDown(event) {
+  if (
+    !document.body.classList.contains('mobile-portrait-layout') ||
+    !document.body.classList.contains('portrait-palette-panel') ||
+    (typeof event.button === 'number' && event.button !== 0)
+  ) {
+    return;
+  }
+  var panel = document.getElementById('rightPanel');
+  if (!panel) return;
+  portraitPaletteResizeDrag = {
+    pointerId: event.pointerId,
+    startY: event.clientY,
+    startHeight: panel.getBoundingClientRect().height
+  };
+  document.body.classList.add('portrait-palette-resizing');
+  if (event.currentTarget.setPointerCapture) {
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch (error) {
+      // 合成事件可能没有活动指针。
+    }
+  }
+  event.preventDefault();
+}
+
+function onPortraitPaletteResizePointerMove(event) {
+  if (
+    !portraitPaletteResizeDrag ||
+    portraitPaletteResizeDrag.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+  applyPortraitPaletteHeight(
+    portraitPaletteResizeDrag.startHeight -
+      (event.clientY - portraitPaletteResizeDrag.startY),
+    false
+  );
+  schedulePortraitPaletteResizeSync();
+  event.preventDefault();
+}
+
+function finishPortraitPaletteResize(event) {
+  if (
+    !portraitPaletteResizeDrag ||
+    portraitPaletteResizeDrag.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+  portraitPaletteResizeDrag = null;
+  document.body.classList.remove('portrait-palette-resizing');
+  if (
+    event.currentTarget.hasPointerCapture &&
+    event.currentTarget.hasPointerCapture(event.pointerId)
+  ) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+  if (portraitPaletteHeight !== null) {
+    applyPortraitPaletteHeight(portraitPaletteHeight, true);
+  }
+  scheduleMobileWorkspaceLayoutSync();
+  event.preventDefault();
+}
+
+function onPortraitPaletteResizeKeyDown(event) {
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+  var panel = document.getElementById('rightPanel');
+  if (!panel) return;
+  var direction = event.key === 'ArrowUp' ? 1 : -1;
+  applyPortraitPaletteHeight(
+    panel.getBoundingClientRect().height + direction * 24,
+    true
+  );
+  scheduleMobileWorkspaceLayoutSync();
+  event.preventDefault();
+}
+
 function scheduleMobileWorkspaceLayoutSync() {
   window.requestAnimationFrame(function() {
     syncPortraitCanvasAvoidance();
     updateNavigatorViewport();
     syncMobileToolbarHandlePosition();
+    syncPortraitPaletteResizeControl();
   });
   window.setTimeout(function() {
     syncPortraitCanvasAvoidance();
     updateNavigatorViewport();
     syncMobileToolbarHandlePosition();
+    syncPortraitPaletteResizeControl();
   }, 220);
 }
 
@@ -2147,6 +2315,7 @@ function closeMobileWorkspaceDrawers() {
 
 function setPortraitWorkspacePanel(panel) {
   if (!document.body.classList.contains('mobile-portrait-layout')) return;
+  if (panel === 'palette') restorePortraitPaletteHeight();
   var shouldOpen = mobilePortraitPanel !== panel;
   closeMobileWorkspaceDrawers();
   if (shouldOpen) {
@@ -2187,6 +2356,9 @@ function setMobileToolbarCollapsed(collapsed) {
     'mobile-toolbar-collapsed',
     Boolean(collapsed)
   );
+  if (portraitPaletteHeight !== null) {
+    applyPortraitPaletteHeight(portraitPaletteHeight, false);
+  }
   syncMobileWorkspaceControls();
   scheduleMobileWorkspaceLayoutSync();
 }
@@ -2350,6 +2522,31 @@ function bindStaticControls() {
   on('portraitPaletteBtn', 'click', function() {
     setPortraitWorkspacePanel('palette');
   });
+  on(
+    'portraitPaletteResizeHandle',
+    'pointerdown',
+    onPortraitPaletteResizePointerDown
+  );
+  on(
+    'portraitPaletteResizeHandle',
+    'pointermove',
+    onPortraitPaletteResizePointerMove
+  );
+  on(
+    'portraitPaletteResizeHandle',
+    'pointerup',
+    finishPortraitPaletteResize
+  );
+  on(
+    'portraitPaletteResizeHandle',
+    'pointercancel',
+    finishPortraitPaletteResize
+  );
+  on(
+    'portraitPaletteResizeHandle',
+    'keydown',
+    onPortraitPaletteResizeKeyDown
+  );
   on('tryLandscapeBtn', 'click', tryLandscapeExperience);
   on('continuePortraitBtn', 'click', dismissPortraitHint);
   on('centerPanel', 'pointerdown', onMobileWorkspacePointerDown);
@@ -2613,6 +2810,9 @@ function checkOrientation() {
   var isNarrow = size.width <= 960;
   var usePortraitLayout = isNarrow && isPortrait;
   setPortraitWorkspaceLayout(usePortraitLayout);
+  if (usePortraitLayout && portraitPaletteHeightLoaded) {
+    restorePortraitPaletteHeight();
+  }
   var hint = document.getElementById('rotateHint');
   if (!hint) return;
   hint.classList.toggle(
