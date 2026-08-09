@@ -10,6 +10,8 @@ from fastapi import APIRouter, Header, Path, Query, Request
 from .errors import ApiError
 from .models import (
     AdminSessionResponse,
+    AdminWorkBatchRequest,
+    AdminWorkBatchResponse,
     AdminWorkListResponse,
     AdminWorkResponse,
     BanClientRequest,
@@ -248,6 +250,26 @@ def create_admin_router() -> APIRouter:
         if record is None:
             raise ApiError(404, "work_not_found", "Shared work does not exist.")
         return _admin_work_response(record)
+
+    @router.post(
+        "/works/batch",
+        response_model=AdminWorkBatchResponse,
+        response_model_exclude_none=True,
+    )
+    async def get_works_batch(
+        request: Request,
+        payload: AdminWorkBatchRequest,
+        authorization: AuthorizationHeader = None,
+    ) -> AdminWorkBatchResponse:
+        await _require_admin(request, authorization)
+        store: WorkStore = request.app.state.work_store
+        try:
+            records = await store.get_admin_works(payload.codes)
+        except WorkStoreUnavailable as error:
+            raise _storage_error(error) from error
+        return AdminWorkBatchResponse(
+            works=[_admin_work_response(record) for record in records]
+        )
 
     @router.post(
         "/works/{code}/hide",

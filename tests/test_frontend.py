@@ -119,6 +119,31 @@ def test_admin_uses_numbered_fifty_work_pages_with_direct_jump() -> None:
     assert ".page-button.current" in css
 
 
+def test_admin_favorites_are_local_ordered_and_batch_loaded() -> None:
+    html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (FRONTEND_ROOT / "admin" / "admin.js").read_text(
+        encoding="utf-8"
+    )
+    css = (FRONTEND_ROOT / "admin" / "admin.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert '<option value="favorite">喜爱（本机）</option>' in html
+    assert 'id="detailFavoriteButton"' in html
+    assert "tourgrid_admin_favorite_works_v1" in javascript
+    assert "localStorage.getItem(FAVORITES_STORAGE_KEY)" in javascript
+    assert "localStorage.setItem(FAVORITES_STORAGE_KEY" in javascript
+    assert "favoriteCodes.concat(code)" in javascript
+    assert "statusFilter.value === 'favorite'" in javascript
+    assert "favoriteCodes.slice(offset, offset + pageSize)" in javascript
+    assert "api('/api/v1/admin/works/batch'" in javascript
+    assert ".map(function(code) { return worksByCode[code]; })" in javascript
+    assert ".favorite-toggle" in css
+    assert ".favorite-detail-button" in css
+
+
 def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     source = read_frontend()
     image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")

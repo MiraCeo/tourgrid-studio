@@ -161,6 +161,8 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             assert code in {item.code for item in page_items}
             assert total_count >= 1
             assert actual_page == 1
+            batch = await store.get_admin_works([code])
+            assert [item.code for item in batch] == [code]
 
             hidden = await store.hide_work(
                 code,

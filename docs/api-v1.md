@@ -150,6 +150,8 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
   `active`、`hidden` 或 `purged` 筛选。原有 `limit`、`cursor` 游标参数继续保留
   供兼容调用使用。
 - `GET /api/v1/admin/works/{code}`：读取单个作品的完整管理信息和可用画面。
+- `POST /api/v1/admin/works/batch`：按请求中的分享码顺序批量读取最多50个作品，
+  供管理员浏览器本地的喜爱名单分页使用。喜爱顺序和名单本身不会写入服务器或数据库。
 - `POST /api/v1/admin/works/{code}/hide`：隐藏作品。公共分享码立即返回404，
   内容仍保留并可恢复，相同像素不能重新发布。处理原因会向分享码访问者公开。
 - `POST /api/v1/admin/works/{code}/restore`：恢复隐藏作品。永久清除的作品不能恢复。

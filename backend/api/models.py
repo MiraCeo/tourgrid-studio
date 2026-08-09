@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -168,6 +168,30 @@ class AdminWorkListResponse(ApiModel):
     page_size: int | None = None
     total_count: int | None = None
     total_pages: int | None = None
+
+
+class AdminWorkBatchRequest(ApiModel):
+    codes: list[
+        Annotated[
+            str,
+            Field(
+                min_length=12,
+                max_length=12,
+                pattern=r"^[1-9A-HJ-NP-Za-km-z]{12}$",
+            ),
+        ]
+    ] = Field(min_length=1, max_length=50)
+
+    @field_validator("codes")
+    @classmethod
+    def require_unique_codes(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("codes must not contain duplicates")
+        return value
+
+
+class AdminWorkBatchResponse(ApiModel):
+    works: list[AdminWorkResponse]
 
 
 class ModerationEventResponse(ApiModel):

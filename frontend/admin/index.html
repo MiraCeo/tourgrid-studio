@@ -49,6 +49,7 @@
             <option value="active">正常</option>
             <option value="hidden">已隐藏</option>
             <option value="purged">已清除</option>
+            <option value="favorite">喜爱（本机）</option>
           </select>
         </label>
       </section>
@@ -100,6 +101,8 @@
               <p id="purgedNotice" hidden>作品内容已经永久清除</p>
             </div>
             <dl class="metadata" id="detailMetadata"></dl>
+            <button class="secondary favorite-detail-button"
+                    id="detailFavoriteButton" type="button">添加喜爱</button>
             <div class="moderation-actions" id="moderationActions">
               <button id="hideButton" type="button">隐藏作品</button>
               <button class="secondary" id="restoreButton"

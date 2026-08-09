@@ -143,6 +143,11 @@ class WorkStore(Protocol):
         page_size: int,
     ) -> tuple[list[AdminWorkRecord], int, int]: ...
 
+    async def get_admin_works(
+        self,
+        codes: list[str],
+    ) -> list[AdminWorkRecord]: ...
+
     async def get_admin_work(self, code: str) -> AdminWorkRecord | None: ...
 
     async def hide_work(
@@ -240,6 +245,9 @@ class UnavailableWorkStore:
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
     async def list_admin_works_page(self, **_values: object):
+        raise WorkStoreUnavailable("PostgreSQL storage is not configured")
+
+    async def get_admin_works(self, _codes: list[str]):
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
     async def get_admin_work(self, _code: str):
@@ -480,6 +488,17 @@ class InMemoryWorkStore:
                 total_count,
                 actual_page,
             )
+
+    async def get_admin_works(
+        self,
+        codes: list[str],
+    ) -> list[AdminWorkRecord]:
+        async with self._lock:
+            return [
+                self._admin_record(code)
+                for code in codes
+                if code in self._by_code
+            ]
 
     async def get_admin_work(self, code: str) -> AdminWorkRecord | None:
         async with self._lock:
@@ -929,6 +948,47 @@ class PostgresWorkStore:
             raise WorkStoreUnavailable(
                 "PostgreSQL administration page operation failed"
             ) from error
+
+    async def get_admin_works(
+        self,
+        codes: list[str],
+    ) -> list[AdminWorkRecord]:
+        try:
+            return await asyncio.to_thread(
+                self._get_admin_works_sync,
+                codes,
+            )
+        except (PsycopgError, PoolTimeout) as error:
+            raise WorkStoreUnavailable(
+                "PostgreSQL administration batch operation failed"
+            ) from error
+
+    def _get_admin_works_sync(
+        self,
+        codes: list[str],
+    ) -> list[AdminWorkRecord]:
+        with self._pool.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    code, schema_version, palette_id, palette_version,
+                    pixel_data, author_name, title, view_count, created_at,
+                    moderation_status, moderated_at, moderation_reason,
+                    purged_at
+                FROM works
+                WHERE code = ANY(%s::varchar[])
+                """,
+                (codes,),
+            ).fetchall()
+            records_by_code = {
+                row[0]: self._admin_record_from_row(row)
+                for row in rows
+            }
+            return [
+                records_by_code[code]
+                for code in codes
+                if code in records_by_code
+            ]
 
     def _list_admin_works_page_sync(
         self,

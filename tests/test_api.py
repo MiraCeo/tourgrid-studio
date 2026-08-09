@@ -268,6 +268,17 @@ def test_admin_can_list_preview_and_manage_every_work() -> None:
             headers=headers,
             params={"page": 99, "pageSize": 2},
         )
+        favorite_codes = [created[0]["code"], created[2]["code"]]
+        batch = admin_client.post(
+            "/api/v1/admin/works/batch",
+            headers=headers,
+            json={"codes": favorite_codes},
+        )
+        duplicate_batch = admin_client.post(
+            "/api/v1/admin/works/batch",
+            headers=headers,
+            json={"codes": [favorite_codes[0], favorite_codes[0]]},
+        )
         code = created[0]["code"]
         detail = admin_client.get(
             f"/api/v1/admin/works/{code}",
@@ -305,6 +316,8 @@ def test_admin_can_list_preview_and_manage_every_work() -> None:
     assert len(numbered_second_page.json()["works"]) == 1
     assert clamped_page.json()["page"] == 2
     assert len(clamped_page.json()["works"]) == 1
+    assert [item["code"] for item in batch.json()["works"]] == favorite_codes
+    assert duplicate_batch.status_code == 422
     assert all(item["pixels"] for item in listed.json()["works"])
     assert detail.json()["pixels"] == created[0]["pixels"]
     assert detail.json()["title"] == "作品0"
@@ -545,7 +558,11 @@ def test_admin_interface_is_served_without_embedding_credentials(
 
     assert response.status_code == 200
     assert "<title>Tourgrid Studio Admin</title>" in response.text
-    assert "localStorage" not in script.text
+    assert "localStorage.setItem(FAVORITES_STORAGE_KEY" in script.text
+    assert "localStorage.setItem('adminToken'" not in script.text
+    assert 'localStorage.setItem("adminToken"' not in script.text
+    assert "localStorage.setItem('token'" not in script.text
+    assert 'localStorage.setItem("token"' not in script.text
     assert "sessionStorage" not in script.text
     assert "Authorization" in script.text
 
