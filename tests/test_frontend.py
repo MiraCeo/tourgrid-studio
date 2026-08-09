@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260808-11"
+    asset_version = "20260810-01"
 
     assert (
         f'<link rel="stylesheet" '
@@ -213,6 +213,29 @@ def test_admin_detail_can_copy_the_selected_share_code() -> None:
     assert ".detail-utility-actions" in css
 
 
+def test_admin_can_configure_ordered_featured_works() -> None:
+    html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    javascript = (FRONTEND_ROOT / "admin" / "admin.js").read_text(
+        encoding="utf-8"
+    )
+    css = (FRONTEND_ROOT / "admin" / "admin.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'id="featuredAddForm"' in html
+    assert 'id="featuredList"' in html
+    assert 'id="saveFeaturedButton"' in html
+    assert 'id="detailFeaturedButton"' in html
+    assert "api('/api/v1/admin/featured-works')" in javascript
+    assert "method: 'PUT'" in javascript
+    assert "function renderFeaturedWorks()" in javascript
+    assert "function saveFeaturedWorks()" in javascript
+    assert ".featured-admin" in css
+    assert ".featured-item" in css
+
+
 def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     source = read_frontend()
     image_import = (JAVASCRIPT_ROOT / "import.js").read_text(encoding="utf-8")
@@ -221,9 +244,9 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert '<option value="server">' not in source
     assert 'id="conversionCancelBtn"' not in source
     assert '<option value="none" selected>' in source
-    assert "var fullPalette = EXHIBITION_DATA.map" in source
-    assert "fullPalette.length !== 40" in source
-    assert "browser-weighted-rgb-hue-guard-dither-v6-" in source
+    assert "importPaletteCache = EXHIBITION_DATA.map" in source
+    assert "importPaletteCache.length !== 40" in source
+    assert "browser-area-mitchell-dither-v7-" in source
     assert "paletteId: DEFAULT_PALETTE_ID" in source
     assert "paletteVersion: DEFAULT_PALETTE_VERSION" in source
     assert "confirmCropLocalWithAdjustments()" in image_import
@@ -237,8 +260,9 @@ def test_local_fixed_palette_is_the_only_frontend_import_path() -> None:
     assert 'id="cropTargetColorCount"' in source
     assert 'accept="image/png,image/jpeg,image/webp"' in source
     assert 'id="cropSamplingMode"' in source
-    assert '<option value="photo">照片（平滑）</option>' in source
-    assert '<option value="pixel" selected>像素画（清晰）</option>' in source
+    assert '<option value="pixel" selected>像素画（保色）</option>' in source
+    assert '<option value="photo">照片（自然）</option>' in source
+    assert '<option value="detail">细节（平衡）</option>' in source
     assert 'id="cropPreviewToggleBtn"' in source
     assert 'id="cropSamplePreviewToggleBtn"' in source
     assert 'id="cropAlignmentGrid"' in source
@@ -289,6 +313,9 @@ def test_local_converter_keeps_optional_dithering() -> None:
     assert "srgbByteToLinear" in source
     assert "representativePixelColor" in source
     assert "cropSamplingMode === 'pixel'" in source
+    assert "sampleAreaStatistics" in source
+    assert "sampleMitchellLinear" in source
+    assert "IMPORT_MITCHELL_MAX_BLEND" in source
     assert "bestTotalError" in source
     assert "strongestEdge" in source
     assert "importHueProfile" in source
@@ -459,7 +486,7 @@ def test_right_palette_matches_fixed_exhibition_editor_contract() -> None:
     assert "sampleCanvasColor(samplePos.x, samplePos.y)" in editor
     assert "if (!currentColor)" in editor
     assert "请先从上色中选择一种颜色" in editor
-    assert "let currentColor = '#242424'" in state
+    assert "let currentColor = '#222222'" in state
     assert "mainCtx.fillText" not in editor
     assert "markReplicationCellCompleted(replicationPos.x, replicationPos.y)" in editor
     assert "复刻模式下画布为只读" in editor
@@ -1164,7 +1191,7 @@ def test_author_project_modal_uses_no_unlicensed_avatar_and_safe_github_links() 
     assert "if (e.key === 'Escape')" in app
 
 
-def test_announcement_is_opened_on_entry_and_includes_project_policies() -> None:
+def test_discover_modal_combines_featured_works_notice_and_help() -> None:
     html = (FRONTEND_ROOT / "index.html").read_text(encoding="utf-8")
     css = (FRONTEND_ROOT / "css" / "editor.css").read_text(encoding="utf-8")
     app = (JAVASCRIPT_ROOT / "app.js").read_text(encoding="utf-8")
@@ -1173,22 +1200,28 @@ def test_announcement_is_opened_on_entry_and_includes_project_policies() -> None
     assert "on('announcementBtn', 'click', openAnnouncementModal)" in app
     assert 'id="announcementModal" hidden' in html
     assert 'aria-labelledby="announcementModalTitle"' in html
-    assert '<h2 id="announcementModalTitle">项目公告</h2>' in html
-    assert "<h3>项目介绍</h3>" in html
-    assert "<h3>使用指南</h3>" in html
-    assert "<h3>隐私与作品保存</h3>" in html
+    assert '<h2 id="announcementModalTitle">发现</h2>' in html
+    assert 'data-discover-tab="featured"' in html
+    assert 'data-discover-tab="notice"' in html
+    assert 'data-discover-tab="help"' in html
+    assert 'id="featuredWorksGrid"' in html
+    assert "<h3>项目说明</h3>" in html
+    assert "<h3>快速开始</h3>" in html
+    assert "<h3>隐私与发布</h3>" in html
     assert "<h3>内容规则与联系</h3>" in html
     assert "项目 GitHub Issues" in html
-    assert "申请删除作品" in html
-    assert "访问 IP" in html
     assert "更新日志" not in html
     assert html.count('class="announcement-section"') == 5
-    assert "<h3>快捷键帮助</h3>" in html
+    assert "<h3>常用快捷键</h3>" in html
     assert '<kbd>按住 H</kbd>' in html
-    assert "输入框、下拉框、文本区域、按钮、链接或可编辑内容聚焦时" in html
     assert ".btn-announcement {" in css
     assert ".announcement-modal {" in css
+    assert ".featured-works-grid {" in css
+    assert ".discover-panel[hidden] { display: none; }" in css
     assert ".announcement-steps {" in css
+    assert "function loadFeaturedWorks()" in app
+    assert "'/api/v1/featured-works'" in app
+    assert "function openFeaturedWork(code)" in app
     assert "function openAnnouncementModal()" in app
     assert "function openAnnouncementOnEntry()" in app
     assert "function closeAnnouncementModal()" in app

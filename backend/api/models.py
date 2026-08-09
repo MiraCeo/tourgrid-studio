@@ -93,6 +93,10 @@ class WorkResponse(ApiModel):
     created_at: datetime
 
 
+class FeaturedWorksResponse(ApiModel):
+    works: list[WorkResponse]
+
+
 class BanClientRequest(ApiModel):
     client_ip: IPvAnyAddress = Field(validation_alias="clientIp")
     reason: str | None = Field(default=None, max_length=200)
@@ -159,6 +163,31 @@ class AdminWorkResponse(ApiModel):
     moderated_at: datetime | None = None
     moderation_reason: str | None = None
     purged_at: datetime | None = None
+
+
+class AdminFeaturedWorksRequest(ApiModel):
+    codes: list[
+        Annotated[
+            str,
+            Field(
+                min_length=12,
+                max_length=12,
+                pattern=r"^[1-9A-HJ-NP-Za-km-z]{12}$",
+            ),
+        ]
+    ] = Field(max_length=6)
+
+    @field_validator("codes")
+    @classmethod
+    def require_unique_featured_codes(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("codes must not contain duplicates")
+        return value
+
+
+class AdminFeaturedWorksResponse(ApiModel):
+    codes: list[str]
+    works: list[AdminWorkResponse]
 
 
 class AdminWorkListResponse(ApiModel):

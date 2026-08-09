@@ -114,6 +114,12 @@ class WorkStore(Protocol):
 
     async def get(self, code: str) -> WorkRecord | None: ...
 
+    async def get_featured_codes(self) -> list[str]: ...
+
+    async def get_featured_works(self) -> list[WorkRecord]: ...
+
+    async def replace_featured_codes(self, codes: list[str]) -> list[str]: ...
+
     async def get_moderation_state(
         self,
         code: str,
@@ -224,6 +230,15 @@ class UnavailableWorkStore:
     async def get(self, _code: str) -> WorkRecord | None:
         raise WorkStoreUnavailable("PostgreSQL storage is not configured")
 
+    async def get_featured_codes(self) -> list[str]:
+        raise WorkStoreUnavailable("PostgreSQL storage is not configured")
+
+    async def get_featured_works(self) -> list[WorkRecord]:
+        raise WorkStoreUnavailable("PostgreSQL storage is not configured")
+
+    async def replace_featured_codes(self, _codes: list[str]) -> list[str]:
+        raise WorkStoreUnavailable("PostgreSQL storage is not configured")
+
     async def get_moderation_state(
         self,
         _code: str,
@@ -284,6 +299,7 @@ class InMemoryWorkStore:
         self._id_by_code: dict[str, int] = {}
         self._next_id = 1
         self._events: list[ModerationEventRecord] = []
+        self._featured_codes: list[str] = []
 
     async def initialize(self) -> None:
         return None
@@ -354,6 +370,37 @@ class InMemoryWorkStore:
             if code in self._deleted_codes:
                 return None
             return self._by_code.get(code)
+
+    async def get_featured_codes(self) -> list[str]:
+        async with self._lock:
+            return list(self._featured_codes)
+
+    async def get_featured_works(self) -> list[WorkRecord]:
+        async with self._lock:
+            return [
+                self._by_code[code]
+                for code in self._featured_codes
+                if code in self._by_code
+                and self._status_by_code.get(code) == "active"
+                and code not in self._deleted_codes
+            ]
+
+    async def replace_featured_codes(self, codes: list[str]) -> list[str]:
+        async with self._lock:
+            invalid = [
+                code
+                for code in codes
+                if code not in self._by_code
+                or self._status_by_code.get(code) != "active"
+                or code in self._deleted_codes
+            ]
+            if invalid:
+                raise WorkStateConflict(
+                    "Featured works must exist and remain publicly active: "
+                    + ", ".join(invalid)
+                )
+            self._featured_codes = list(codes)
+            return list(self._featured_codes)
 
     async def get_moderation_state(
         self,
@@ -873,6 +920,100 @@ class PostgresWorkStore:
                 (code,),
             ).fetchone()
             return WorkRecord(*row) if row is not None else None
+
+    async def get_featured_codes(self) -> list[str]:
+        try:
+            return await asyncio.to_thread(self._get_featured_codes_sync)
+        except (PsycopgError, PoolTimeout) as error:
+            raise WorkStoreUnavailable(
+                "PostgreSQL featured works read failed"
+            ) from error
+
+    def _get_featured_codes_sync(self) -> list[str]:
+        with self._pool.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT work_code
+                FROM featured_works
+                ORDER BY position ASC
+                """
+            ).fetchall()
+            return [row[0] for row in rows]
+
+    async def get_featured_works(self) -> list[WorkRecord]:
+        try:
+            return await asyncio.to_thread(self._get_featured_works_sync)
+        except (PsycopgError, PoolTimeout) as error:
+            raise WorkStoreUnavailable(
+                "PostgreSQL featured works read failed"
+            ) from error
+
+    def _get_featured_works_sync(self) -> list[WorkRecord]:
+        with self._pool.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    w.code, w.schema_version, w.palette_id,
+                    w.palette_version, w.pixel_data, w.content_hash,
+                    w.author_name, w.title, w.view_count, w.created_at
+                FROM featured_works AS featured
+                JOIN works AS w ON w.code = featured.work_code
+                WHERE w.moderation_status = 'active'
+                  AND w.deleted_at IS NULL
+                  AND w.pixel_data IS NOT NULL
+                ORDER BY featured.position ASC
+                """
+            ).fetchall()
+            return [WorkRecord(*row) for row in rows]
+
+    async def replace_featured_codes(self, codes: list[str]) -> list[str]:
+        try:
+            return await asyncio.to_thread(
+                self._replace_featured_codes_sync,
+                codes,
+            )
+        except WorkStateConflict:
+            raise
+        except (PsycopgError, PoolTimeout) as error:
+            raise WorkStoreUnavailable(
+                "PostgreSQL featured works update failed"
+            ) from error
+
+    def _replace_featured_codes_sync(self, codes: list[str]) -> list[str]:
+        with self._pool.connection() as connection:
+            if codes:
+                rows = connection.execute(
+                    """
+                    SELECT code, moderation_status, deleted_at, pixel_data
+                    FROM works
+                    WHERE code = ANY(%s)
+                    FOR SHARE
+                    """,
+                    (codes,),
+                ).fetchall()
+                active_codes = {
+                    row[0]
+                    for row in rows
+                    if row[1] == "active"
+                    and row[2] is None
+                    and row[3] is not None
+                }
+                invalid = [code for code in codes if code not in active_codes]
+                if invalid:
+                    raise WorkStateConflict(
+                        "Featured works must exist and remain publicly active: "
+                        + ", ".join(invalid)
+                    )
+            connection.execute("DELETE FROM featured_works")
+            for position, code in enumerate(codes, start=1):
+                connection.execute(
+                    """
+                    INSERT INTO featured_works (position, work_code)
+                    VALUES (%s, %s)
+                    """,
+                    (position, code),
+                )
+        return list(codes)
 
     async def get_moderation_state(
         self,

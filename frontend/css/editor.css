@@ -1885,6 +1885,82 @@ body {
   gap: 12px;
   margin-top: 22px;
 }
+.discover-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 18px;
+  padding: 5px;
+  border: 1px solid #45454b;
+  border-radius: 10px;
+  background: #26262a;
+}
+.discover-tab {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #a9a9af;
+  font-size: 11px;
+  cursor: pointer;
+}
+.discover-tab:hover { color: #fff; }
+.discover-tab.active {
+  border-color: rgba(114,245,242,0.35);
+  background: rgba(114,245,242,0.12);
+  color: #72F5F2;
+}
+.discover-tab:focus-visible { outline: 2px solid #72F5F2; outline-offset: 2px; }
+.discover-panel { display: grid; gap: 12px; }
+.discover-panel[hidden] { display: none; }
+.featured-works-status,
+.featured-works-empty {
+  margin: 6px 0;
+  color: #929298;
+  font-size: 11px;
+  text-align: center;
+}
+.featured-works-status.error { color: #ff9b9f; }
+.featured-works-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.featured-work-card {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid #45454b;
+  border-radius: 10px;
+  background: #2c2c30;
+}
+.featured-work-card canvas {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 7px;
+  background: #fff;
+  image-rendering: pixelated;
+}
+.featured-work-title,
+.featured-work-author {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.featured-work-title { color: #f1f1f3; font-size: 12px; font-weight: 700; }
+.featured-work-author { color: #929298; font-size: 10px; }
+.featured-work-action {
+  min-height: 34px;
+  border: 1px solid rgba(114,245,242,0.42);
+  border-radius: 7px;
+  background: rgba(114,245,242,0.1);
+  color: #72F5F2;
+  font-size: 11px;
+  cursor: pointer;
+}
+.featured-work-action:hover { background: rgba(114,245,242,0.18); }
 .announcement-section {
   padding: 16px 17px;
   border: 1px solid #45454b;
@@ -1990,7 +2066,8 @@ body {
   white-space: nowrap;
 }
 @media (max-width: 560px) {
-  .shortcut-grid {
+  .shortcut-grid,
+  .featured-works-grid {
     grid-template-columns: 1fr;
   }
 }

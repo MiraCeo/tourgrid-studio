@@ -62,6 +62,30 @@
         </label>
       </section>
 
+      <section class="featured-admin" aria-labelledby="featuredHeading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">FEATURED WORKS</p>
+            <h2 id="featuredHeading">首页推荐作品</h2>
+          </div>
+          <span class="count" id="featuredCount">0 / 6 项</span>
+        </div>
+        <p class="featured-description">
+          推荐列表按顺序展示在主界面的“发现”弹窗中，只能保存正常公开的作品。
+        </p>
+        <form class="featured-add-form" id="featuredAddForm">
+          <label class="sr-only" for="featuredCodeInput">推荐作品分享码</label>
+          <input id="featuredCodeInput" type="text" maxlength="12"
+                 placeholder="输入12位作品码" autocomplete="off">
+          <button class="secondary" type="submit">添加</button>
+        </form>
+        <ol class="featured-list" id="featuredList"></ol>
+        <div class="featured-actions">
+          <button id="saveFeaturedButton" type="button" disabled>保存推荐列表</button>
+          <span id="featuredStatus" role="status" aria-live="polite"></span>
+        </div>
+      </section>
+
       <p class="message" id="statusMessage" aria-live="polite"></p>
 
       <div class="workspace">
@@ -129,6 +153,8 @@
                       type="button">复制分享码</button>
               <button class="secondary favorite-detail-button"
                       id="detailFavoriteButton" type="button">添加喜爱</button>
+              <button class="secondary" id="detailFeaturedButton"
+                      type="button">加入首页推荐</button>
             </div>
             <div class="moderation-actions" id="moderationActions">
               <button id="hideButton" type="button">隐藏作品</button>

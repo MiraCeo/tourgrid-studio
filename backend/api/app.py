@@ -20,6 +20,7 @@ from backend.palette import (
 from .admin import create_admin_router
 from .config import ApiSettings
 from .errors import ApiError
+from .featured import create_featured_router
 from .models import (
     ErrorResponse,
     HealthResponse,
@@ -241,6 +242,7 @@ def create_app(
 
     application.include_router(create_router())
     application.include_router(create_works_router())
+    application.include_router(create_featured_router())
     application.include_router(create_admin_router())
     return application
 

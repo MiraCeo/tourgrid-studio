@@ -164,6 +164,11 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             assert actual_page == 1
             batch = await store.get_admin_works([code])
             assert [item.code for item in batch] == [code]
+            assert await store.replace_featured_codes([code]) == [code]
+            assert await store.get_featured_codes() == [code]
+            assert [item.code for item in await store.get_featured_works()] == [
+                code
+            ]
 
             hidden = await store.hide_work(
                 code,
@@ -178,6 +183,8 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             assert hidden_state is not None
             assert hidden_state.status == "hidden"
             assert hidden_state.reason == "integration review"
+            assert await store.get_featured_codes() == [code]
+            assert await store.get_featured_works() == []
 
             restored = await store.restore_work(
                 code,
@@ -187,6 +194,9 @@ def test_postgres_admin_lifecycle_lists_restores_and_purges() -> None:
             )
             assert restored is not None
             assert restored.moderation_status == "active"
+            assert [item.code for item in await store.get_featured_works()] == [
+                code
+            ]
 
             purged = await store.purge_work(
                 code,

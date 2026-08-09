@@ -78,9 +78,13 @@ def test_readiness_fails_without_work_storage() -> None:
 
     with TestClient(application) as source_client:
         response = source_client.get("/api/v1/ready")
+        featured = source_client.get("/api/v1/featured-works")
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "database_not_ready"
+    assert featured.status_code == 200
+    assert featured.json() == {"works": []}
+    assert featured.headers["cache-control"] == "no-store"
 
 
 def test_favicon_is_served(client: TestClient) -> None:
@@ -131,6 +135,63 @@ def test_shared_work_is_immutable_deduplicated_and_counted(
         f"/api/v1/works/{first_body['code']}"
     )
     assert opened_from_new_session.json()["viewCount"] == 2
+
+
+def test_admin_can_order_featured_works_without_counting_preview_views() -> None:
+    token = "a" * 32
+    headers = {"Authorization": f"Bearer {token}"}
+    application = create_app(
+        ApiSettings(admin_token=token),
+        work_store=InMemoryWorkStore(),
+    )
+    with TestClient(application) as featured_client:
+        first = featured_client.post(
+            "/api/v1/works",
+            json=work_payload(1, title="第一幅", author_name="甲"),
+        ).json()
+        second = featured_client.post(
+            "/api/v1/works",
+            json=work_payload(2, title="第二幅", author_name="乙"),
+        ).json()
+
+        empty = featured_client.get("/api/v1/featured-works")
+        unauthorized = featured_client.put(
+            "/api/v1/admin/featured-works",
+            json={"codes": [first["code"]]},
+        )
+        saved = featured_client.put(
+            "/api/v1/admin/featured-works",
+            headers=headers,
+            json={"codes": [second["code"], first["code"]]},
+        )
+        public = featured_client.get("/api/v1/featured-works")
+        configured = featured_client.get(
+            "/api/v1/admin/featured-works",
+            headers=headers,
+        )
+        hidden = featured_client.post(
+            f"/api/v1/admin/works/{second['code']}/hide",
+            headers=headers,
+            json={"reason": "featured moderation"},
+        )
+        public_after_hide = featured_client.get("/api/v1/featured-works")
+
+    assert empty.status_code == 200
+    assert empty.json() == {"works": []}
+    assert unauthorized.status_code == 401
+    assert saved.status_code == 200
+    assert saved.json()["codes"] == [second["code"], first["code"]]
+    assert [work["code"] for work in public.json()["works"]] == [
+        second["code"],
+        first["code"],
+    ]
+    assert [work["viewCount"] for work in public.json()["works"]] == [0, 0]
+    assert "max-age=60" in public.headers["cache-control"]
+    assert configured.json()["codes"] == [second["code"], first["code"]]
+    assert hidden.status_code == 200
+    assert [work["code"] for work in public_after_hide.json()["works"]] == [
+        first["code"]
+    ]
 
 
 def test_missing_shared_work_returns_chinese_message(

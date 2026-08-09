@@ -18,6 +18,8 @@ const REFERENCE_WEBP_QUALITY = 0.88;
 const IMPORT_SAFE_PIXEL_BUDGET = 6000000;
 const IMPORT_SAFE_MAX_EDGE = 4096;
 const IMPORT_HEADER_READ_LIMIT = 4 * 1024 * 1024;
+const IMPORT_SAMPLES_PER_CELL = 16;
+const IMPORT_MITCHELL_MAX_BLEND = 0.45;
 const SRGB_BYTE_TO_LINEAR = Array.from({ length: 256 }, function(_, value) {
   var normalized = value / 255;
   return normalized <= 0.04045
@@ -42,6 +44,10 @@ let cropImageObjectUrl = null;
 let cropViewportLastSize = 0;
 let cropViewportResizeFrame = null;
 let cropViewportResizeObserver = null;
+const cropProcessingSurfaces = new Map();
+let cropMitchellWeightCache = null;
+let cropMitchellBufferCache = null;
+let importPaletteCache = null;
 
 async function loadExhibitionPalette() {
   try {
@@ -68,6 +74,7 @@ async function loadExhibitionPalette() {
         name: color.name || color.id
       });
     });
+    importPaletteCache = null;
     if (currentPaletteId === 'exhibition') {
       OFFICIAL_COLORS = EXHIBITION_DATA;
       paletteMode = EXHIBITION_DATA.length ? 'official' : 'canvas';
@@ -184,7 +191,10 @@ function updateCropDitherMode() {
 
 function updateCropSamplingMode() {
   var control = document.getElementById('cropSamplingMode');
-  cropSamplingMode = control && control.value === 'photo' ? 'photo' : 'pixel';
+  var requestedMode = control ? control.value : 'pixel';
+  cropSamplingMode = ['pixel', 'photo', 'detail'].includes(requestedMode)
+    ? requestedMode
+    : 'pixel';
   syncCropAlignmentGrid();
   scheduleCropPreview();
 }
@@ -256,15 +266,7 @@ function cropFilterString() {
   ].join(' ');
 }
 
-function buildProcessedCropCanvas(outputSize, preservePixelEdges) {
-  var output = document.createElement('canvas');
-  output.width = outputSize;
-  output.height = outputSize;
-  var outputCtx = output.getContext('2d');
-  outputCtx.fillStyle = '#FFFFFF';
-  outputCtx.fillRect(0, 0, outputSize, outputSize);
-  if (!cropImg) return output;
-
+function cropSourceGeometry() {
   var viewport = document.getElementById('cropViewport');
   var viewportSize = viewport.clientWidth;
   var scale = cropZoom / 100;
@@ -274,21 +276,83 @@ function buildProcessedCropCanvas(outputSize, preservePixelEdges) {
   var sourceHeight = viewportSize / scale;
   var sx = Math.max(0, sourceX);
   var sy = Math.max(0, sourceY);
-  var sw = Math.min(sourceWidth, cropImg.width - sx);
-  var sh = Math.min(sourceHeight, cropImg.height - sy);
-  if (sw <= 0 || sh <= 0) return output;
+  var sourceEndX = Math.min(cropImg.width, sourceX + sourceWidth);
+  var sourceEndY = Math.min(cropImg.height, sourceY + sourceHeight);
+  var sw = Math.max(0, sourceEndX - sx);
+  var sh = Math.max(0, sourceEndY - sy);
+  return {
+    sourceX: sourceX,
+    sourceY: sourceY,
+    sourceWidth: sourceWidth,
+    sourceHeight: sourceHeight,
+    sx: sx,
+    sy: sy,
+    sw: sw,
+    sh: sh
+  };
+}
 
+function getCropProcessingSurface(outputSize, preservePixelEdges) {
+  var key = outputSize + ':' + Boolean(preservePixelEdges);
+  var cached = cropProcessingSurfaces.get(key);
+  if (cached) return cached;
+
+  var output = document.createElement('canvas');
+  output.width = outputSize;
+  output.height = outputSize;
   var imageLayer = document.createElement('canvas');
   imageLayer.width = outputSize;
   imageLayer.height = outputSize;
-  var imageCtx = imageLayer.getContext('2d');
-  var dx = (sx - sourceX) / sourceWidth * outputSize;
-  var dy = (sy - sourceY) / sourceHeight * outputSize;
-  var dw = sw / sourceWidth * outputSize;
-  var dh = sh / sourceHeight * outputSize;
+  cached = {
+    output: output,
+    outputCtx: output.getContext('2d'),
+    imageLayer: imageLayer,
+    imageCtx: imageLayer.getContext('2d')
+  };
+  cropProcessingSurfaces.set(key, cached);
+  return cached;
+}
+
+function buildProcessedCropCanvas(outputSize, preservePixelEdges) {
+  var surface = getCropProcessingSurface(outputSize, preservePixelEdges);
+  var output = surface.output;
+  var outputCtx = surface.outputCtx;
+  outputCtx.globalAlpha = 1;
+  outputCtx.globalCompositeOperation = 'source-over';
+  outputCtx.filter = 'none';
+  outputCtx.clearRect(0, 0, outputSize, outputSize);
+  outputCtx.fillStyle = '#FFFFFF';
+  outputCtx.fillRect(0, 0, outputSize, outputSize);
+  if (!cropImg) return output;
+
+  var geometry = cropSourceGeometry();
+  if (geometry.sw <= 0 || geometry.sh <= 0) return output;
+
+  var imageLayer = surface.imageLayer;
+  var imageCtx = surface.imageCtx;
+  imageCtx.globalAlpha = 1;
+  imageCtx.globalCompositeOperation = 'source-over';
+  imageCtx.filter = 'none';
+  imageCtx.clearRect(0, 0, outputSize, outputSize);
+  var dx = (geometry.sx - geometry.sourceX) /
+    geometry.sourceWidth * outputSize;
+  var dy = (geometry.sy - geometry.sourceY) /
+    geometry.sourceHeight * outputSize;
+  var dw = geometry.sw / geometry.sourceWidth * outputSize;
+  var dh = geometry.sh / geometry.sourceHeight * outputSize;
   imageCtx.imageSmoothingEnabled = !preservePixelEdges;
   imageCtx.filter = cropFilterString();
-  imageCtx.drawImage(cropImg, sx, sy, sw, sh, dx, dy, dw, dh);
+  imageCtx.drawImage(
+    cropImg,
+    geometry.sx,
+    geometry.sy,
+    geometry.sw,
+    geometry.sh,
+    dx,
+    dy,
+    dw,
+    dh
+  );
   imageCtx.filter = 'none';
 
   if (cropColorOverlayOpacity > 0) {
@@ -320,40 +384,360 @@ function linearToSrgbByte(value) {
 
 function representativePixelColor(imageData, canvasWidth, gx, gy, sample) {
   var margin = Math.max(1, Math.floor(sample / 4));
-  var colors = [];
+  var colorsByValue = new Map();
   for (var sampleY = margin; sampleY < sample - margin; sampleY++) {
     for (var sampleX = margin; sampleX < sample - margin; sampleX++) {
       var px = gx * sample + sampleX;
       var py = gy * sample + sampleY;
       var dataIndex = (py * canvasWidth + px) * 4;
-      colors.push([
-        imageData[dataIndex],
-        imageData[dataIndex + 1],
-        imageData[dataIndex + 2]
-      ]);
+      var r = imageData[dataIndex];
+      var g = imageData[dataIndex + 1];
+      var b = imageData[dataIndex + 2];
+      var key = (r << 16) | (g << 8) | b;
+      var existing = colorsByValue.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        colorsByValue.set(key, { rgb: [r, g, b], count: 1 });
+      }
     }
   }
 
-  var best = colors[0];
+  var colors = Array.from(colorsByValue.values());
+  var best = colors[0].rgb;
   var bestScore = Infinity;
   colors.forEach(function(candidate) {
     var score = 0;
     colors.forEach(function(sampleColor) {
       score += colorDistRGB(
-        candidate[0],
-        candidate[1],
-        candidate[2],
-        sampleColor[0],
-        sampleColor[1],
-        sampleColor[2]
-      );
+        candidate.rgb[0],
+        candidate.rgb[1],
+        candidate.rgb[2],
+        sampleColor.rgb[0],
+        sampleColor.rgb[1],
+        sampleColor.rgb[2]
+      ) * sampleColor.count;
     });
     if (score < bestScore) {
-      best = candidate;
+      best = candidate.rgb;
       bestScore = score;
     }
   });
   return best;
+}
+
+function sampleAreaMean(imageData, canvasWidth, sample) {
+  var total = GRID_SIZE * GRID_SIZE;
+  var meanR = new Float64Array(total);
+  var meanG = new Float64Array(total);
+  var meanB = new Float64Array(total);
+  var samplesPerCell = sample * sample;
+
+  for (var gy = 0; gy < GRID_SIZE; gy++) {
+    for (var gx = 0; gx < GRID_SIZE; gx++) {
+      var outputIndex = gy * GRID_SIZE + gx;
+      var linearR = 0;
+      var linearG = 0;
+      var linearB = 0;
+      for (var sampleY = 0; sampleY < sample; sampleY++) {
+        for (var sampleX = 0; sampleX < sample; sampleX++) {
+          var px = gx * sample + sampleX;
+          var py = gy * sample + sampleY;
+          var dataIndex = (py * canvasWidth + px) * 4;
+          linearR += SRGB_BYTE_TO_LINEAR[imageData[dataIndex]];
+          linearG += SRGB_BYTE_TO_LINEAR[imageData[dataIndex + 1]];
+          linearB += SRGB_BYTE_TO_LINEAR[imageData[dataIndex + 2]];
+        }
+      }
+      meanR[outputIndex] = linearR / samplesPerCell;
+      meanG[outputIndex] = linearG / samplesPerCell;
+      meanB[outputIndex] = linearB / samplesPerCell;
+    }
+  }
+
+  return { meanR: meanR, meanG: meanG, meanB: meanB };
+}
+
+function sampleAreaStatistics(imageData, canvasWidth, sample) {
+  var total = GRID_SIZE * GRID_SIZE;
+  var meanR = new Float64Array(total);
+  var meanG = new Float64Array(total);
+  var meanB = new Float64Array(total);
+  var minimumR = new Float64Array(total);
+  var minimumG = new Float64Array(total);
+  var minimumB = new Float64Array(total);
+  var maximumR = new Float64Array(total);
+  var maximumG = new Float64Array(total);
+  var maximumB = new Float64Array(total);
+  minimumR.fill(Infinity);
+  minimumG.fill(Infinity);
+  minimumB.fill(Infinity);
+
+  var samplesPerCell = sample * sample;
+  for (var gy = 0; gy < GRID_SIZE; gy++) {
+    for (var gx = 0; gx < GRID_SIZE; gx++) {
+      var outputIndex = gy * GRID_SIZE + gx;
+      var linearR = 0;
+      var linearG = 0;
+      var linearB = 0;
+      for (var sampleY = 0; sampleY < sample; sampleY++) {
+        for (var sampleX = 0; sampleX < sample; sampleX++) {
+          var px = gx * sample + sampleX;
+          var py = gy * sample + sampleY;
+          var dataIndex = (py * canvasWidth + px) * 4;
+          var pixelR = SRGB_BYTE_TO_LINEAR[imageData[dataIndex]];
+          var pixelG = SRGB_BYTE_TO_LINEAR[imageData[dataIndex + 1]];
+          var pixelB = SRGB_BYTE_TO_LINEAR[imageData[dataIndex + 2]];
+          linearR += pixelR;
+          linearG += pixelG;
+          linearB += pixelB;
+          minimumR[outputIndex] = Math.min(minimumR[outputIndex], pixelR);
+          minimumG[outputIndex] = Math.min(minimumG[outputIndex], pixelG);
+          minimumB[outputIndex] = Math.min(minimumB[outputIndex], pixelB);
+          maximumR[outputIndex] = Math.max(maximumR[outputIndex], pixelR);
+          maximumG[outputIndex] = Math.max(maximumG[outputIndex], pixelG);
+          maximumB[outputIndex] = Math.max(maximumB[outputIndex], pixelB);
+        }
+      }
+      meanR[outputIndex] = linearR / samplesPerCell;
+      meanG[outputIndex] = linearG / samplesPerCell;
+      meanB[outputIndex] = linearB / samplesPerCell;
+    }
+  }
+
+  return {
+    meanR: meanR,
+    meanG: meanG,
+    meanB: meanB,
+    minimumR: minimumR,
+    minimumG: minimumG,
+    minimumB: minimumB,
+    maximumR: maximumR,
+    maximumG: maximumG,
+    maximumB: maximumB
+  };
+}
+
+function mitchellKernel(value) {
+  var B = 1 / 3;
+  var C = 1 / 3;
+  var x = Math.abs(value);
+  if (x < 1) {
+    return (
+      (12 - 9 * B - 6 * C) * x * x * x +
+      (-18 + 12 * B + 6 * C) * x * x +
+      (6 - 2 * B)
+    ) / 6;
+  }
+  if (x < 2) {
+    return (
+      (-B - 6 * C) * x * x * x +
+      (6 * B + 30 * C) * x * x +
+      (-12 * B - 48 * C) * x +
+      (8 * B + 24 * C)
+    ) / 6;
+  }
+  return 0;
+}
+
+function buildMitchellWeightTable(sourceSize, targetSize) {
+  var scale = sourceSize / targetSize;
+  return Array.from({ length: targetSize }, function(_, targetIndex) {
+    var center = (targetIndex + 0.5) * scale;
+    var first = Math.max(0, Math.floor(center - 2 * scale - 0.5));
+    var last = Math.min(sourceSize - 1, Math.ceil(center + 2 * scale - 0.5));
+    var entries = [];
+    var weightTotal = 0;
+    for (var sourceIndex = first; sourceIndex <= last; sourceIndex++) {
+      var distance = ((sourceIndex + 0.5) - center) / scale;
+      var weight = mitchellKernel(distance);
+      if (weight === 0) continue;
+      entries.push({ index: sourceIndex, weight: weight });
+      weightTotal += weight;
+    }
+    if (Math.abs(weightTotal) < 0.000001) {
+      return [{
+        index: Math.max(0, Math.min(sourceSize - 1, Math.floor(center))),
+        weight: 1
+      }];
+    }
+    entries.forEach(function(entry) {
+      entry.weight /= weightTotal;
+    });
+    return entries;
+  });
+}
+
+function getMitchellWeightTables(canvasWidth, canvasHeight) {
+  if (
+    cropMitchellWeightCache &&
+    cropMitchellWeightCache.canvasWidth === canvasWidth &&
+    cropMitchellWeightCache.canvasHeight === canvasHeight
+  ) {
+    return cropMitchellWeightCache;
+  }
+  cropMitchellWeightCache = {
+    canvasWidth: canvasWidth,
+    canvasHeight: canvasHeight,
+    xWeights: buildMitchellWeightTable(canvasWidth, GRID_SIZE),
+    yWeights: buildMitchellWeightTable(canvasHeight, GRID_SIZE)
+  };
+  return cropMitchellWeightCache;
+}
+
+function getMitchellBuffers(canvasWidth, canvasHeight) {
+  if (
+    !cropMitchellBufferCache ||
+    cropMitchellBufferCache.canvasWidth !== canvasWidth ||
+    cropMitchellBufferCache.canvasHeight !== canvasHeight
+  ) {
+    var total = GRID_SIZE * GRID_SIZE;
+    var horizontalSize = canvasHeight * GRID_SIZE;
+    cropMitchellBufferCache = {
+      canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight,
+      horizontalR: new Float64Array(horizontalSize),
+      horizontalG: new Float64Array(horizontalSize),
+      horizontalB: new Float64Array(horizontalSize),
+      outputR: new Float64Array(total),
+      outputG: new Float64Array(total),
+      outputB: new Float64Array(total)
+    };
+  }
+  cropMitchellBufferCache.horizontalR.fill(0);
+  cropMitchellBufferCache.horizontalG.fill(0);
+  cropMitchellBufferCache.horizontalB.fill(0);
+  cropMitchellBufferCache.outputR.fill(0);
+  cropMitchellBufferCache.outputG.fill(0);
+  cropMitchellBufferCache.outputB.fill(0);
+  return cropMitchellBufferCache;
+}
+
+function sampleMitchellLinear(imageData, canvasWidth, canvasHeight) {
+  var weightTables = getMitchellWeightTables(canvasWidth, canvasHeight);
+  var xWeights = weightTables.xWeights;
+  var yWeights = weightTables.yWeights;
+  var buffers = getMitchellBuffers(canvasWidth, canvasHeight);
+  var horizontalR = buffers.horizontalR;
+  var horizontalG = buffers.horizontalG;
+  var horizontalB = buffers.horizontalB;
+  var outputR = buffers.outputR;
+  var outputG = buffers.outputG;
+  var outputB = buffers.outputB;
+
+  for (var sourceY = 0; sourceY < canvasHeight; sourceY++) {
+    for (var gx = 0; gx < GRID_SIZE; gx++) {
+      var horizontalIndex = sourceY * GRID_SIZE + gx;
+      var xEntries = xWeights[gx];
+      for (var xWeightIndex = 0; xWeightIndex < xEntries.length; xWeightIndex++) {
+        var xEntry = xEntries[xWeightIndex];
+        var dataIndex = (sourceY * canvasWidth + xEntry.index) * 4;
+        horizontalR[horizontalIndex] +=
+          SRGB_BYTE_TO_LINEAR[imageData[dataIndex]] * xEntry.weight;
+        horizontalG[horizontalIndex] +=
+          SRGB_BYTE_TO_LINEAR[imageData[dataIndex + 1]] * xEntry.weight;
+        horizontalB[horizontalIndex] +=
+          SRGB_BYTE_TO_LINEAR[imageData[dataIndex + 2]] * xEntry.weight;
+      }
+    }
+  }
+
+  for (var gy = 0; gy < GRID_SIZE; gy++) {
+    var yEntries = yWeights[gy];
+    for (var outputX = 0; outputX < GRID_SIZE; outputX++) {
+      var outputIndex = gy * GRID_SIZE + outputX;
+      for (var yWeightIndex = 0; yWeightIndex < yEntries.length; yWeightIndex++) {
+        var yEntry = yEntries[yWeightIndex];
+        var filteredIndex = yEntry.index * GRID_SIZE + outputX;
+        outputR[outputIndex] += horizontalR[filteredIndex] * yEntry.weight;
+        outputG[outputIndex] += horizontalG[filteredIndex] * yEntry.weight;
+        outputB[outputIndex] += horizontalB[filteredIndex] * yEntry.weight;
+      }
+    }
+  }
+  return { r: outputR, g: outputG, b: outputB };
+}
+
+function sampleProcessedCrop(processedCanvas) {
+  var sample = IMPORT_SAMPLES_PER_CELL;
+  var context = processedCanvas.getContext('2d');
+  var imageData = context.getImageData(
+    0,
+    0,
+    processedCanvas.width,
+    processedCanvas.height
+  ).data;
+  var total = GRID_SIZE * GRID_SIZE;
+  var rawR = new Float64Array(total);
+  var rawG = new Float64Array(total);
+  var rawB = new Float64Array(total);
+
+  if (cropSamplingMode === 'pixel') {
+    for (var gy = 0; gy < GRID_SIZE; gy++) {
+      for (var gx = 0; gx < GRID_SIZE; gx++) {
+        var outputIndex = gy * GRID_SIZE + gx;
+        var representative = representativePixelColor(
+          imageData,
+          processedCanvas.width,
+          gx,
+          gy,
+          sample
+        );
+        rawR[outputIndex] = representative[0];
+        rawG[outputIndex] = representative[1];
+        rawB[outputIndex] = representative[2];
+      }
+    }
+    return { rawR: rawR, rawG: rawG, rawB: rawB };
+  }
+
+  if (cropSamplingMode === 'photo') {
+    var mean = sampleAreaMean(imageData, processedCanvas.width, sample);
+    for (var areaIndex = 0; areaIndex < total; areaIndex++) {
+      rawR[areaIndex] = linearToSrgbByte(mean.meanR[areaIndex]);
+      rawG[areaIndex] = linearToSrgbByte(mean.meanG[areaIndex]);
+      rawB[areaIndex] = linearToSrgbByte(mean.meanB[areaIndex]);
+    }
+    return { rawR: rawR, rawG: rawG, rawB: rawB };
+  }
+
+  var area = sampleAreaStatistics(imageData, processedCanvas.width, sample);
+  var mitchell = sampleMitchellLinear(
+    imageData,
+    processedCanvas.width,
+    processedCanvas.height
+  );
+  for (var detailIndex = 0; detailIndex < total; detailIndex++) {
+    var channelRange = Math.max(
+      area.maximumR[detailIndex] - area.minimumR[detailIndex],
+      area.maximumG[detailIndex] - area.minimumG[detailIndex],
+      area.maximumB[detailIndex] - area.minimumB[detailIndex]
+    );
+    var edgeStrength = Math.max(0, Math.min(1, (channelRange - 0.08) / 0.62));
+    var detailBlend = edgeStrength * IMPORT_MITCHELL_MAX_BLEND;
+    var detailR = Math.max(
+      area.minimumR[detailIndex],
+      Math.min(area.maximumR[detailIndex], mitchell.r[detailIndex])
+    );
+    var detailG = Math.max(
+      area.minimumG[detailIndex],
+      Math.min(area.maximumG[detailIndex], mitchell.g[detailIndex])
+    );
+    var detailB = Math.max(
+      area.minimumB[detailIndex],
+      Math.min(area.maximumB[detailIndex], mitchell.b[detailIndex])
+    );
+    rawR[detailIndex] = linearToSrgbByte(
+      area.meanR[detailIndex] * (1 - detailBlend) + detailR * detailBlend
+    );
+    rawG[detailIndex] = linearToSrgbByte(
+      area.meanG[detailIndex] * (1 - detailBlend) + detailG * detailBlend
+    );
+    rawB[detailIndex] = linearToSrgbByte(
+      area.meanB[detailIndex] * (1 - detailBlend) + detailB * detailBlend
+    );
+  }
+  return { rawR: rawR, rawG: rawG, rawB: rawB };
 }
 
 function importHueProfile(r, g, b) {
@@ -381,7 +765,7 @@ function importHueProfile(r, g, b) {
   };
 }
 
-function importPaletteDistance(r, g, b, entry) {
+function importPaletteDistance(r, g, b, entry, sourceProfile) {
   var baseDistance = colorDistRGB(
     r,
     g,
@@ -390,8 +774,8 @@ function importPaletteDistance(r, g, b, entry) {
     entry.rgb[1],
     entry.rgb[2]
   );
-  var sourceProfile = importHueProfile(r, g, b);
-  if (sourceProfile.chroma < 40 || sourceProfile.saturation < 0.35) {
+  var profile = sourceProfile || importHueProfile(r, g, b);
+  if (profile.chroma < 40 || profile.saturation < 0.35) {
     return baseDistance;
   }
 
@@ -402,20 +786,21 @@ function importPaletteDistance(r, g, b, entry) {
   );
   var hueMismatch = 1;
   if (candidateProfile.chroma >= 20 && candidateProfile.saturation >= 0.14) {
-    var hueDifference = Math.abs(sourceProfile.hue - candidateProfile.hue);
+    var hueDifference = Math.abs(profile.hue - candidateProfile.hue);
     hueMismatch = Math.min(hueDifference, 360 - hueDifference) / 180;
   }
   var protectionStrength = Math.min(
     1,
-    (sourceProfile.saturation - 0.35) / 0.45
+    (profile.saturation - 0.35) / 0.45
   );
   // 加权 RGB 仍占主导；色相最多只改变 RGB 误差相差约 20% 的候选排序。
   var huePenalty = 0.20 * protectionStrength * Math.pow(hueMismatch, 1.35);
   return baseDistance * (1 + huePenalty);
 }
 
-function selectImportPalette(rawR, rawG, rawB, targetCount) {
-  var fullPalette = EXHIBITION_DATA.map(function(color, index) {
+function getImportPalette() {
+  if (importPaletteCache) return importPaletteCache;
+  importPaletteCache = EXHIBITION_DATA.map(function(color, index) {
     var hex = color.hex.toUpperCase();
     var rgb = [
       parseInt(hex.slice(1, 3), 16),
@@ -429,14 +814,27 @@ function selectImportPalette(rawR, rawG, rawB, targetCount) {
       hueProfile: importHueProfile(rgb[0], rgb[1], rgb[2])
     };
   });
-  if (fullPalette.length !== 40) {
+  if (importPaletteCache.length !== 40) {
+    importPaletteCache = null;
     throw new Error('本地 official-40-v1 色板加载失败。');
   }
+  return importPaletteCache;
+}
+
+function selectImportPalette(rawR, rawG, rawB, targetCount) {
+  var fullPalette = getImportPalette();
   if (targetCount >= fullPalette.length) return fullPalette;
 
   var pixelCount = rawR.length;
   var maxWeightedRgbDistance = Math.sqrt(9 * 255 * 255);
   var importance = new Float64Array(pixelCount);
+  var sourceProfiles = Array.from({ length: pixelCount }, function(_, pixelIndex) {
+    return importHueProfile(
+      rawR[pixelIndex],
+      rawG[pixelIndex],
+      rawB[pixelIndex]
+    );
+  });
   var distances = Array.from({ length: pixelCount }, function(_, pixelIndex) {
     var row = new Float64Array(fullPalette.length);
     fullPalette.forEach(function(entry, paletteIndex) {
@@ -444,7 +842,8 @@ function selectImportPalette(rawR, rawG, rawB, targetCount) {
         rawR[pixelIndex],
         rawG[pixelIndex],
         rawB[pixelIndex],
-        entry
+        entry,
+        sourceProfiles[pixelIndex]
       );
     });
     return row;
@@ -533,51 +932,11 @@ function rgbBytesToHex(r, g, b) {
   }).join('').toUpperCase();
 }
 
-function quantizeProcessedCrop(processedCanvas) {
-  var sample = 8;
-  var hiData = processedCanvas.getContext('2d').getImageData(
-    0,
-    0,
-    processedCanvas.width,
-    processedCanvas.height
-  ).data;
+function quantizeProcessedCrop(sampledCrop) {
   var total = GRID_SIZE * GRID_SIZE;
-  var rawR = new Float64Array(total);
-  var rawG = new Float64Array(total);
-  var rawB = new Float64Array(total);
-
-  for (var gy = 0; gy < GRID_SIZE; gy++) {
-    for (var gx = 0; gx < GRID_SIZE; gx++) {
-      var rawIndex = gy * GRID_SIZE + gx;
-      if (cropSamplingMode === 'pixel') {
-        var representative = representativePixelColor(
-          hiData,
-          processedCanvas.width,
-          gx,
-          gy,
-          sample
-        );
-        rawR[rawIndex] = representative[0];
-        rawG[rawIndex] = representative[1];
-        rawB[rawIndex] = representative[2];
-        continue;
-      }
-      var linearR = 0, linearG = 0, linearB = 0;
-      for (var sampleY = 0; sampleY < sample; sampleY++) {
-        for (var sampleX = 0; sampleX < sample; sampleX++) {
-          var px = gx * sample + sampleX;
-          var py = gy * sample + sampleY;
-          var dataIndex = (py * processedCanvas.width + px) * 4;
-          linearR += SRGB_BYTE_TO_LINEAR[hiData[dataIndex]];
-          linearG += SRGB_BYTE_TO_LINEAR[hiData[dataIndex + 1]];
-          linearB += SRGB_BYTE_TO_LINEAR[hiData[dataIndex + 2]];
-        }
-      }
-      rawR[rawIndex] = linearToSrgbByte(linearR / (sample * sample));
-      rawG[rawIndex] = linearToSrgbByte(linearG / (sample * sample));
-      rawB[rawIndex] = linearToSrgbByte(linearB / (sample * sample));
-    }
-  }
+  var rawR = sampledCrop.rawR;
+  var rawG = sampledCrop.rawG;
+  var rawB = sampledCrop.rawB;
 
   var palette = selectImportPalette(
     rawR,
@@ -613,12 +972,14 @@ function quantizeProcessedCrop(processedCanvas) {
   function nearestEntry(r, g, b) {
     var best = palette[0];
     var bestDistance = Infinity;
+    var sourceProfile = importHueProfile(r, g, b);
     palette.forEach(function(entry) {
       var distance = importPaletteDistance(
         r,
         g,
         b,
-        entry
+        entry,
+        sourceProfile
       );
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -730,10 +1091,11 @@ function quantizeProcessedCrop(processedCanvas) {
 function buildCropConversion() {
   var processedPreview = buildProcessedCropCanvas(REFERENCE_IMAGE_SIZE);
   var processedForQuantization = buildProcessedCropCanvas(
-    GRID_SIZE * 8,
-    cropSamplingMode === 'pixel'
+    GRID_SIZE * IMPORT_SAMPLES_PER_CELL,
+    true
   );
-  var quantized = quantizeProcessedCrop(processedForQuantization);
+  var sampledCrop = sampleProcessedCrop(processedForQuantization);
+  var quantized = quantizeProcessedCrop(sampledCrop);
   return {
     pixels: quantized.pixels,
     sampledPixels: quantized.sampledPixels,
@@ -1510,7 +1872,7 @@ async function confirmCropLocalWithAdjustments() {
     paletteId: DEFAULT_PALETTE_ID,
     editorPaletteId: 'exhibition',
     paletteVersion: DEFAULT_PALETTE_VERSION,
-    converterVersion: 'browser-weighted-rgb-hue-guard-dither-v6-' + cropSamplingMode,
+    converterVersion: 'browser-area-mitchell-dither-v7-' + cropSamplingMode,
     importedAt: new Date().toISOString()
   };
   buildHexCodeMap();

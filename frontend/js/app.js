@@ -1349,6 +1349,115 @@ function setWorkspacePanelMode(mode) {
 var authorModalTrigger = null;
 var announcementModalTrigger = null;
 var ANNOUNCEMENT_SESSION_KEY = 'tourgrid-announcement-20260728';
+var featuredWorksLoaded = false;
+var featuredWorksLoading = false;
+
+function switchDiscoverTab(name) {
+  document.querySelectorAll('[data-discover-tab]').forEach(function(tab) {
+    var selected = tab.dataset.discoverTab === name;
+    tab.classList.toggle('active', selected);
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll('[data-discover-panel]').forEach(function(panel) {
+    panel.hidden = panel.dataset.discoverPanel !== name;
+  });
+  if (name === 'featured') loadFeaturedWorks();
+}
+
+function drawFeaturedWork(canvas, work) {
+  var pixels = TourgridWorkCodec.unpackPixels(work.pixels, EXHIBITION_DATA);
+  var context = canvas.getContext('2d');
+  var cellSize = canvas.width / GRID_SIZE;
+  context.imageSmoothingEnabled = false;
+  pixels.forEach(function(row, y) {
+    row.forEach(function(color, x) {
+      context.fillStyle = color;
+      context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    });
+  });
+}
+
+function openFeaturedWork(code) {
+  closeAnnouncementModal();
+  openWorkShareModal('load');
+  var input = document.getElementById('workCodeInput');
+  input.value = code;
+  loadSharedWorkFromInput();
+}
+
+function renderFeaturedWorks(works) {
+  var grid = document.getElementById('featuredWorksGrid');
+  var empty = document.getElementById('featuredWorksEmpty');
+  var status = document.getElementById('featuredWorksStatus');
+  grid.replaceChildren();
+  empty.hidden = works.length !== 0;
+  status.textContent = '';
+  status.classList.remove('error');
+
+  works.forEach(function(work) {
+    if (
+      work.schemaVersion !== 1 ||
+      work.paletteId !== DEFAULT_PALETTE_ID ||
+      work.paletteVersion !== DEFAULT_PALETTE_VERSION
+    ) return;
+    var card = document.createElement('article');
+    card.className = 'featured-work-card';
+    var canvas = document.createElement('canvas');
+    canvas.width = 120;
+    canvas.height = 120;
+    canvas.setAttribute('aria-label', (work.title || '推荐作品') + ' 像素预览');
+    try {
+      drawFeaturedWork(canvas, work);
+    } catch (_error) {
+      return;
+    }
+    card.appendChild(canvas);
+    var title = document.createElement('div');
+    title.className = 'featured-work-title';
+    title.textContent = work.title || '未命名作品';
+    card.appendChild(title);
+    var author = document.createElement('div');
+    author.className = 'featured-work-author';
+    author.textContent = '作者：' + (work.authorName || '未署名');
+    card.appendChild(author);
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'featured-work-action';
+    button.textContent = '读取作品';
+    button.addEventListener('click', function() { openFeaturedWork(work.code); });
+    card.appendChild(button);
+    grid.appendChild(card);
+  });
+  empty.hidden = grid.childElementCount !== 0;
+}
+
+function loadFeaturedWorks() {
+  if (featuredWorksLoaded || featuredWorksLoading) return;
+  var status = document.getElementById('featuredWorksStatus');
+  if (!status) return;
+  featuredWorksLoading = true;
+  status.textContent = '正在读取推荐作品…';
+  status.classList.remove('error');
+  fetch(API_BASE_URL + '/api/v1/featured-works')
+    .then(function(response) {
+      return response.json().then(function(body) {
+        if (!response.ok) throw new Error(apiErrorMessage(response, body));
+        return body;
+      });
+    })
+    .then(function(body) {
+      featuredWorksLoaded = true;
+      renderFeaturedWorks(Array.isArray(body.works) ? body.works : []);
+    })
+    .catch(function(error) {
+      status.textContent = error.message || '推荐作品暂时无法读取。';
+      status.classList.add('error');
+    })
+    .finally(function() {
+      featuredWorksLoading = false;
+    });
+}
 
 function openAnnouncementOnEntry() {
   try {
@@ -1365,6 +1474,7 @@ function openAnnouncementModal() {
   if (!modal) return;
   announcementModalTrigger = document.activeElement;
   modal.hidden = false;
+  switchDiscoverTab('featured');
   requestAnimationFrame(function() {
     modal.classList.add('show');
     var closeButton = modal.querySelector('.announcement-close-btn');
@@ -2036,6 +2146,9 @@ function bindStaticControls() {
 
   on('authorInfoBtn', 'click', openAuthorModal);
   on('announcementBtn', 'click', openAnnouncementModal);
+  on('discoverFeaturedTab', 'click', function() { switchDiscoverTab('featured'); });
+  on('discoverNoticeTab', 'click', function() { switchDiscoverTab('notice'); });
+  on('discoverHelpTab', 'click', function() { switchDiscoverTab('help'); });
   on('mobileFullscreenBtn', 'click', toggleFullscreen);
   on('mobileWorkspaceModeBtn', 'click', toggleMobileWorkspaceMode);
   on('mobileToolbarCollapseBtn', 'click', toggleMobileToolbar);

@@ -9,6 +9,8 @@ from fastapi import APIRouter, Header, Path, Query, Request
 
 from .errors import ApiError
 from .models import (
+    AdminFeaturedWorksRequest,
+    AdminFeaturedWorksResponse,
     AdminSessionResponse,
     AdminWorkBatchRequest,
     AdminWorkBatchResponse,
@@ -177,6 +179,58 @@ def create_admin_router() -> APIRouter:
     ) -> AdminSessionResponse:
         await _require_admin(request, authorization)
         return AdminSessionResponse(authenticated=True)
+
+    async def featured_works_response(
+        store: WorkStore,
+        codes: list[str],
+    ) -> AdminFeaturedWorksResponse:
+        records = await store.get_admin_works(codes) if codes else []
+        records_by_code = {record.code: record for record in records}
+        return AdminFeaturedWorksResponse(
+            codes=codes,
+            works=[
+                _admin_work_response(records_by_code[code])
+                for code in codes
+                if code in records_by_code
+            ],
+        )
+
+    @router.get(
+        "/featured-works",
+        response_model=AdminFeaturedWorksResponse,
+        response_model_exclude_none=True,
+    )
+    async def get_featured_works(
+        request: Request,
+        authorization: AuthorizationHeader = None,
+    ) -> AdminFeaturedWorksResponse:
+        await _require_admin(request, authorization)
+        store: WorkStore = request.app.state.work_store
+        try:
+            codes = await store.get_featured_codes()
+            return await featured_works_response(store, codes)
+        except WorkStoreUnavailable as error:
+            raise _storage_error(error) from error
+
+    @router.put(
+        "/featured-works",
+        response_model=AdminFeaturedWorksResponse,
+        response_model_exclude_none=True,
+    )
+    async def replace_featured_works(
+        request: Request,
+        payload: AdminFeaturedWorksRequest,
+        authorization: AuthorizationHeader = None,
+    ) -> AdminFeaturedWorksResponse:
+        await _require_admin(request, authorization)
+        store: WorkStore = request.app.state.work_store
+        try:
+            codes = await store.replace_featured_codes(payload.codes)
+            return await featured_works_response(store, codes)
+        except WorkStoreUnavailable as error:
+            raise _storage_error(error) from error
+        except WorkStateConflict as error:
+            raise _state_conflict(error) from error
 
     @router.get(
         "/works",

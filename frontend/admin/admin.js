@@ -11,6 +11,9 @@
   var totalCount = 0;
   var pageSize = 50;
   var favoriteCodes = [];
+  var featuredCodes = [];
+  var featuredWorksByCode = {};
+  var featuredDirty = false;
   var databaseSort = 'created_desc';
   var selectedWork = null;
   var pendingAction = null;
@@ -33,6 +36,10 @@
   var sortFilter = document.getElementById('sortFilter');
   var detailPlaceholder = document.getElementById('detailPlaceholder');
   var detailContent = document.getElementById('detailContent');
+  var featuredList = document.getElementById('featuredList');
+  var featuredCount = document.getElementById('featuredCount');
+  var featuredStatus = document.getElementById('featuredStatus');
+  var saveFeaturedButton = document.getElementById('saveFeaturedButton');
   var actionDialog = document.getElementById('actionDialog');
   var dialogError = document.getElementById('dialogError');
   var paginationControls = [
@@ -194,6 +201,150 @@
     }
     renderWorks();
     renderDetail();
+  }
+
+  function setFeaturedStatus(message, isError) {
+    featuredStatus.textContent = message || '';
+    featuredStatus.classList.toggle('error', Boolean(isError));
+  }
+
+  function markFeaturedDirty() {
+    featuredDirty = true;
+    saveFeaturedButton.disabled = false;
+    setFeaturedStatus('有尚未保存的更改。');
+  }
+
+  function renderFeaturedWorks() {
+    featuredList.replaceChildren();
+    featuredCount.textContent = featuredCodes.length + ' / 6 项';
+    featuredCodes.forEach(function(code, index) {
+      var work = featuredWorksByCode[code];
+      var item = document.createElement('li');
+      item.className = 'featured-item';
+      item.appendChild(createText('span', 'featured-position', String(index + 1).padStart(2, '0')));
+
+      var main = document.createElement('div');
+      main.className = 'featured-item-main';
+      main.appendChild(createText(
+        'strong',
+        '',
+        work && work.title ? work.title : (work ? '未命名作品' : '作品不可用')
+      ));
+      main.appendChild(createText(
+        'span',
+        '',
+        code + (work ? ' · ' + statusLabel(work.moderationStatus) : '')
+      ));
+      item.appendChild(main);
+
+      var actions = document.createElement('div');
+      actions.className = 'featured-item-actions';
+      [
+        ['↑', '上移', index > 0, -1],
+        ['↓', '下移', index < featuredCodes.length - 1, 1]
+      ].forEach(function(config) {
+        var button = createText('button', 'secondary small', config[0]);
+        button.type = 'button';
+        button.title = config[1];
+        button.disabled = !config[2];
+        button.addEventListener('click', function() {
+          var target = index + config[3];
+          var next = featuredCodes.slice();
+          var moved = next.splice(index, 1)[0];
+          next.splice(target, 0, moved);
+          featuredCodes = next;
+          markFeaturedDirty();
+          renderFeaturedWorks();
+        });
+        actions.appendChild(button);
+      });
+      var removeButton = createText('button', 'secondary small', '移除');
+      removeButton.type = 'button';
+      removeButton.addEventListener('click', function() {
+        featuredCodes = featuredCodes.filter(function(itemCode) { return itemCode !== code; });
+        markFeaturedDirty();
+        renderFeaturedWorks();
+        renderDetail();
+      });
+      actions.appendChild(removeButton);
+      item.appendChild(actions);
+      featuredList.appendChild(item);
+    });
+    saveFeaturedButton.disabled = !featuredDirty;
+  }
+
+  function addFeaturedWork(work) {
+    if (!work || work.moderationStatus !== 'active') {
+      setFeaturedStatus('只能推荐正常公开的作品。', true);
+      return;
+    }
+    if (featuredCodes.indexOf(work.code) >= 0) {
+      setFeaturedStatus('该作品已经在推荐列表中。', true);
+      return;
+    }
+    if (featuredCodes.length >= 6) {
+      setFeaturedStatus('推荐列表最多保存6个作品。', true);
+      return;
+    }
+    featuredWorksByCode[work.code] = work;
+    featuredCodes.push(work.code);
+    markFeaturedDirty();
+    renderFeaturedWorks();
+    renderDetail();
+  }
+
+  function addFeaturedCode(code) {
+    if (!SHARE_CODE_PATTERN.test(code)) {
+      setFeaturedStatus('请输入有效的12位分享码。', true);
+      return Promise.resolve();
+    }
+    if (featuredWorksByCode[code]) {
+      addFeaturedWork(featuredWorksByCode[code]);
+      return Promise.resolve();
+    }
+    setFeaturedStatus('正在读取作品…');
+    return api('/api/v1/admin/works/' + encodeURIComponent(code))
+      .then(function(work) { addFeaturedWork(work); })
+      .catch(function(error) { setFeaturedStatus(error.message, true); });
+  }
+
+  function loadFeaturedWorks() {
+    setFeaturedStatus('正在读取推荐列表…');
+    return api('/api/v1/admin/featured-works').then(function(body) {
+      featuredCodes = body.codes || [];
+      featuredWorksByCode = {};
+      (body.works || []).forEach(function(work) {
+        featuredWorksByCode[work.code] = work;
+      });
+      featuredDirty = false;
+      renderFeaturedWorks();
+      renderDetail();
+      setFeaturedStatus('');
+    }).catch(function(error) {
+      setFeaturedStatus(error.message, true);
+    });
+  }
+
+  function saveFeaturedWorks() {
+    saveFeaturedButton.disabled = true;
+    setFeaturedStatus('正在保存推荐列表…');
+    api('/api/v1/admin/featured-works', {
+      method: 'PUT',
+      body: JSON.stringify({ codes: featuredCodes })
+    }).then(function(body) {
+      featuredCodes = body.codes || [];
+      featuredWorksByCode = {};
+      (body.works || []).forEach(function(work) {
+        featuredWorksByCode[work.code] = work;
+      });
+      featuredDirty = false;
+      renderFeaturedWorks();
+      renderDetail();
+      setFeaturedStatus('推荐列表已保存。');
+    }).catch(function(error) {
+      saveFeaturedButton.disabled = false;
+      setFeaturedStatus(error.message, true);
+    });
   }
 
   function loadPalette(paletteId) {
@@ -523,6 +674,11 @@
       ? '★ 取消喜爱'
       : '☆ 添加喜爱';
 
+    var featuredButton = document.getElementById('detailFeaturedButton');
+    var alreadyFeatured = featuredCodes.indexOf(selectedWork.code) >= 0;
+    featuredButton.disabled = selectedWork.moderationStatus !== 'active' || alreadyFeatured;
+    featuredButton.textContent = alreadyFeatured ? '已加入首页推荐' : '加入首页推荐';
+
     document.getElementById('hideButton').hidden = selectedWork.moderationStatus !== 'active';
     document.getElementById('restoreButton').hidden = selectedWork.moderationStatus !== 'hidden';
     document.getElementById('purgeButton').hidden = selectedWork.moderationStatus === 'purged';
@@ -580,6 +736,10 @@
       { method: 'POST', body: JSON.stringify(payload) }
     ).then(function(work) {
       selectedWork = work;
+      if (featuredWorksByCode[work.code]) {
+        featuredWorksByCode[work.code] = work;
+        renderFeaturedWorks();
+      }
       var index = works.findIndex(function(item) { return item.code === work.code; });
       if (index >= 0) works[index] = work;
       if (statusFilter.value && statusFilter.value !== work.moderationStatus) {
@@ -633,6 +793,7 @@
       loginPanel.hidden = true;
       adminApp.hidden = false;
       loadWorks(savedPage);
+      loadFeaturedWorks();
       loadAudit();
     }).catch(function(error) {
       token = '';
@@ -650,13 +811,20 @@
     totalPages = 0;
     totalCount = 0;
     favoriteCodes = [];
+    featuredCodes = [];
+    featuredWorksByCode = {};
+    featuredDirty = false;
     selectedWork = null;
     adminApp.hidden = true;
     loginPanel.hidden = false;
     renderWorks();
+    renderFeaturedWorks();
     renderDetail();
   });
-  document.getElementById('refreshButton').addEventListener('click', function() { loadWorks(currentPage); });
+  document.getElementById('refreshButton').addEventListener('click', function() {
+    loadWorks(currentPage);
+    loadFeaturedWorks();
+  });
   document.getElementById('auditRefreshButton').addEventListener('click', loadAudit);
   statusFilter.addEventListener('change', function() {
     syncSortFilter();
@@ -682,6 +850,18 @@
   document.getElementById('detailFavoriteButton').addEventListener('click', function() {
     if (selectedWork) toggleFavorite(selectedWork.code);
   });
+  document.getElementById('detailFeaturedButton').addEventListener('click', function() {
+    if (selectedWork) addFeaturedWork(selectedWork);
+  });
+  document.getElementById('featuredAddForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    var input = document.getElementById('featuredCodeInput');
+    var code = input.value.trim();
+    addFeaturedCode(code).then(function() {
+      if (featuredCodes.indexOf(code) >= 0) input.value = '';
+    });
+  });
+  saveFeaturedButton.addEventListener('click', saveFeaturedWorks);
   document.getElementById('copyShareCodeButton').addEventListener('click', copySelectedShareCode);
   document.getElementById('hideButton').addEventListener('click', function() { openAction('hide'); });
   document.getElementById('restoreButton').addEventListener('click', function() { openAction('restore'); });

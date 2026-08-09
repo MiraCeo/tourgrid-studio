@@ -29,6 +29,23 @@ RED = "#D32F36"
 pytestmark = pytest.mark.browser
 
 
+def test_discover_tabs_show_only_the_selected_panel(editor_page: Page) -> None:
+    editor_page.locator("#announcementBtn").click()
+    expect(editor_page.locator("#discoverFeaturedPanel")).to_be_visible()
+    expect(editor_page.locator("#discoverNoticePanel")).to_be_hidden()
+    expect(editor_page.locator("#discoverHelpPanel")).to_be_hidden()
+
+    editor_page.locator("#discoverNoticeTab").click()
+    expect(editor_page.locator("#discoverFeaturedPanel")).to_be_hidden()
+    expect(editor_page.locator("#discoverNoticePanel")).to_be_visible()
+    expect(editor_page.locator("#discoverHelpPanel")).to_be_hidden()
+
+    editor_page.locator("#discoverHelpTab").click()
+    expect(editor_page.locator("#discoverFeaturedPanel")).to_be_hidden()
+    expect(editor_page.locator("#discoverNoticePanel")).to_be_hidden()
+    expect(editor_page.locator("#discoverHelpPanel")).to_be_visible()
+
+
 def test_initial_editor_is_blank_and_uses_the_fixed_palette(
     editor_page: Page,
 ) -> None:
@@ -662,7 +679,7 @@ def test_canvas_cell_hover_preview_and_outline_follow_editor_mode(
           1
         ).data"""
     )
-    assert preview_pixel == [36, 36, 36, 255]
+    assert preview_pixel == [34, 34, 34, 255]
 
     editor_page.evaluate(
         """
@@ -1839,7 +1856,7 @@ def test_crop_keeps_same_source_region_when_viewport_resizes(
           const crop = window.__TOURGRID_TEST__.getState().cropTransform;
           return crop && crop.viewportSize !== previousSize;
         }""",
-        before["viewportSize"],
+        arg=before["viewportSize"],
     )
     after = editor_state(editor_page)["cropTransform"]
 
