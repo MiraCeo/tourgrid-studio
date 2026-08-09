@@ -194,6 +194,35 @@ def test_admin_can_order_featured_works_without_counting_preview_views() -> None
     ]
 
 
+def test_like_and_normal_read_each_contribute_one_deduplicated_view(
+    client: TestClient,
+) -> None:
+    created = client.post(
+        "/api/v1/works",
+        json=work_payload(3, title="点赞测试"),
+    ).json()
+    code = created["code"]
+
+    first_like = client.post(f"/api/v1/works/{code}/like")
+    repeated_like = client.post(f"/api/v1/works/{code}/like")
+    first_read = client.get(f"/api/v1/works/{code}")
+    repeated_read = client.get(f"/api/v1/works/{code}")
+
+    assert first_like.status_code == 200
+    assert first_like.json() == {
+        "code": code,
+        "counted": True,
+        "viewCount": 1,
+    }
+    assert repeated_like.json() == {
+        "code": code,
+        "counted": False,
+        "viewCount": 1,
+    }
+    assert first_read.json()["viewCount"] == 2
+    assert repeated_read.json()["viewCount"] == 2
+
+
 def test_missing_shared_work_returns_chinese_message(
     client: TestClient,
 ) -> None:

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Path, Request, Response
 from backend.palette import DEFAULT_PALETTE_ID, load_palette
 
 from .errors import ApiError
-from .models import SaveWorkRequest, WorkResponse
+from .models import LikeWorkResponse, SaveWorkRequest, WorkResponse
 from .shared_state import SharedState, SharedStateUnavailable
 from .work_store import (
     SHARE_CODE_ALPHABET,
@@ -92,6 +92,22 @@ def work_response(record: WorkRecord) -> WorkResponse:
         view_count=record.view_count,
         created_at=record.created_at,
     )
+
+
+def viewer_id_for_request(request: Request, response: Response) -> str:
+    viewer_id = request.cookies.get(VIEWER_COOKIE, "")
+    if VIEWER_ID_PATTERN.fullmatch(viewer_id):
+        return viewer_id
+    viewer_id = uuid4().hex
+    response.set_cookie(
+        VIEWER_COOKIE,
+        viewer_id,
+        max_age=31_536_000,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="lax",
+    )
+    return viewer_id
 
 
 async def unavailable_work_error(store: WorkStore, code: str) -> ApiError:
@@ -214,17 +230,7 @@ def create_works_router() -> APIRouter:
             if record is None:
                 raise await unavailable_work_error(store, code)
 
-            viewer_id = request.cookies.get(VIEWER_COOKIE, "")
-            if not VIEWER_ID_PATTERN.fullmatch(viewer_id):
-                viewer_id = uuid4().hex
-                response.set_cookie(
-                    VIEWER_COOKIE,
-                    viewer_id,
-                    max_age=31_536_000,
-                    httponly=True,
-                    secure=request.url.scheme == "https",
-                    samesite="lax",
-                )
+            viewer_id = viewer_id_for_request(request, response)
             should_count = await shared_state.claim_view(
                 code,
                 viewer_id,
@@ -247,5 +253,48 @@ def create_works_router() -> APIRouter:
                 "Shared view tracking is temporarily unavailable.",
             ) from error
         return work_response(record)
+
+    @router.post(
+        "/{code}/like",
+        response_model=LikeWorkResponse,
+    )
+    async def like_work(
+        request: Request,
+        response: Response,
+        code: Annotated[str, Path(pattern=SHARE_CODE_PATTERN)],
+    ) -> LikeWorkResponse:
+        store: WorkStore = request.app.state.work_store
+        shared_state: SharedState = request.app.state.shared_state
+        try:
+            record = await store.get(code)
+            if record is None:
+                raise await unavailable_work_error(store, code)
+            viewer_id = viewer_id_for_request(request, response)
+            counted = await shared_state.claim_like(
+                code,
+                viewer_id,
+                request.app.state.settings.view_dedupe_seconds,
+            )
+            if counted:
+                record = await store.get_and_increment_views(code)
+                if record is None:
+                    raise await unavailable_work_error(store, code)
+        except WorkStoreUnavailable as error:
+            raise ApiError(
+                503,
+                "work_storage_unavailable",
+                "Work sharing storage is temporarily unavailable.",
+            ) from error
+        except SharedStateUnavailable as error:
+            raise ApiError(
+                503,
+                "shared_state_unavailable",
+                "Shared like tracking is temporarily unavailable.",
+            ) from error
+        return LikeWorkResponse(
+            code=record.code,
+            counted=counted,
+            view_count=record.view_count,
+        )
 
     return router

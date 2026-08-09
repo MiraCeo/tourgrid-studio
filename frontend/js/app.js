@@ -1349,8 +1349,78 @@ function setWorkspacePanelMode(mode) {
 var authorModalTrigger = null;
 var announcementModalTrigger = null;
 var ANNOUNCEMENT_SESSION_KEY = 'tourgrid-announcement-20260728';
+var FEATURED_LIKES_SESSION_KEY = 'tourgrid-featured-likes-v1';
 var featuredWorksLoaded = false;
 var featuredWorksLoading = false;
+var featuredLikedCodes = loadFeaturedLikedCodes();
+
+function loadFeaturedLikedCodes() {
+  try {
+    var values = JSON.parse(sessionStorage.getItem(FEATURED_LIKES_SESSION_KEY) || '[]');
+    return new Set(Array.isArray(values) ? values : []);
+  } catch (_error) {
+    return new Set();
+  }
+}
+
+function rememberFeaturedLike(code) {
+  featuredLikedCodes.add(code);
+  try {
+    sessionStorage.setItem(
+      FEATURED_LIKES_SESSION_KEY,
+      JSON.stringify(Array.from(featuredLikedCodes))
+    );
+  } catch (_error) {
+    // The server-side Redis claim remains authoritative when storage is blocked.
+  }
+}
+
+function createFeaturedHeartIcon() {
+  var namespace = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(namespace, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  var path = document.createElementNS(namespace, 'path');
+  path.setAttribute(
+    'd',
+    'M12 21s-7-4.35-9.5-8.5C.5 8.5 3 4 7.5 4c2.1 0 3.5 1.2 4.5 2.6C13 5.2 14.4 4 16.5 4 21 4 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21z'
+  );
+  svg.appendChild(path);
+  return svg;
+}
+
+function setFeaturedLikeButtonState(button, liked) {
+  button.classList.toggle('liked', liked);
+  button.disabled = liked;
+  button.setAttribute('aria-pressed', String(liked));
+  button.title = liked ? '本次会话已点赞' : '为作品增加1点热度';
+}
+
+function likeFeaturedWork(work, button, views) {
+  if (button.disabled) return;
+  button.disabled = true;
+  button.classList.add('pending');
+  fetch(
+    API_BASE_URL + '/api/v1/works/' + encodeURIComponent(work.code) + '/like',
+    { method: 'POST' }
+  ).then(function(response) {
+    return response.json().then(function(body) {
+      if (!response.ok) throw new Error(apiErrorMessage(response, body));
+      return body;
+    });
+  }).then(function(body) {
+    work.viewCount = Math.max(0, Number(body.viewCount) || 0);
+    views.textContent = '浏览 ' + work.viewCount;
+    rememberFeaturedLike(work.code);
+    setFeaturedLikeButtonState(button, true);
+    showToast(body.counted ? '点赞成功' : '近期已经为该作品点赞');
+  }).catch(function(error) {
+    button.disabled = false;
+    showToast(error.message || '点赞失败，请稍后重试');
+  }).finally(function() {
+    button.classList.remove('pending');
+  });
+}
 
 function switchDiscoverTab(name) {
   document.querySelectorAll('[data-discover-tab]').forEach(function(tab) {
@@ -1417,16 +1487,38 @@ function renderFeaturedWorks(works) {
     title.className = 'featured-work-title';
     title.textContent = work.title || '未命名作品';
     card.appendChild(title);
+    var metadata = document.createElement('div');
+    metadata.className = 'featured-work-metadata';
     var author = document.createElement('div');
     author.className = 'featured-work-author';
     author.textContent = '作者：' + (work.authorName || '未署名');
-    card.appendChild(author);
-    var button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'featured-work-action';
-    button.textContent = '读取作品';
-    button.addEventListener('click', function() { openFeaturedWork(work.code); });
-    card.appendChild(button);
+    metadata.appendChild(author);
+    var views = document.createElement('div');
+    views.className = 'featured-work-views';
+    views.textContent = '浏览 ' + Math.max(0, Number(work.viewCount) || 0);
+    metadata.appendChild(views);
+    card.appendChild(metadata);
+    var actions = document.createElement('div');
+    actions.className = 'featured-work-actions';
+    var readButton = document.createElement('button');
+    readButton.type = 'button';
+    readButton.className = 'featured-work-action featured-work-read';
+    readButton.textContent = '读取作品';
+    readButton.addEventListener('click', function() { openFeaturedWork(work.code); });
+    actions.appendChild(readButton);
+    var likeButton = document.createElement('button');
+    likeButton.type = 'button';
+    likeButton.className = 'featured-work-action featured-work-like';
+    likeButton.appendChild(createFeaturedHeartIcon());
+    var likeLabel = document.createElement('span');
+    likeLabel.textContent = '点赞';
+    likeButton.appendChild(likeLabel);
+    setFeaturedLikeButtonState(likeButton, featuredLikedCodes.has(work.code));
+    likeButton.addEventListener('click', function() {
+      likeFeaturedWork(work, likeButton, views);
+    });
+    actions.appendChild(likeButton);
+    card.appendChild(actions);
     grid.appendChild(card);
   });
   empty.hidden = grid.childElementCount !== 0;

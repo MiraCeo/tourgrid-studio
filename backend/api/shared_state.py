@@ -65,6 +65,13 @@ class SharedState(Protocol):
         ttl_seconds: int,
     ) -> bool: ...
 
+    async def claim_like(
+        self,
+        code: str,
+        viewer_id: str,
+        ttl_seconds: int,
+    ) -> bool: ...
+
     async def ban_temporarily(self, client_ip: str, ttl_seconds: int) -> None: ...
 
     async def unban_temporarily(self, client_ip: str) -> None: ...
@@ -82,6 +89,7 @@ class InMemorySharedState:
             OrderedDict()
         )
         self._views: dict[str, float] = {}
+        self._likes: dict[str, float] = {}
         self._bans: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
@@ -217,6 +225,23 @@ class InMemorySharedState:
             if self._views.get(key, 0) > current:
                 return False
             self._views[key] = current + ttl_seconds
+            return True
+
+    async def claim_like(
+        self,
+        code: str,
+        viewer_id: str,
+        ttl_seconds: int,
+    ) -> bool:
+        current = time.monotonic()
+        key = f"{code}:{viewer_id}"
+        async with self._lock:
+            for like_key, expires_at in list(self._likes.items()):
+                if expires_at <= current:
+                    del self._likes[like_key]
+            if self._likes.get(key, 0) > current:
+                return False
+            self._likes[key] = current + ttl_seconds
             return True
 
     async def ban_temporarily(self, client_ip: str, ttl_seconds: int) -> None:
@@ -386,6 +411,23 @@ return {current, ttl}
             )
         except RedisError as error:
             raise SharedStateUnavailable("Redis view deduplication failed") from error
+        return bool(claimed)
+
+    async def claim_like(
+        self,
+        code: str,
+        viewer_id: str,
+        ttl_seconds: int,
+    ) -> bool:
+        try:
+            claimed = await self._client.set(
+                f"tourgrid:like:{code}:{viewer_id}",
+                "1",
+                ex=ttl_seconds,
+                nx=True,
+            )
+        except RedisError as error:
+            raise SharedStateUnavailable("Redis like deduplication failed") from error
         return bool(claimed)
 
     async def ban_temporarily(self, client_ip: str, ttl_seconds: int) -> None:

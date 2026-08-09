@@ -93,6 +93,12 @@ class WorkResponse(ApiModel):
     created_at: datetime
 
 
+class LikeWorkResponse(ApiModel):
+    code: str
+    counted: bool
+    view_count: int
+
+
 class FeaturedWorksResponse(ApiModel):
     works: list[WorkResponse]
 

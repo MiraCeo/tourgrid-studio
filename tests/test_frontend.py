@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260810-01"
+    asset_version = "20260810-03"
 
     assert (
         f'<link rel="stylesheet" '
@@ -1217,6 +1217,13 @@ def test_discover_modal_combines_featured_works_notice_and_help() -> None:
     assert ".btn-announcement {" in css
     assert ".announcement-modal {" in css
     assert ".featured-works-grid {" in css
+    assert ".featured-work-metadata {" in css
+    assert "views.textContent = '浏览 '" in app
+    assert ".featured-work-actions {" in css
+    assert ".featured-work-like.liked {" in css
+    assert "createFeaturedHeartIcon" in app
+    assert "'/like'" in app
+    assert "setFeaturedLikeButtonState(likeButton" in app
     assert ".discover-panel[hidden] { display: none; }" in css
     assert ".announcement-steps {" in css
     assert "function loadFeaturedWorks()" in app
