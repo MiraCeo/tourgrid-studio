@@ -41,7 +41,7 @@ def run_node(script: str, *arguments: Path) -> None:
 
 def test_frontend_is_split_into_ordered_assets() -> None:
     html = INDEX_HTML.read_text(encoding="utf-8")
-    asset_version = "20260810-06"
+    asset_version = "20260810-07"
 
     assert (
         f'<link rel="stylesheet" '
@@ -213,7 +213,7 @@ def test_admin_detail_can_copy_the_selected_share_code() -> None:
     assert ".detail-utility-actions" in css
 
 
-def test_admin_can_configure_ordered_featured_works() -> None:
+def test_admin_can_configure_featured_work_pool() -> None:
     html = (FRONTEND_ROOT / "admin" / "index.html").read_text(
         encoding="utf-8"
     )
@@ -232,6 +232,10 @@ def test_admin_can_configure_ordered_featured_works() -> None:
     assert "method: 'PUT'" in javascript
     assert "function renderFeaturedWorks()" in javascript
     assert "function saveFeaturedWorks()" in javascript
+    assert "最多保存6个作品" not in javascript
+    assert "length >= 6" not in javascript
+    assert "推荐作品池" in html
+    assert "共 0 项" in html
     assert ".featured-admin" in css
     assert ".featured-item" in css
 
@@ -1226,6 +1230,8 @@ def test_discover_modal_combines_featured_works_notice_and_help() -> None:
     assert 'data-discover-tab="notice"' in html
     assert 'data-discover-tab="help"' in html
     assert 'id="featuredWorksGrid"' in html
+    assert 'id="featuredBatchButtonTop"' in html
+    assert 'id="featuredBatchButtonBottom"' in html
     assert "<h3>项目说明</h3>" in html
     assert "<h3>快速开始</h3>" in html
     assert "<h3>隐私与发布</h3>" in html
@@ -1238,6 +1244,7 @@ def test_discover_modal_combines_featured_works_notice_and_help() -> None:
     assert ".btn-announcement {" in css
     assert ".announcement-modal {" in css
     assert ".featured-works-grid {" in css
+    assert ".featured-batch-button {" in css
     assert ".featured-work-metadata {" in css
     assert "views.textContent = '浏览 '" in app
     assert ".featured-work-actions {" in css
@@ -1248,6 +1255,8 @@ def test_discover_modal_combines_featured_works_notice_and_help() -> None:
     assert ".discover-panel[hidden] { display: none; }" in css
     assert ".announcement-steps {" in css
     assert "function loadFeaturedWorks()" in app
+    assert "function takeNextFeaturedBatch()" in app
+    assert "function showNextFeaturedBatch(announce)" in app
     assert "'/api/v1/featured-works'" in app
     assert "function openFeaturedWork(code)" in app
     assert "function openAnnouncementModal()" in app

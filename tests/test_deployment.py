@@ -224,6 +224,16 @@ def test_project_is_run_from_source_checkout_instead_of_wheel_entrypoint() -> No
     )
 
 
+def test_featured_pool_migration_removes_six_work_database_limit() -> None:
+    migration = (
+        ROOT / "backend" / "api" / "migrations" /
+        "007_expand_featured_works.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "DROP CONSTRAINT IF EXISTS featured_works_position_range" in migration
+    assert "ALTER COLUMN position TYPE INTEGER" in migration
+
+
 def test_production_lock_excludes_server_conversion_dependencies() -> None:
     lock = (ROOT / "requirements-prod.lock").read_text(encoding="utf-8")
 

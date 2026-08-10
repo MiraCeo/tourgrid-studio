@@ -216,7 +216,7 @@
 
   function renderFeaturedWorks() {
     featuredList.replaceChildren();
-    featuredCount.textContent = featuredCodes.length + ' / 6 项';
+    featuredCount.textContent = '共 ' + featuredCodes.length + ' 项';
     featuredCodes.forEach(function(code, index) {
       var work = featuredWorksByCode[code];
       var item = document.createElement('li');
@@ -239,25 +239,6 @@
 
       var actions = document.createElement('div');
       actions.className = 'featured-item-actions';
-      [
-        ['↑', '上移', index > 0, -1],
-        ['↓', '下移', index < featuredCodes.length - 1, 1]
-      ].forEach(function(config) {
-        var button = createText('button', 'secondary small', config[0]);
-        button.type = 'button';
-        button.title = config[1];
-        button.disabled = !config[2];
-        button.addEventListener('click', function() {
-          var target = index + config[3];
-          var next = featuredCodes.slice();
-          var moved = next.splice(index, 1)[0];
-          next.splice(target, 0, moved);
-          featuredCodes = next;
-          markFeaturedDirty();
-          renderFeaturedWorks();
-        });
-        actions.appendChild(button);
-      });
       var removeButton = createText('button', 'secondary small', '移除');
       removeButton.type = 'button';
       removeButton.addEventListener('click', function() {
@@ -280,10 +261,6 @@
     }
     if (featuredCodes.indexOf(work.code) >= 0) {
       setFeaturedStatus('该作品已经在推荐列表中。', true);
-      return;
-    }
-    if (featuredCodes.length >= 6) {
-      setFeaturedStatus('推荐列表最多保存6个作品。', true);
       return;
     }
     featuredWorksByCode[work.code] = work;
@@ -309,7 +286,7 @@
   }
 
   function loadFeaturedWorks() {
-    setFeaturedStatus('正在读取推荐列表…');
+    setFeaturedStatus('正在读取推荐池…');
     return api('/api/v1/admin/featured-works').then(function(body) {
       featuredCodes = body.codes || [];
       featuredWorksByCode = {};
@@ -327,7 +304,7 @@
 
   function saveFeaturedWorks() {
     saveFeaturedButton.disabled = true;
-    setFeaturedStatus('正在保存推荐列表…');
+    setFeaturedStatus('正在保存推荐池…');
     api('/api/v1/admin/featured-works', {
       method: 'PUT',
       body: JSON.stringify({ codes: featuredCodes })
@@ -340,7 +317,7 @@
       featuredDirty = false;
       renderFeaturedWorks();
       renderDetail();
-      setFeaturedStatus('推荐列表已保存。');
+      setFeaturedStatus('推荐池已保存。');
     }).catch(function(error) {
       saveFeaturedButton.disabled = false;
       setFeaturedStatus(error.message, true);
@@ -677,7 +654,7 @@
     var featuredButton = document.getElementById('detailFeaturedButton');
     var alreadyFeatured = featuredCodes.indexOf(selectedWork.code) >= 0;
     featuredButton.disabled = selectedWork.moderationStatus !== 'active' || alreadyFeatured;
-    featuredButton.textContent = alreadyFeatured ? '已加入首页推荐' : '加入首页推荐';
+    featuredButton.textContent = alreadyFeatured ? '已加入推荐池' : '加入推荐池';
 
     document.getElementById('hideButton').hidden = selectedWork.moderationStatus !== 'active';
     document.getElementById('restoreButton').hidden = selectedWork.moderationStatus !== 'hidden';

@@ -194,6 +194,33 @@ def test_admin_can_order_featured_works_without_counting_preview_views() -> None
     ]
 
 
+def test_admin_featured_pool_accepts_more_than_six_works() -> None:
+    token = "b" * 32
+    headers = {"Authorization": f"Bearer {token}"}
+    application = create_app(
+        ApiSettings(admin_token=token),
+        work_store=InMemoryWorkStore(),
+    )
+    with TestClient(application) as featured_client:
+        codes = [
+            featured_client.post(
+                "/api/v1/works",
+                json=work_payload(index, title=f"推荐 {index}"),
+            ).json()["code"]
+            for index in range(7)
+        ]
+        saved = featured_client.put(
+            "/api/v1/admin/featured-works",
+            headers=headers,
+            json={"codes": codes},
+        )
+        public = featured_client.get("/api/v1/featured-works")
+
+    assert saved.status_code == 200
+    assert saved.json()["codes"] == codes
+    assert [work["code"] for work in public.json()["works"]] == codes
+
+
 def test_like_and_normal_read_each_contribute_one_deduplicated_view(
     client: TestClient,
 ) -> None:

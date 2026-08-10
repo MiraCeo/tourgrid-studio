@@ -46,6 +46,62 @@ def test_discover_tabs_show_only_the_selected_panel(editor_page: Page) -> None:
     expect(editor_page.locator("#discoverHelpPanel")).to_be_visible()
 
 
+def test_featured_pool_shuffles_six_works_from_top_and_bottom_controls(
+    editor_page: Page,
+) -> None:
+    editor_page.locator("#announcementBtn").click()
+    pixels = base64.b64encode(bytes(432)).decode("ascii")
+    works = [
+        {
+            "code": "1" * 11 + str(index),
+            "schemaVersion": 1,
+            "paletteId": "official-40-v1",
+            "paletteVersion": 1,
+            "pixels": pixels,
+            "title": f"推荐 {index}",
+            "authorName": "测试",
+            "viewCount": 0,
+        }
+        for index in range(1, 9)
+    ]
+    editor_page.evaluate(
+        """
+        (works) => {
+          featuredWorksPool = works;
+          featuredWorksRemaining = [];
+          featuredCurrentBatch = [];
+          showNextFeaturedBatch(false);
+        }
+        """,
+        works,
+    )
+
+    cards = editor_page.locator(".featured-work-card")
+    top_button = editor_page.locator("#featuredBatchButtonTop")
+    bottom_button = editor_page.locator("#featuredBatchButtonBottom")
+    expect(cards).to_have_count(6)
+    expect(top_button).to_be_visible()
+    expect(bottom_button).to_be_visible()
+
+    first_codes = cards.evaluate_all(
+        "cards => cards.map(card => card.dataset.workCode)"
+    )
+    top_button.click()
+    expect(cards).to_have_count(6)
+    second_codes = cards.evaluate_all(
+        "cards => cards.map(card => card.dataset.workCode)"
+    )
+    assert len(set(first_codes)) == 6
+    assert len(set(second_codes)) == 6
+    assert len(set(first_codes) | set(second_codes)) == 8
+
+    bottom_button.click()
+    expect(cards).to_have_count(6)
+    expect(editor_page.locator("#featuredWorksStatus")).to_contain_text(
+        "推荐池共 8 项"
+    )
+
+
 def test_initial_editor_is_blank_and_uses_the_fixed_palette(
     editor_page: Page,
 ) -> None:

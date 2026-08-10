@@ -116,6 +116,12 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 视为新的浏览会话，因此这是近似浏览次数，不是唯一人数统计。
 作品不包含用户原图、本地参考图或导出的PNG。
 
+## `GET /api/v1/featured-works`
+
+返回管理员推荐池中仍为正常公开状态的全部作品，按后台清单顺序提供稳定响应，
+公开页面在浏览器本地洗牌并每批展示最多6个。读取推荐预览不会增加浏览次数。
+响应使用60秒公共缓存；隐藏或清除的作品会自动跳过。
+
 可能错误：
 
 - `404 work_not_found`：分享码对应的作品不存在。
@@ -145,6 +151,9 @@ PostgreSQL或Redis不可用时返回503。未配置数据库的本地纯前端�
 避免同一出口IP中的恶意请求把持有正确令牌的管理员永久锁在后台外。
 
 - `GET /api/v1/admin/session`：验证管理员令牌。
+- `GET /api/v1/admin/featured-works`：读取不限数量的推荐作品池。
+- `PUT /api/v1/admin/featured-works`：以分享码数组整体替换推荐池；分享码不得重复，
+  且所有作品必须保持正常公开状态。
 - `GET /api/v1/admin/works?page=1&pageSize=50&status=...&sort=...`：按创建时间
   或浏览量进行页码分页，`sort` 可取 `created_desc`（默认）或 `views_desc`；
   响应包含 `page`、`pageSize`、`totalCount` 和 `totalPages`；可按

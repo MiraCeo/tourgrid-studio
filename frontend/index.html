@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅行「像」框 | 24×24 像素画编辑器</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="/static/css/editor.css?v=20260810-06">
+  <link rel="stylesheet" href="/static/css/editor.css?v=20260810-07">
 </head>
 <body>
 
@@ -586,7 +586,15 @@
       <section class="discover-panel" id="discoverFeaturedPanel" role="tabpanel"
                aria-labelledby="discoverFeaturedTab" data-discover-panel="featured">
         <p class="featured-works-status" id="featuredWorksStatus" role="status">正在读取推荐作品…</p>
+        <div class="featured-batch-actions" id="featuredBatchActionsTop" hidden>
+          <button class="featured-batch-button" id="featuredBatchButtonTop"
+                  type="button">换一批</button>
+        </div>
         <div class="featured-works-grid" id="featuredWorksGrid"></div>
+        <div class="featured-batch-actions" id="featuredBatchActionsBottom" hidden>
+          <button class="featured-batch-button" id="featuredBatchButtonBottom"
+                  type="button">换一批</button>
+        </div>
         <p class="featured-works-empty" id="featuredWorksEmpty" hidden>暂时没有推荐作品。</p>
       </section>
 
@@ -778,16 +786,16 @@
   </div>
 </div>
 
-<script src="/static/js/storage.js?v=20260810-06"></script>
-<script src="/static/js/reference-storage.js?v=20260810-06"></script>
-<script src="/static/js/work-codec.js?v=20260810-06"></script>
-<script src="/static/js/official-40-v1.js?v=20260810-06"></script>
-<script src="/static/js/state.js?v=20260810-06"></script>
-<script src="/static/js/editor.js?v=20260810-06"></script>
-<script src="/static/js/export.js?v=20260810-06"></script>
-<script src="/static/js/import.js?v=20260810-06"></script>
-<script src="/static/js/works.js?v=20260810-06"></script>
-<script src="/static/js/app.js?v=20260810-06"></script>
+<script src="/static/js/storage.js?v=20260810-07"></script>
+<script src="/static/js/reference-storage.js?v=20260810-07"></script>
+<script src="/static/js/work-codec.js?v=20260810-07"></script>
+<script src="/static/js/official-40-v1.js?v=20260810-07"></script>
+<script src="/static/js/state.js?v=20260810-07"></script>
+<script src="/static/js/editor.js?v=20260810-07"></script>
+<script src="/static/js/export.js?v=20260810-07"></script>
+<script src="/static/js/import.js?v=20260810-07"></script>
+<script src="/static/js/works.js?v=20260810-07"></script>
+<script src="/static/js/app.js?v=20260810-07"></script>
 
 <!-- 导出下拉列表（body层级，避免被层叠上下文遮盖） -->
 <div class="export-dropdown" id="exportDropdown">

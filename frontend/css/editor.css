@@ -1924,6 +1924,31 @@ body {
   text-align: center;
 }
 .featured-works-status.error { color: #ff9b9f; }
+.featured-batch-actions {
+  display: flex;
+  justify-content: center;
+}
+.featured-batch-actions[hidden] { display: none; }
+.featured-batch-button {
+  min-width: 128px;
+  min-height: 36px;
+  padding: 7px 22px;
+  border: 1px solid rgba(114,245,242,0.52);
+  border-radius: 18px;
+  background: rgba(114,245,242,0.1);
+  color: #72f5f2;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.featured-batch-button:hover {
+  background: rgba(114,245,242,0.18);
+}
+.featured-batch-button:focus-visible {
+  outline: 2px solid #72f5f2;
+  outline-offset: 2px;
+}
 .featured-works-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

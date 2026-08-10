@@ -181,7 +181,7 @@ class AdminFeaturedWorksRequest(ApiModel):
                 pattern=r"^[1-9A-HJ-NP-Za-km-z]{12}$",
             ),
         ]
-    ] = Field(max_length=6)
+    ]
 
     @field_validator("codes")
     @classmethod

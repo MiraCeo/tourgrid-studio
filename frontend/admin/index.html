@@ -66,12 +66,12 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">FEATURED WORKS</p>
-            <h2 id="featuredHeading">首页推荐作品</h2>
+            <h2 id="featuredHeading">推荐作品池</h2>
           </div>
-          <span class="count" id="featuredCount">0 / 6 项</span>
+          <span class="count" id="featuredCount">共 0 项</span>
         </div>
         <p class="featured-description">
-          推荐列表按顺序展示在主界面的“发现”弹窗中，只能保存正常公开的作品。
+          推荐池中的正常公开作品会在主界面“发现”弹窗中随机展示，每批最多6个。
         </p>
         <form class="featured-add-form" id="featuredAddForm">
           <label class="sr-only" for="featuredCodeInput">推荐作品分享码</label>
@@ -81,7 +81,7 @@
         </form>
         <ol class="featured-list" id="featuredList"></ol>
         <div class="featured-actions">
-          <button id="saveFeaturedButton" type="button" disabled>保存推荐列表</button>
+          <button id="saveFeaturedButton" type="button" disabled>保存推荐池</button>
           <span id="featuredStatus" role="status" aria-live="polite"></span>
         </div>
       </section>
@@ -154,7 +154,7 @@
               <button class="secondary favorite-detail-button"
                       id="detailFavoriteButton" type="button">添加喜爱</button>
               <button class="secondary" id="detailFeaturedButton"
-                      type="button">加入首页推荐</button>
+                      type="button">加入推荐池</button>
             </div>
             <div class="moderation-actions" id="moderationActions">
               <button id="hideButton" type="button">隐藏作品</button>

@@ -1350,9 +1350,13 @@ var authorModalTrigger = null;
 var announcementModalTrigger = null;
 var ANNOUNCEMENT_SESSION_KEY = 'tourgrid-announcement-20260728';
 var FEATURED_LIKES_SESSION_KEY = 'tourgrid-featured-likes-v1';
+var FEATURED_BATCH_SIZE = 6;
 var featuredWorksLoaded = false;
 var featuredWorksLoading = false;
 var featuredLikedCodes = loadFeaturedLikedCodes();
+var featuredWorksPool = [];
+var featuredWorksRemaining = [];
+var featuredCurrentBatch = [];
 
 function loadFeaturedLikedCodes() {
   try {
@@ -1456,6 +1460,81 @@ function openFeaturedWork(code) {
   loadSharedWorkFromInput();
 }
 
+function isCompatibleFeaturedWork(work) {
+  return work &&
+    work.schemaVersion === 1 &&
+    work.paletteId === DEFAULT_PALETTE_ID &&
+    work.paletteVersion === DEFAULT_PALETTE_VERSION;
+}
+
+function shuffleFeaturedWorks(works) {
+  var shuffled = works.slice();
+  for (var index = shuffled.length - 1; index > 0; index -= 1) {
+    var target = Math.floor(Math.random() * (index + 1));
+    var value = shuffled[index];
+    shuffled[index] = shuffled[target];
+    shuffled[target] = value;
+  }
+  return shuffled;
+}
+
+function refillFeaturedWorks(selectedCodes) {
+  var previousCodes = new Set(featuredCurrentBatch.map(function(work) {
+    return work.code;
+  }));
+  var preferred = featuredWorksPool.filter(function(work) {
+    return !selectedCodes.has(work.code) && !previousCodes.has(work.code);
+  });
+  var deferred = featuredWorksPool.filter(function(work) {
+    return !selectedCodes.has(work.code) && previousCodes.has(work.code);
+  });
+  featuredWorksRemaining = shuffleFeaturedWorks(preferred).concat(
+    shuffleFeaturedWorks(deferred)
+  );
+}
+
+function takeNextFeaturedBatch() {
+  if (featuredWorksPool.length <= FEATURED_BATCH_SIZE) {
+    featuredCurrentBatch = featuredWorksPool.slice();
+    return featuredCurrentBatch;
+  }
+  var selected = [];
+  var selectedCodes = new Set();
+  while (selected.length < FEATURED_BATCH_SIZE) {
+    if (featuredWorksRemaining.length === 0) {
+      refillFeaturedWorks(selectedCodes);
+    }
+    var work = featuredWorksRemaining.shift();
+    if (!work || selectedCodes.has(work.code)) continue;
+    selected.push(work);
+    selectedCodes.add(work.code);
+  }
+  featuredCurrentBatch = selected;
+  return selected;
+}
+
+function syncFeaturedBatchControls() {
+  var visible = featuredWorksPool.length > FEATURED_BATCH_SIZE;
+  ['featuredBatchActionsTop', 'featuredBatchActionsBottom'].forEach(
+    function(id) {
+      var actions = document.getElementById(id);
+      if (actions) actions.hidden = !visible;
+    }
+  );
+}
+
+function showNextFeaturedBatch(announce) {
+  renderFeaturedWorks(takeNextFeaturedBatch());
+  syncFeaturedBatchControls();
+  if (announce) {
+    var status = document.getElementById('featuredWorksStatus');
+    if (status) {
+      status.textContent = '已更换一批 · 推荐池共 ' +
+        featuredWorksPool.length + ' 项';
+    }
+  }
+}
+
 function renderFeaturedWorks(works) {
   var grid = document.getElementById('featuredWorksGrid');
   var empty = document.getElementById('featuredWorksEmpty');
@@ -1466,13 +1545,9 @@ function renderFeaturedWorks(works) {
   status.classList.remove('error');
 
   works.forEach(function(work) {
-    if (
-      work.schemaVersion !== 1 ||
-      work.paletteId !== DEFAULT_PALETTE_ID ||
-      work.paletteVersion !== DEFAULT_PALETTE_VERSION
-    ) return;
     var card = document.createElement('article');
     card.className = 'featured-work-card';
+    card.dataset.workCode = work.code;
     var canvas = document.createElement('canvas');
     canvas.width = 120;
     canvas.height = 120;
@@ -1540,7 +1615,11 @@ function loadFeaturedWorks() {
     })
     .then(function(body) {
       featuredWorksLoaded = true;
-      renderFeaturedWorks(Array.isArray(body.works) ? body.works : []);
+      featuredWorksPool = (Array.isArray(body.works) ? body.works : [])
+        .filter(isCompatibleFeaturedWork);
+      featuredWorksRemaining = [];
+      featuredCurrentBatch = [];
+      showNextFeaturedBatch(false);
     })
     .catch(function(error) {
       status.textContent = error.message || '推荐作品暂时无法读取。';
@@ -2499,6 +2578,12 @@ function bindStaticControls() {
   on('discoverFeaturedTab', 'click', function() { switchDiscoverTab('featured'); });
   on('discoverNoticeTab', 'click', function() { switchDiscoverTab('notice'); });
   on('discoverHelpTab', 'click', function() { switchDiscoverTab('help'); });
+  on('featuredBatchButtonTop', 'click', function() {
+    showNextFeaturedBatch(true);
+  });
+  on('featuredBatchButtonBottom', 'click', function() {
+    showNextFeaturedBatch(true);
+  });
   on('mobileFullscreenBtn', 'click', toggleFullscreen);
   on('mobileWorkspaceModeBtn', 'click', toggleMobileWorkspaceMode);
   on('mobileToolbarCollapseBtn', 'click', toggleMobileToolbar);
