@@ -305,6 +305,15 @@ def test_ci_has_a_database_only_postgres_store_job() -> None:
     assert postgres_tests.count("@pytest.mark.postgres_store") == 2
 
 
+def test_container_smoke_publishes_with_the_shareable_palette() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    smoke_job = workflow.split("\n  container-smoke:", maxsplit=1)[1]
+    assert "'paletteId':'official-40-v1'" in smoke_job
+    assert "'paletteVersion':1" in smoke_job
+    assert "'paletteId':'natural-64-v2'" not in smoke_job
+
+
 def test_supply_chain_inputs_are_pinned_audited_and_auto_updated() -> None:
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
